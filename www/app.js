@@ -1,8 +1,9 @@
 /**
  * ===========================================================
- * SIMPLE-L1 | The Cryptographic Sovereignty Machine (v4.0)
- * 100% Honest Multilingual WebAuthn Blockchain Simulator
- * Supported: EN, RU, ES, TR, TK, KK
+ * SIMPLE-L1 | The Cryptographic Sovereignty Machine (v5.0)
+ * 100% Honest Polyglot WebAuthn Blockchain Simulator
+ * Includes Adaptive Visitor Profiling & Auto-Locale Routing
+ * Supported: 18 International Technological Languages
  * ===========================================================
  */
 
@@ -12,19 +13,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const langSelect = document.getElementById('lang-select');
 
     // ==========================================
-    // 1. ИНТЕРНАЦИОНАЛИЗАЦИЯ И МЕНЕДЖЕР ЯЗЫКОВ
+    // 1. ИНТЕРНАЦИОНАЛИЗАЦИЯ И УМНЫЙ ПРОФАЙЛЕР
     // ==========================================
     
-    // Определяем стартовый язык
-    let currentLang = localStorage.getItem('sl1_lang') || 'ru';
-    
-    // Если язык из системы поддерживается и в куках пусто — берем его
-    if (!localStorage.getItem('sl1_lang')) {
-        const sysLang = navigator.language.substring(0, 2).toLowerCase();
-        if (window.SL1_TRANSLATIONS && window.SL1_TRANSLATIONS[sysLang]) {
-            currentLang = sysLang;
+    // Улучшенный детектор вероятного языка
+    const detectBestLanguage = () => {
+        // Проверяем сохраненный стейт в первую очередь
+        const saved = localStorage.getItem('sl1_lang');
+        if (saved && window.SL1_TRANSLATIONS[saved]) {
+            return { lang: saved, isCached: true };
         }
-    }
+        
+        // Анализируем массив настроек браузера по приоритету
+        const browserLangs = navigator.languages || [navigator.language || 'en'];
+        for (let item of browserLangs) {
+            const base = item.split('-')[0].toLowerCase();
+            if (window.SL1_TRANSLATIONS[base]) {
+                return { lang: base, isCached: false };
+            }
+        }
+        return { lang: 'en', isCached: false };
+    };
+
+    // Сбор телеметрии и профайла для терминала
+    const buildVisitorProfile = () => {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown Temporal Vector";
+        const threads = navigator.hardwareConcurrency || "Generic";
+        
+        let platform = "Generic Node";
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.indexOf("mac") !== -1) platform = "Apple Silicon / macOS";
+        else if (ua.indexOf("windows") !== -1) platform = "Windows Intel/AMD";
+        else if (ua.indexOf("linux") !== -1) platform = "GNU/Linux Core";
+        else if (ua.indexOf("iphone") !== -1 || ua.indexOf("ipad") !== -1) platform = "iOS Secure Element";
+        else if (ua.indexOf("android") !== -1) platform = "Android Hardware";
+
+        return {
+            timezone: tz,
+            cores: threads,
+            os: platform,
+            langStack: (navigator.languages || [navigator.language || "unknown"]).slice(0, 3).join(', ')
+        };
+    };
+
+    const detectionResult = detectBestLanguage();
+    let currentLang = detectionResult.lang;
 
     const t = (key, replacements = {}) => {
         const dict = window.SL1_TRANSLATIONS[currentLang] || window.SL1_TRANSLATIONS.en;
@@ -41,12 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLang = lang;
         localStorage.setItem('sl1_lang', lang);
         
-        // Обновляем визуальные элементы
+        // Локализация статических элементов DOM
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             const translation = t(key);
             
-            // Если элемент input/textarea
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                 el.setAttribute('placeholder', translation);
             } else {
@@ -54,37 +86,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Синхронизируем селект в навбаре
+        // Синхронизируем меню выбора в навигации
         if (langSelect) {
             langSelect.value = lang;
         }
 
-        // Локализация динамической кнопки (если она не в режиме исполнения)
+        // Адаптация кнопки запуска
         if (!btn.disabled) {
             btn.innerText = t('btn_consensus');
         }
     };
 
-    // Обработчик изменения языка в шапке
-    if (langSelect) {
-        langSelect.addEventListener('change', (e) => {
-            setLanguage(e.target.value);
-            
-            // Если консоль пустая, локализуем стартовое сообщение
-            if (consoleBody.children.length === 2 && !btn.disabled) {
-                consoleBody.innerHTML = `
-                    <div class="terminal-line">${t('term_offline')}</div>
-                    <div class="terminal-line text-highlight">${t('term_wait_gen')}</div>
-                `;
-            }
-        });
-    }
-
-    // Запускаем переключатель при старте
-    setLanguage(currentLang);
-
     // ==========================================
-    // 2. УТИЛИТЫ И ПОМОЩНИКИ
+    // 2. УТИЛИТЫ И КОНСОЛЬНЫЙ ВЫВОД
     // ==========================================
     const appendLine = (text, className = '') => {
         const div = document.createElement('div');
@@ -122,7 +136,63 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==========================================
-    // 3. ГЛАВНЫЙ ИСПОЛНИТЕЛЬНЫЙ МЕХАНИЗМ КОНСЕНСУСА
+    // 3. ДИНАМИЧЕСКИЙ БУТЛОАДЕР (ЗАГРУЗКА НОДЫ)
+    // ==========================================
+    const runNodeBootloader = async () => {
+        // Очищаем исходный HTML и запускаем интерактивную инициализацию
+        consoleBody.innerHTML = '';
+        
+        appendLine("[BOOTLOADER] Initiating local Node handshake...", "text-highlight");
+        await sleep(400);
+        
+        const profile = buildVisitorProfile();
+        
+        appendLine(`[PROFILER] Extracting hardware telemetry:`);
+        await sleep(200);
+        appendLine(`  -> Host Architecture: <span style="color:var(--clr-yellow);">${profile.os}</span>`);
+        await sleep(150);
+        appendLine(`  -> Thread Topology: <span style="color:var(--clr-pink);">${profile.cores} CPU units</span>`);
+        await sleep(150);
+        appendLine(`  -> Temporal Vector: ${profile.timezone}`);
+        await sleep(150);
+        appendLine(`  -> Browser Locale Graph: [${profile.langStack}]`);
+        await sleep(300);
+        
+        const matchType = detectionResult.isCached ? "STATE_CACHED" : "PROBABILISTIC_MAPPED";
+        appendLine(`[RESOLVER] Native Language Binding: <span class="trace-success">${currentLang.toUpperCase()} (${matchType})</span> ✅`);
+        await sleep(400);
+        
+        // Применяем обнаруженный язык ко всему сайту
+        setLanguage(currentLang);
+        
+        appendLine("[SYSTEM] Execution sandbox locked. Socket ready.");
+        await sleep(300);
+        
+        // Финальные приветственные строки на целевом языке
+        appendLine(`<div style="border-top:1px dashed #333; margin: 10px 0 5px 0;"></div>`);
+        appendLine(t('term_offline'));
+        appendLine(t('term_wait_gen'), "text-highlight");
+    };
+
+    // Обработчик смены языка пользователем через селект
+    if (langSelect) {
+        langSelect.addEventListener('change', (e) => {
+            setLanguage(e.target.value);
+            
+            // Если терминал сейчас просто ждёт запуск консенсуса — локализуем последние две строки ожидания
+            if (!btn.disabled) {
+                // Оставляем лог загрузки, меняем только финальные строки
+                const lines = consoleBody.querySelectorAll('.terminal-line');
+                if (lines.length > 2) {
+                    lines[lines.length - 2].innerText = t('term_offline');
+                    lines[lines.length - 1].innerText = t('term_wait_gen');
+                }
+            }
+        });
+    }
+
+    // ==========================================
+    // 4. ГЛАВНЫЙ ИСПОЛНИТЕЛЬНЫЙ МЕХАНИЗМ
     // ==========================================
     const runConsensusSimulation = async () => {
         const userInput = document.getElementById('username-input');
@@ -134,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         consoleBody.innerHTML = `<div class="terminal-line text-highlight">${t('term_init_kernel', {user: rawUsername})}</div>`;
         await sleep(800);
 
-        // Стейт-контроллер смены имени пользователя
+        // Очистка сессии при смене пользователя
         const lastUser = localStorage.getItem('sl1_last_user');
         if (lastUser !== rawUsername) {
             localStorage.removeItem('sl1_credential_id');
@@ -164,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (!navigator.credentials || !navigator.credentials.create) {
-                    throw new Error("WebAuthn not supported in this environment.");
+                    throw new Error("WebAuthn not supported.");
                 }
 
                 const challenge = crypto.getRandomValues(new Uint8Array(32));
@@ -174,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     publicKey: {
                         challenge: challenge,
                         rp: { 
-                            name: "Simple-L1 Network Protocol", // Глобальное имя протокола в Keychain
+                            name: "Simple-L1 Network Protocol", 
                             id: rpId 
                         },
                         user: {
@@ -192,11 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
-                // ВЫЗОВ TouchID №1 (Keygen)
                 const credential = await navigator.credentials.create(createOptions);
                 
                 if (!credential) {
-                    throw new Error("Secure Enclave response empty.");
+                    throw new Error("Secure Enclave returned empty.");
                 }
 
                 activeCredId = credential.id;
@@ -205,12 +274,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const spkiBuffer = credential.response.getPublicKey();
                     activePubKeyHex = bufToHex(spkiBuffer);
 
-                    // Детерминированный хэш адреса
                     const hashBuffer = await crypto.subtle.digest('SHA-256', spkiBuffer);
                     const hashHex = bufToHex(hashBuffer);
                     activeAddress = `sl1_${hashHex.substring(0, 40)}`;
 
-                    // Атомарная запись в стейт
                     localStorage.setItem('sl1_credential_id', activeCredId);
                     localStorage.setItem('sl1_public_key', activePubKeyHex);
                     localStorage.setItem('sl1_address', activeAddress);
@@ -220,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     appendLine(`${t('term_l1_addr')} <span class="trace-success">${activeAddress}</span>`);
                     await sleep(1500);
                 } else {
-                    throw new Error("Failed to get public key object.");
+                    throw new Error("No public key structure.");
                 }
 
             } catch (e) {
@@ -228,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         } else {
-            // Восстановление из сохраненной истории
             appendLine(t('term_detected'), "prompt");
             appendLine(`${t('term_addr_found')} <span class="trace-success">${activeAddress}</span>`);
             appendLine(`${t('term_pubkey')} <span style="color:#5c6370;">0x${activePubKeyHex.substring(0, 32)}...</span>`);
@@ -249,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(1200);
 
         // ==========================================
-        // ЭТАП 3: ПОДПИСЬ НАМЕРЕНИЯ (Biometric Assertion)
+        // ЭТАП 3: ПОДПИСЬ НАМЕРЕНИЯ
         // ==========================================
         appendLine(t('term_attestation_title'), "prompt");
         appendLine(`<span class='text-highlight'>${t('term_prompt2')}</span>`);
@@ -259,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (!navigator.credentials || !navigator.credentials.get) {
-                throw new Error("WebAuthn get not supported in this environment.");
+                throw new Error("WebAuthn assertion failed.");
             }
 
             const challenge = crypto.getRandomValues(new Uint8Array(32));
@@ -278,11 +344,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            // ВЫЗОВ TouchID №2 (Подпись бинарного пакета)
             const assertion = await navigator.credentials.get(getOptions);
 
             if (!assertion) {
-                throw new Error("Signing failed.");
+                throw new Error("Signing aborted.");
             }
 
             if (assertion.response && assertion.response.signature) {
@@ -293,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendLine(`${t('term_raw_sig')} <span class="trace-hash">0x${rawSignatureHex.substring(0, 40)}...</span>`);
                 await sleep(1500);
             } else {
-                throw new Error("Enclave assertion failed.");
+                throw new Error("Biometric signature invalid.");
             }
 
         } catch (e) {
@@ -302,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ==========================================
-        // ЭТАП 4: АГРЕГАЦИЯ И MERKLE ДЕРЕВО
+        // ЭТАП 4: АГРЕГАЦИЯ
         // ==========================================
         appendLine(t('term_batch_title'), "prompt");
         await sleep(800);
@@ -314,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(1000);
 
         // ==========================================
-        // ЭТАП 5: ВЕРИФИКАЦИЯ ВАЛИДАТОРАМИ
+        // ЭТАП 5: ВЕРИФИКАЦИЯ
         // ==========================================
         appendLine(t('term_verify_title'), "prompt");
         await sleep(600);
@@ -330,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(900);
 
         // ==========================================
-        // ЭТАП 6 И 7: ФИНАЛИЗАЦИЯ И ЗАПИСЬ
+        // ЭТАП 6 И 7: ФИНАЛИЗАЦИЯ
         // ==========================================
         appendLine(t('term_durability_title'), "prompt");
         await sleep(700);
@@ -344,5 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = t('btn_retry');
     };
 
+    // НАЖАТИЕ КНОПКИ ЗАПУСКА КОНСЕНСУСА
     btn.addEventListener('click', runConsensusSimulation);
+
+    // ЗАПУСКАЕМ АВТОНОМНЫЙ БУТЛОАДЕР ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+    runNodeBootloader();
 });
