@@ -1,96 +1,96 @@
-# SIMPLE-L1 Technical Whitepaper
+# SIMPLE-L1 Technical Whitepaper (Русский)
 
-🌐 **English | [Español](./WHITEPAPER.es.md) | [Русский](./WHITEPAPER.ru.md)**
+🌐 **[English](./WHITEPAPER.en.md) | [Español](./WHITEPAPER.es.md) | Русский**
 
-**Status:** Formal Specification (Formal Specification V1.0)  
-**Classification:** Distributed Systems Research Framework with Executable Semantics  
-**Date:** May 13, 2026  
+**Статус:** Формализованная Спецификация (Formal Specification V1.0)  
+**Классификация:** Distributed Systems Research Framework with Executable Semantics  
+**Дата:** 13 мая 2026 г.  
 
 ---
 
-## Abstract
+## Аннотация (Abstract)
 
-**SIMPLE-L1** is a deterministic intent execution ledger with passkey-bound identities and replayable state:
+**SIMPLE-L1** — это детерминированная распределенная машина исполнения намерений с аппаратной идентичностью (passkeys) и воспроизводимым состоянием:
 > *«Deterministic intent execution ledger with passkey-bound identities and replayable state»*
 
-Unlike traditional blockchains built around "transaction chains" and probabilistic consensus, SIMPLE-L1 is architected as a **Truth Machine** decoupled from the **Agreement Machine**. This document formalizes the completion of the first architectural loop, specifying 10 unified layers (RFC-0001–0010), the functional MDEK Rust kernel, and resilience verification results under active Byzantine network skew.
+В отличие от традиционных блокчейнов, строящихся вокруг «цепочек транзакций» и вероятностного консенсуса, SIMPLE-L1 спроектирован как **Машина Истины** (Truth Machine), отделенная от **Машины Согласования** (Agreement Machine). Настоящий документ фиксирует завершение первого архитектурного цикла, описывает 10 специфицированных слоев (RFC-0001–0010), работающее ядро MDEK на Rust и результаты верификации в условиях активного византийского хаоса.
 
 ---
 
-## 1. Rigid Invariants
+## 1. Базовые Принципы (Rigid Invariants)
 
-The SIMPLE-L1 architecture cements five hard-coded engineering laws that are non-negotiable:
+Архитектура SIMPLE-L1 цементирует пять жестких инженерных законов, не подлежащих обсуждению или компромиссу:
 
-| Invariant | Technical Implementation | Core Effect |
+| Инвариант | Техническая реализация | Эффект |
 | :--- | :--- | :--- |
-| **1. Identity is hardware-bound** | NIST P-256 (WebAuthn) + Bech32m | Private key never leaves the chip (Secure Enclave). Zero-barrier onboarding without seed phrases. |
-| **2. Intent-driven execution** | Canonical Borsh Serialization | The network signs human intents, not low-level raw transaction payloads. |
-| **3. Pure determinism** | BTreeMap-isolated MDEK | `time()`, external calls, and hidden state are banned. `state' = apply(state, intent)` yields a 100% binary-identical hash on any CPU. |
-| **4. Ban of the Wall Clock** | Logical Time (`ledger_height`) | Physical clocks are treated as an unreliable external oracle. Time is measured solely by ledger height. |
-| **5. Forkless Core** | 2F+1 BFT Quorum Attestation | Immediate finality. The simultaneous creation of two finalized blocks is mathematically impossible. |
+| **1. Identity is hardware-bound** | NIST P-256 (WebAuthn) + Bech32m | Приватный ключ никогда не покидает чип (Secure Enclave). Нулевой онбординг без Seed-фраз. |
+| **2. Intent-driven execution** | Каноническая Borsh-сериализация | Сеть подписывает не низкоуровневые транзакции, а человеческие намерения (Intents). |
+| **3. Pure determinism** | Изоляция MDEK на BTreeMap | Запрещены `time()`, внешние вызовы и скрытое состояние. `state' = apply(state, intent)` дает 100% бинарно идентичный хэш на любом CPU. |
+| **4. Ban of the Wall Clock** | Логическое время (`ledger_height`) | Физические часы признаны ненадежным внешним оракулом. Время измеряется только высотой леджера. |
+| **5. Forkless Core** | 2F+1 BFT-аттестация кворума | Мгновенная финальность (Immediate Finality). Создание двух финализированных блоков математически невозможно. |
 
 ---
 
-## 2. Unified Architecture (RFC Registry)
+## 2. Специфицированная Архитектура (RFC-Registry)
 
-The system stack is comprehensively mapped across 10 interconnected specifications, closing the loop from bottom up:
+Стек системы полностью описан в 10 связанных стандартах, закрывающих архитектуру снизу вверх:
 
-*   **RFC-0001 & RFC-0002:** Hardware Cryptography (P-256) and Canonical Borsh Serialization.
-*   **RFC-0003 & RFC-0004:** Monotonic Nonce Replay Protection and Block Structuring.
-*   **RFC-0005:** Ledger Persistence via Atomic Disk `fsync` and Replay Recovery.
-*   **RFC-0006:** Network Failure Assumptions and $3F+1$ Byzantine Adversary Model.
-*   **RFC-0007:** Quorum Agreement, Epoch Leader Round-Robin, and Immediate Finality.
-*   **RFC-0008:** Epistemic Perception Layer (Knowledge Pulse) and Anti-Entropy Self-Healing.
-*   **RFC-0009:** Separation of Priority Signals (Control Plane) and High-Volume Payloads (Data Plane).
-*   **RFC-0010:** Network Graph Geometry, Deterministic Chord Neighbor Selection, and Epoch Shuffling.
-
----
-
-## 3. Executable Core (MDEK Kernel v0.1)
-
-The physical rules of SIMPLE-L1 are compiled inside a reference Rust implementation (`simple-l1-kernel`):
-1.  **State Mutator:** Executes pure, side-effect-free account balance mutations, validating constraints and protecting against numerical overflows.
-2.  **Sequencer:** Employs a strict Double-Spend Shield. If multiple conflicting intents share the same signature nonce, the sequencer deterministically keeps exactly one based on the minimal `BLAKE3` hash, purging all equivocation attempts.
+*   **RFC-0001 & RFC-0002:** Аппаратная криптография P-256 и каноническая Borsh-сериализация намерений.
+*   **RFC-0003 & RFC-0004:** Монотонная nonce-защита от повторов и пакетная структура блоков.
+*   **RFC-0005:** Долговечность леджера на диске через атомарный `fsync` и Replay Recovery.
+*   **RFC-0006:** Модель византийских угроз $3F+1$ и асинхронные допущения сети.
+*   **RFC-0007:** Согласие кворума, карусель Epoch-лидеров и мгновенная финальность.
+*   **RFC-0008:** Эпистемологический слой (Knowledge Pulse) и алгоритм Антиэнтропии (Self-Healing).
+*   **RFC-0009:** Разделение трафика на приоритетный Control Plane и тяжеловесный Data Plane.
+*   **RFC-0010:** Геометрия графа сети, детерминированный Chord-выбор соседей и эпохальное перемешивание.
 
 ---
 
-## 4. Verification & Closure (Simulation Closure)
+## 3. Исполнительное Ядро (MDEK Kernel v0.1)
 
-SIMPLE-L1 has achieved **Formalized Simulation Closure** via its embedded Discrete-Event Distributed Emulator (`RealitySimulator`).
-
-### 🧪 Validated Scenario (Eclipse Attack Recovery):
-1.  Node "Charlie" is topologically isolated from the physical graph (Graph Cut).
-2.  While Charlie is offline, the network produces new blocks. Charlie falls into deep informational divergence (Epistemic Lag).
-3.  Charlie's physical connections are restored (Healing).
-4.  Charlie detects the gap via the `Knowledge Pulse`, halts voting, successfully executes an atomic `Range Fetch`, and reconciles his local MDEK state to perfect bit-for-bit equivalence with the network's root hash.
+Физика SIMPLE-L1 воплощена в эталонной библиотеке на Rust (`simple-l1-kernel`):
+1.  **State Mutator:** Реализует чистые мутации счетов, проверяет лимиты и математические переполнения.
+2.  **Sequencer:** Обладает встроенной защитой от двойного расходования (Double-Spend Shield). Если один Nonce имеет несколько подписанных вариантов, секвенсор детерминированно сохраняет строго один на основе минимального `BLAKE3` хэша подписи, отбрасывая попытки эквивокации.
 
 ---
 
-## 5. Explicit Assumption Boundaries
+## 4. Верификация и Замкнутость (Simulation Closure)
 
-To purge illusion and ensure scientific integrity, we document the explicit bounds under which our simulation correctness is proven:
+SIMPLE-L1 прошел проверку устойчивости в рамках **Formalized Simulation Closure** с использованием встроенного дискретно-событийного эмулятора реального мира (`RealitySimulator`).
 
-| Assumption Domain | Status in Model | Physical Reality |
+### 🧪 Доказанный сценарий (Eclipse Attack Recovery):
+1.  Узел Charlie искусственно изолируется от физической сети (Graph Cut).
+2.  Пока Charlie отрезан, сеть выпускает новые блоки. Возникает глубокий эпистемологический разрыв (Epistemic Lag).
+3.  Связь Charlie с миром восстанавливается.
+4.  Charlie обнаруживает разрыв через `Knowledge Pulse`, приостанавливает голосование и успешно запрашивает диапазон (`Range Fetch`), возвращаясь к 100% бинарному совпадению `StateRootHash` с остальной сетью.
+
+---
+
+## 5. Честные Границы Применимости (Explicit Assumptions)
+
+Для исключения иллюзий о «готовом L1», мы фиксируем явные допущения, при которых наша симуляция признается верной:
+
+| Категория допущений | Статус в модели | Физическая реальность |
 | :--- | :--- | :--- |
-| **Message Delivery** | Guaranteed after `heal_topology` | High-packet loss, persistent NAT failures, and network jitter. |
-| **Event Scheduling** | Globally ordered (Discrete-Event) | Non-deterministic OS scheduler preemptions and thread racing. |
-| **Environment Stability** | Pure, stable Rust runtime | Potential hardware faults, CPU bit-flips, and OS time drift. |
+| **Доставка пакетов** | Гарантирована после `heal_topology` | Возможны вечные потери, сбои NAT и джиттер NIC |
+| **Шедулинг событий** | Глобальный и упорядоченный | Непредсказуемость планировщика ОС и расинг потоков |
+| **Стабильность среды** | Чистый Rust-рантайм | Возможны аппаратные сбои и дрейф системного времени |
 
-**Conclusion:** This specification does not guarantee operation on the open internet but mathematically and algorithmically proves protocol invulnerability in an adversarial abstraction of the network.
-
----
-
-## 6. Future Research Roadmaps (Next Horizons)
-
-Three scientific vectors are set to transition SIMPLE-L1 beyond the laboratory boundary:
-1.  **Reality Stress Path:** Integrating real physical network runtimes (`libp2p` / `QUIC`) and measuring performance under stochastic real-world network jitter.
-2.  **Formal Verification Path:** Translating the consensus invariants into `TLA+` or `Coq` to formally prove Safety and Liveness properties.
-3.  **Empirical Chaos Path:** Engineering an active, adaptive topology poisoner to stress-test and find the breakdown limits of the Anti-Entropy bounds.
+**Вывод:** Настоящая спецификация не гарантирует работу в реальном Internet, но доказывает математическую и алгоритмическую неуязвимость протокола во враждебной абстракции сети.
 
 ---
 
-## Repository Artifact References
+## 6. Карта Развития (Next Horizons)
 
-*   `MANIFESTO.md` — Philosophical foundations and rigid core values.
-*   `README.md` — The developer entrypoint and complete RFC catalog.
-*   `crypto-proto/` — Rust source code for the MDEK kernel and reality simulator.
+Для выхода за рамки лабораторного симулятора определены три вектора исследований:
+1.  **Reality Stress Path:** Интеграция реального сетевого стека (`libp2p` / `QUIC`) и тестирование под стохастическим джиттером.
+2.  **Formal Verification Path:** Перевод критических инвариантов в TLA+ / Coq для математического доказательства свойств Safety и Liveness.
+3.  **Empirical Chaos Path:** Создание мутационного генератора топологии для поиска пределов сходимости алгоритмов антиэнтропии.
+
+---
+
+## Ссылки на артефакты репозитория
+
+*   `MANIFESTO.md` — Идеологический фундамент и ценности.
+*   `README.md` — Портал разработчика и полный реестр RFC.
+*   `crypto-proto/` — Исходный код исполнительного ядра и симулятора реальности на Rust.
