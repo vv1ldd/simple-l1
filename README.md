@@ -111,6 +111,7 @@ Intent {
 * [RFC-0005: Ledger Lineage Persistence & Crash Recovery](./rfc/0005-ledger-persistence-and-crash-recovery.md)
 * [RFC-0006: Network Failure Model & Event-Ordering Assumptions](./rfc/0006-network-failure-model-and-assumptions.md)
 * [RFC-0007: Ordered Set Agreement & Fork-Choice Model](./rfc/0007-ordered-set-agreement-and-fork-choice.md)
+* [RFC-0008: Network Knowledge & View Divergence Model](./rfc/0008-network-knowledge-and-view-divergence-model.md)
 
 ---
 
