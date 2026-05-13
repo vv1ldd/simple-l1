@@ -238,4 +238,98 @@ fn main() {
     println!("    Bob:   {} units", bob_end_bal);
     
     println!("==========================================================");
+
+    // ==========================================
+    // ЭТАП 2: ADVERSARIAL REALITY SIMULATION (RFC-0008 & RFC-0010)
+    // ==========================================
+    println!("\n\n");
+    println!("==========================================================");
+    println!("        PHASE 2: PHYSICAL ADVERSARIAL ENVIRONMENT TEST    ");
+    println!("==========================================================");
+    println!(">>> Goal: Break the network with an ECLIPSE Attack and verify Self-Healing.");
+    
+    use simple_l1_kernel::simulator::RealitySimulator;
+    
+    // 1. Инициализируем симулятор с 3 узлами: Алиса, Боб, Чарли
+    let mut sim = RealitySimulator::new(vec!["Alice", "Bob", "Charlie"]);
+    
+    // Бутстрапим балансы в генезис ВСЕХ трех узлов в симуляторе
+    let init_state = |sim_node: &mut simple_l1_kernel::simulator::SimulatedNode| {
+        sim_node.state.accounts.insert(addr_alice, AccountState { balance: 1_000_000, nonce: 0 });
+        sim_node.state.accounts.insert(addr_bob, AccountState { balance: 1_000_000, nonce: 0 });
+        sim_node.state.accounts.insert(addr_bob, AccountState { balance: 1_000_000, nonce: 0 }); // Bootstrap Bob
+    };
+    
+    for node in &mut sim.nodes {
+        init_state(node);
+    }
+
+    println!("\n>>> [1/4] Network initialized. All nodes at height 0.");
+    
+    // 2. Алиса выпускает Блок #1
+    println!("\n>>> [2/4] Leader 'Alice' commits Block #1...");
+    let block1_intents = vec![intent_a1.clone()];
+    sim.nodes[0].commit_local_block(block1_intents);
+    
+    // Крутим время 60 тиков, чтобы Боб и Чарли синхронизировались
+    sim.run_ticks(60);
+    println!("  * Current Heights: Alice={}, Bob={}, Charlie={}", 
+             sim.nodes[0].state.ledger_height, sim.nodes[1].state.ledger_height, sim.nodes[2].state.ledger_height);
+
+    // 3. АТАКА ЗАТМЕНИЯ (Adversarial Cut)
+    // Изолируем Чарли (Node 2) от физической сети!
+    println!("\n>>> [3/4] Triggering Physical Eclipse Attack!");
+    sim.apply_eclipse_attack(2); // Отрезаем Чарли
+    
+    // Алиса выпускает Блок #2 и Блок #3 пока Чарли отрезан
+    println!("  * Leader 'Alice' commits Block #2 and Block #3 during network cut...");
+    let block2_intents = vec![intent_b1.clone()];
+    let block3_intents = vec![intent_b2.clone()];
+    sim.nodes[0].commit_local_block(block2_intents);
+    sim.nodes[0].commit_local_block(block3_intents);
+    
+    // Даем сети 100 тиков
+    sim.run_ticks(100);
+    
+    println!("\n--- NETWORK STATE DURING ECLIPSE ---");
+    println!("  * Alice   Height: {} (Root: 0x{})", sim.nodes[0].state.ledger_height, hex::encode(sim.nodes[0].state.root_hash()));
+    println!("  * Bob     Height: {} (Root: 0x{})", sim.nodes[1].state.ledger_height, hex::encode(sim.nodes[1].state.root_hash()));
+    println!("  * Charlie Height: {} (Root: 0x{})", sim.nodes[2].state.ledger_height, hex::encode(sim.nodes[2].state.root_hash()));
+    println!("------------------------------------");
+    println!("  [OBSERVATION] Charlie is stuck at Height 1 and is mathematically diverged from Bob!");
+
+    // 4. САМОЛЕЧЕНИЕ И АНТИЭНТРОПИЯ (Healing & Anti-Entropy)
+    println!("\n>>> [4/4] Reconnecting 'Charlie' to the network (Healing Physical Wires)...");
+    sim.heal_topology();
+    
+    // Крутим 150 тиков, чтобы сработал Heartbeat, Gap Detection и RangeFetch
+    sim.run_ticks(150);
+    
+    println!("\n--- FLUSHING SIMULATION EVENTS AND RECONCILIATION ---");
+    for log in &sim.logs {
+        println!("  {}", log);
+    }
+    println!("------------------------------------------------------");
+
+    println!("\n==========================================================");
+    println!("             FINAL PHYSICAL REALITY CHECK                 ");
+    println!("==========================================================");
+    
+    let h_alice = sim.nodes[0].state.root_hash();
+    let h_bob = sim.nodes[1].state.root_hash();
+    let h_charlie = sim.nodes[2].state.root_hash();
+    
+    println!("  [*] Alice   Final State Hash: 0x{}", hex::encode(h_alice));
+    println!("  [*] Bob     Final State Hash: 0x{}", hex::encode(h_bob));
+    println!("  [*] Charlie Final State Hash: 0x{}", hex::encode(h_charlie));
+
+    if h_charlie == h_alice && h_charlie == h_bob {
+        println!("\n [🏆 PHYSICAL CONVERGENCE ACHIEVED] ");
+        println!("  Charlie successfully detected the Epistemic Lag, triggered");
+        println!("  Anti-Entropy RangeFetch over physical wires, and successfully");
+        println!("  healed his state machine to perfectly match Alice and Bob!");
+    } else {
+        panic!("FATAL: Self-healing failed! Epistemic split persistent!");
+    }
+    println!("==========================================================");
 }

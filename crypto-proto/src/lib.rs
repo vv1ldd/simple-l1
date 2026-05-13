@@ -4,6 +4,7 @@
 //! Enforces 100% strict determinism: no randomness, no hidden state, no external I/O.
 
 use std::collections::BTreeMap;
+pub mod simulator;
 use borsh::{BorshSerialize, BorshDeserialize};
 use thiserror::Error;
 use blake3::Hasher;
