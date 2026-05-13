@@ -9,16 +9,14 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <!-- Main Stylesheet -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.0">
 </head>
 <body>
-    <!-- Ambient Background Grid & Glows -->
-    <div class="bg-ambient">
-        <div class="glow-orb orb-1"></div>
-        <div class="glow-orb orb-2"></div>
+    <!-- Stark Neo-Brutalist Grid Background -->
+    <div class="bg-brutalist">
         <div class="grid-overlay"></div>
     </div>
 
@@ -31,22 +29,22 @@
                 <a href="#manifesto" class="nav-link">Манифест</a>
                 <a href="#engine" class="nav-link">Рантайм</a>
                 <a href="#specs" class="nav-link">Спецификации</a>
-                <a href="https://github.com/vv1ldd/simple-l1" class="btn btn-outline" target="_blank">GitHub</a>
+                <a href="https://github.com/vv1ldd/simple-l1" class="btn btn-nav" target="_blank">GITHUB</a>
             </div>
         </div>
     </nav>
 
     <header class="hero">
         <div class="container hero-container">
-            <div class="badge">⚡ SOVEREIGN LEDGER SUBSTRATE</div>
-            <h1 class="gradient-text">The Authority of Human Intent.</h1>
+            <div class="badge-brutal">SOVEREIGN LEDGER</div>
+            <h1 class="hero-title">THE AUTHORITY OF HUMAN INTENT.</h1>
             <p class="hero-sub">
                 Детерминированный консенсусный рантайм с нативной поддержкой <strong>Secure Enclave</strong>.
-                Никаких сид-фраз. Никаких мостов. Только чистая математика распределенного доверия.
+                Никаких сид-фраз. Никаких мостов. Чистый хардкорный код.
             </p>
             <div class="hero-cta">
-                <a href="#engine" class="btn btn-primary">Запустить Live Консенсус</a>
-                <a href="#specs" class="btn btn-glass">Изучить RFC</a>
+                <a href="#engine" class="btn btn-yellow">ЗАПУСТИТЬ ENGINE</a>
+                <a href="#specs" class="btn btn-white">ТЕХ. СПЕЦИФИКАЦИИ</a>
             </div>
         </div>
     </header>
@@ -54,23 +52,22 @@
     <section id="manifesto" class="manifesto-section">
         <div class="container">
             <div class="section-header">
-                <h2>Фундамент Разума</h2>
-                <p>Принципы, от которых мы никогда не отступим.</p>
+                <h2 class="section-title">ФУНДАМЕНТ ПРОТОКОЛА</h2>
             </div>
             <div class="manifesto-grid">
-                <div class="glass-card card-reveal">
-                    <div class="card-icon">🛡️</div>
-                    <h3>Passkey‑First</h3>
+                <div class="brutal-card card-yellow">
+                    <div class="card-icon">🔑</div>
+                    <h3>PASSKEY‑FIRST</h3>
                     <p>Владение ключом аппаратным способом (NIST P-256). Биометрия как единственный доверенный подписывающий узел.</p>
                 </div>
-                <div class="glass-card card-reveal">
+                <div class="brutal-card card-purple">
                     <div class="card-icon">🧬</div>
-                    <h3>Canonical Intent</h3>
+                    <h3>CANONICAL INTENT</h3>
                     <p>Подпись ставится не над «текстом», а над детерминированным бинарным слепком Borsh. Ноль неопределенности.</p>
                 </div>
-                <div class="glass-card card-reveal">
-                    <div class="card-icon">🛸</div>
-                    <h3>Lineage Durability</h3>
+                <div class="brutal-card card-red">
+                    <div class="card-icon">🛡️</div>
+                    <h3>LINEAGE DURABILITY</h3>
                     <p>Холодное восстановление через Deterministic Replay. Реальность вычисляется из истории, а не диктуется памятью.</p>
                 </div>
             </div>
@@ -80,23 +77,22 @@
     <section id="engine" class="engine-section">
         <div class="container">
             <div class="section-header">
-                <h2>The Consensus Engine</h2>
-                <p>Интерактивная симуляция суверенного ядра исполнения в реальном времени.</p>
+                <h2 class="section-title">THE CONSENSUS ENGINE</h2>
             </div>
 
-            <div class="terminal-wrapper">
+            <div class="brutal-terminal">
                 <div class="terminal-header">
                     <div class="window-controls">
                         <span></span><span></span><span></span>
                     </div>
-                    <div class="window-title">validator_node_b@simple-l1.network</div>
+                    <div class="window-title">validator_node_b@sl1.network</div>
                 </div>
                 <div class="terminal-body" id="console-output">
-                    <div class="terminal-line system-msg">[SYSTEM] Simple-L1 Embryonic Node Offline. Ready to sync.</div>
-                    <div class="terminal-line prompt">Waiting for genesis block proposer...</div>
+                    <div class="terminal-line">[SYSTEM] Simple-L1 Embryonic Node Offline. Ready to sync.</div>
+                    <div class="terminal-line text-highlight">Waiting for genesis block proposer...</div>
                 </div>
                 <div class="terminal-footer">
-                    <button id="btn-trigger-consensus" class="btn btn-primary btn-glow">💥 Инициировать Подписание & Консенсус</button>
+                    <button id="btn-trigger-consensus" class="btn btn-purple w-100">⚡ ИНИЦИИРОВАТЬ КОНСЕНСУС</button>
                 </div>
             </div>
         </div>
@@ -105,40 +101,39 @@
     <section id="specs" class="specs-section">
         <div class="container">
             <div class="section-header">
-                <h2>Технические Стандарты (RFC)</h2>
-                <p>Архитектурные инварианты, зафиксированные на века.</p>
+                <h2 class="section-title">СПЕЦИФИКАЦИИ (RFC)</h2>
             </div>
             <div class="specs-list">
                 <div class="spec-item">
-                    <div class="spec-num">RFC-0001</div>
+                    <div class="spec-badge">RFC-0001</div>
                     <div class="spec-info">
                         <h3>Core Cryptography & Addressing Scheme</h3>
                         <p>Кривая NIST P-256, хэш BLAKE3-160 и Bech32m адресация с префиксом 'sl1'.</p>
                     </div>
                 </div>
                 <div class="spec-item">
-                    <div class="spec-num">RFC-0002</div>
+                    <div class="spec-badge">RFC-0002</div>
                     <div class="spec-info">
                         <h3>Intent & WebAuthn Serialization Schema</h3>
                         <p>Математический мост между ClientDataJSON и BLAKE3-хэшем намерения.</p>
                     </div>
                 </div>
                 <div class="spec-item">
-                    <div class="spec-num">RFC-0003</div>
+                    <div class="spec-badge">RFC-0003</div>
                     <div class="spec-info">
                         <h3>Canonical Serialization & Replay Protection</h3>
                         <p>Borsh-лейаут, 32-байтовый Domain Separation и защита Nonce.</p>
                     </div>
                 </div>
                 <div class="spec-item">
-                    <div class="spec-num">RFC-0004</div>
+                    <div class="spec-badge">RFC-0004</div>
                     <div class="spec-info">
                         <h3>Block Structure & Deterministic Execution</h3>
                         <p>Связывание Merkle, инварианты времени и атомарное пакетное выполнение.</p>
                     </div>
                 </div>
                 <div class="spec-item">
-                    <div class="spec-num">RFC-0005</div>
+                    <div class="spec-badge">RFC-0005</div>
                     <div class="spec-info">
                         <h3>Ledger Lineage Persistence & Recovery</h3>
                         <p>Аппенд-онли Block Log, fsync-гарантии и Deterministic Replay из пепла.</p>
@@ -151,14 +146,14 @@
     <footer class="footer">
         <div class="container">
             <div class="footer-brand">SIMPLE-L1</div>
-            <p>The Sovereign Coordination Fabric. All specs finalized.</p>
+            <p>© 2026 SIMPLE NETWORK. ПОСТРОЕНО НА ХЭНДШЕЙКАХ.</p>
             <div class="footer-domains">
-                <span>sl1.network</span> • <span>simple-l1.network</span>
+                <span>sl1.test</span> | <span>sl1.network</span>
             </div>
         </div>
     </footer>
 
-    <!-- Execution Script -->
-    <script src="app.js?v=1.0.1"></script>
+    <!-- Execution Script with Cache Buster -->
+    <script src="app.js?v=1.0.2"></script>
 </body>
 </html>

@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = "⏳ Исполнение консенсуса...";
         
         // Очищаем предыдущий вывод (оставляем стартовую строку)
-        consoleBody.innerHTML = '<div class="terminal-line system-msg">[REBOOT] Initiating fresh network bootstrap...</div>';
+        consoleBody.innerHTML = '<div class="terminal-line text-highlight">[REBOOT] Initiating fresh network bootstrap...</div>';
         await sleep(800);
 
         appendLine(">>> [1/6] BOOTSTRAP: Initializing Secure Enclave P-256 Keypair...", "prompt");
@@ -89,13 +89,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const finalStateRoot = randomHex(64);
         appendLine("  [*] Invariant 2: Executing sorted binary state transformations...");
         await sleep(1200);
-        appendLine(`  [*] Resulting State Root [0x${finalStateRoot}] -> <span class="trace-success" style="text-shadow: 0 0 10px var(--accent-cyan);">FULLY CONVERGED ✅</span>`);
+        appendLine(`  [*] Resulting State Root [0x${finalStateRoot}] -> <span class='trace-success'>FULLY CONVERGED ✅</span>`);
         await sleep(900);
 
         appendLine("\n>>> [6/6] FINALIZATION: Recording Ledger Persistence...", "prompt");
         await sleep(700);
         appendLine(`[FLUSH] Flat-file Ledger Sync completed to ledger.json.`);
-        appendLine(`<span class="trace-success" style="font-size: 15px; letter-spacing: 1px;">💥 BLOCK #1 SEALED, FINALIZED & COMMITTED TO CHAIN!</span>`);
+        appendLine(`<span class='trace-success'>💥 BLOCK #1 SEALED, FINALIZED & COMMITTED TO CHAIN!</span>`);
         
         btn.disabled = false;
         btn.innerText = "🚀 Запустить Повторно";
