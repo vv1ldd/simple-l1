@@ -282,3 +282,73 @@ impl State {
         self.accounts.get(addr).map(|a| a.nonce).unwrap_or(0)
     }
 }
+
+// ==========================================
+// 7. ДЕТЕРМИНИРОВАННЫЙ СЕКВЕНСОР (SEQUENCER CORE)
+// ==========================================
+
+/// Узел накопления и упорядочивания сырого хаоса намерений из сети
+#[derive(Clone, Debug, Default)]
+pub struct Sequencer {
+    /// Неупорядоченный пул памяти (mempool)
+    pub mempool: Vec<Intent>,
+}
+
+impl Sequencer {
+    /// Инициализирует пустой секвенсор
+    pub fn new() -> Self {
+        Self {
+            mempool: Vec::new(),
+        }
+    }
+
+    /// Принимает новое сырое намерение из сетевого транспорта
+    pub fn submit(&mut self, intent: Intent) {
+        self.mempool.push(intent);
+    }
+
+    /// Очищает весь пул памяти
+    pub fn clear(&mut self) {
+        self.mempool.clear();
+    }
+
+    /// Главная функция разрешения конфликтов и линеаризации.
+    /// Превращает неупорядоченный mempool в строго детерминированную очередь исполнения.
+    pub fn sequence(&self) -> Vec<Intent> {
+        // Шаг 1: Разрешение конфликтов эквивокации (один Signer, один Nonce)
+        // Используем BTreeMap для автоматической детерминированной группировки.
+        let mut deduplicated: BTreeMap<(Address, u64), Intent> = BTreeMap::new();
+
+        for intent in &self.mempool {
+            let key = (intent.signer, intent.nonce);
+            
+            if let Some(existing) = deduplicated.get(&key) {
+                // Обнаружена попытка двойного расходования / двойного Nonce!
+                // Разрешаем конфликт: вычисляем BLAKE3 хэши подписей обоих намерений.
+                let h_existing = blake3::hash(&existing.signature);
+                let h_current = blake3::hash(&intent.signature);
+
+                // Выживает только то намерение, чей хэш математически МЕНЬШЕ.
+                // Второе отбрасывается навсегда. Это гарантирует 100% консенсус сходимости.
+                if h_current.as_bytes() < h_existing.as_bytes() {
+                    deduplicated.insert(key, intent.clone());
+                }
+            } else {
+                deduplicated.insert(key, intent.clone());
+            }
+        }
+
+        // Шаг 2: Глобальное упорядочивание для подачи в рантайм (MDEK)
+        let mut ordered: Vec<Intent> = deduplicated.into_values().collect();
+
+        // Применяем строгую, тотальную функцию сортировки:
+        // 1. Первичный ключ: Nonce (возрастание) — гарантирует соблюдение цепочек исполнения.
+        // 2. Вторичный ключ: Адрес отправителя (лексикографически) — устраняет коллизии.
+        ordered.sort_by(|a, b| {
+            a.nonce.cmp(&b.nonce).then_with(|| a.signer.cmp(&b.signer))
+        });
+
+        ordered
+    }
+}
+

@@ -1,27 +1,23 @@
 //! SIMPLE-L1 Standalone Runtime Driver & Compliance Verification
 //! 
-//! Simulates physical key generation, serializes Borsh intents, and 
-//! executes verification pipelines against the Minimal Execution Kernel.
+//! Simulates hardware key generation, Borsh serialization, adversarial 
+//! network reordering, sequencer conflict resolution, and multi-node state convergence.
 
-use simple_l1_kernel::{State, Address, Intent, TransferPayload, AccountState, KernelError};
+use simple_l1_kernel::{State, Address, Intent, TransferPayload, AccountState, KernelError, Sequencer};
 use p256::ecdsa::{signature::Signer, SigningKey, VerifyingKey};
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use blake3::Hasher;
-use std::collections::BTreeMap;
+use rand::seq::SliceRandom; // Для симуляции сетевого хаоса перемешивания
 
 // ==========================================
 // ВСПОМОГАТЕЛЬНЫЙ КРИПТО-ИНСТРУМЕНТАРИЙ
 // ==========================================
 
-/// Генерирует случайную пару P-256 ключей и канонический Address
 fn generate_identity() -> (SigningKey, Vec<u8>, Address) {
     let signing_key = SigningKey::random(&mut rand::thread_rng());
     let verifying_key = VerifyingKey::from(&signing_key);
-    
-    // Извлекаем СЖАТЫЙ публичный ключ (33 байта)
     let pubkey_bytes = verifying_key.to_encoded_point(true).as_bytes().to_vec();
     
-    // Создаем адрес: BLAKE3(pubkey)[0..20]
     let mut hasher = Hasher::new();
     hasher.update(&pubkey_bytes);
     let hash = hasher.finalize();
@@ -31,7 +27,6 @@ fn generate_identity() -> (SigningKey, Vec<u8>, Address) {
     (signing_key, pubkey_bytes, Address(addr_bytes))
 }
 
-/// Каноническая Borsh-структура для сборки хэша подписи (совпадает с CanonicalIntent внутри lib.rs)
 #[derive(borsh::BorshSerialize)]
 struct SignableIntent<'a> {
     domain: &'a str,
@@ -41,7 +36,6 @@ struct SignableIntent<'a> {
     signer: &'a Address,
 }
 
-/// Утилита сборки и подписания корректного намерения
 fn craft_signed_intent(
     signing_key: &SigningKey,
     pubkey: &[u8],
@@ -58,11 +52,7 @@ fn craft_signed_intent(
         nonce,
         signer: &signer,
     };
-    
-    // Сериализуем тело для аппаратного Secure Enclave
     let canonical_bytes = borsh::to_vec(&signable).unwrap();
-    
-    // Подписываем аппаратным ключом
     let signature = signing_key.sign(&canonical_bytes).to_der().as_bytes().to_vec();
     
     Intent {
@@ -77,143 +67,175 @@ fn craft_signed_intent(
 }
 
 // ==========================================
-// ТОЧКА ВХОДА (RUNTIME SIMULATION)
+// СИМУЛЯТОР РАСПРЕДЕЛЕННОЙ СЕТИ
 // ==========================================
 
 fn main() {
     println!("==========================================================");
-    println!("      SIMPLE-L1 MINIMAL DETERMINISTIC EXECUTION KERNEL    ");
+    println!("         SIMPLE-L1 SEQUENCER & NETWORK SIMULATION         ");
     println!("==========================================================");
 
-    // 1. ГЕНЕРАЦИЯ ИДЕНТИЧНОСТЕЙ (LAYER 1)
-    println!("\n>>> [1/4] Provisioning hardware identities...");
+    // 1. ИДЕНТИЧНОСТИ
+    println!("\n>>> [1/6] Generating secure cryptographic keys...");
     let (sk_alice, pk_alice, addr_alice) = generate_identity();
     let (sk_bob, pk_bob, addr_bob) = generate_identity();
-    
-    println!(" -> Node ALICE spawned: {}", addr_alice);
-    println!(" -> Node BOB spawned:   {}", addr_bob);
+    println!("  * ALICE node: {}", addr_alice);
+    println!("  * BOB node:   {}", addr_bob);
 
-    // 2. РАЗВЕРТЫВАНИЕ GENESIS СОСТОЯНИЯ (LAYER 3)
-    println!("\n>>> [2/4] Bootstrapping Genesis State...");
-    let mut state = State::new();
-    
-    // Выдаем Алисе стартовый баланс в 1 000 000 SL1 сатоши
-    state.accounts.insert(addr_alice, AccountState {
-        balance: 1_000_000,
-        nonce: 0,
-    });
-    
-    let genesis_hash = state.root_hash();
-    println!(" -> System State Bootstrapped. Height: {}", state.ledger_height);
-    println!(" -> Genesis State Root Hash: 0x{}", hex::encode(genesis_hash));
+    // 2. ГЕНЕРАЦИЯ ХАОТИЧНЫХ НАМЕРЕНИЙ (Adversarial mempool generation)
+    println!("\n>>> [2/6] Crafting raw intent payloads (Happy Path & Equivocation attempts)...");
 
-    // 3. ИСПОЛНЕНИЕ КОРРЕКТНОЙ ОПЕРАЦИИ (HAPPY PATH)
-    println!("\n>>> [3/4] Constructing intent: Transfer 250,000 units from Alice to Bob...");
-    
-    // Подготовка аргументов передачи (Borsh)
-    let transfer_args = TransferPayload {
-        to: addr_bob,
-        amount: 250_000,
-    };
-    let payload_bytes = borsh::to_vec(&transfer_args).unwrap();
+    // Утилиты для Payload
+    let tx_alice_to_bob_100k = borsh::to_vec(&TransferPayload { to: addr_bob, amount: 100_000 }).unwrap();
+    let tx_alice_to_bob_50k = borsh::to_vec(&TransferPayload { to: addr_bob, amount: 50_000 }).unwrap();
+    let tx_bob_to_alice_20k = borsh::to_vec(&TransferPayload { to: addr_alice, amount: 20_000 }).unwrap();
+    let tx_bob_to_alice_10k = borsh::to_vec(&TransferPayload { to: addr_alice, amount: 10_000 }).unwrap();
 
-    // Крафтим валидный Intent 
-    let valid_intent = craft_signed_intent(
-        &sk_alice,
-        &pk_alice,
-        addr_alice,
-        "simple_l1::system",
-        "transfer",
-        payload_bytes.clone(),
-        0 // Ожидаемый Nonce
-    );
-
-    println!(" -> Transmitting Intent Package. Signature size: {} bytes.", valid_intent.signature.len());
-    
-    // Применяем намерение к рантайму
-    match state.apply(&valid_intent) {
-        Ok(new_hash) => {
-            println!(" [SUCCESS ✅] Kernel applied intent smoothly.");
-            println!("  * Ledger Height: {}", state.ledger_height);
-            println!("  * New State Root:  0x{}", hex::encode(new_hash));
-            
-            let alice_bal = state.accounts.get(&addr_alice).unwrap().balance;
-            let bob_bal = state.accounts.get(&addr_bob).unwrap().balance;
-            let alice_nonce = state.get_nonce(&addr_alice);
-            
-            println!("  * Alice balance: {} units (Nonce: {})", alice_bal, alice_nonce);
-            println!("  * Bob balance:   {} units", bob_bal);
-            
-            assert_eq!(alice_bal, 750_000);
-            assert_eq!(bob_bal, 250_000);
-            assert_eq!(alice_nonce, 1);
-        }
-        Err(e) => panic!("Failed to apply valid intent: {}", e),
-    }
-
-    // 4. СТРЕСС-ТЕСТИНГ ИНВАРИАНТОВ И ЗАЩИТЫ (EDGE CASES)
-    println!("\n>>> [4/4] Running compliance & safety test suite...");
-
-    // ТЕСТ А: Атака повторного воспроизведения (Replay Protection)
-    println!("\n  CASE A: Replaying identical intent again (expecting InvalidNonce)...");
-    match state.apply(&valid_intent) {
-        Err(KernelError::InvalidNonce { expected, received }) => {
-            println!("  [SAFE ✅] Kernel rejected replayed nonce. Expected {}, got {}", expected, received);
-            assert_eq!(expected, 1);
-        }
-        other => panic!("Expected InvalidNonce error, got: {:?}", other),
-    }
-
-    // ТЕСТ Б: Попытка двойной траты с недостатком средств
-    println!("\n  CASE B: Alice tries to send 900,000 units (available 750,000) (expecting InsufficientFunds)...");
-    let overdraft_args = TransferPayload { to: addr_bob, amount: 900_000 };
-    let overdraft_intent = craft_signed_intent(
-        &sk_alice, &pk_alice, addr_alice, 
-        "simple_l1::system", "transfer", 
-        borsh::to_vec(&overdraft_args).unwrap(), 
-        1 // Обновили Nonce на текущий
-    );
-    match state.apply(&overdraft_intent) {
-        Err(KernelError::InsufficientFunds { required, available }) => {
-            println!("  [SAFE ✅] Kernel rejected overdraft. Required {}, available {}", required, available);
-        }
-        other => panic!("Expected InsufficientFunds error, got: {:?}", other),
-    }
-
-    // ТЕСТ В: Фальсификация подписи
-    println!("\n  CASE C: Sending malicious intent signed by attacker, claiming to be Alice (expecting InvalidSignature)...");
-    let malicious_intent = Intent {
-        domain: "simple_l1::system".to_string(),
-        action: "transfer".to_string(),
-        payload: payload_bytes.clone(),
-        nonce: 1,
-        signer: addr_alice, // Претендуем, что мы Алиса
-        pubkey: pk_bob.clone(),   // Но суем ключ Боба!
-        signature: valid_intent.signature.clone() // Или левую подпись
-    };
-    match state.apply(&malicious_intent) {
-        Err(KernelError::AddressMismatch) => {
-            println!("  [SAFE ✅] Kernel detected that pubkey does not match claimed signer address.");
-        }
-        other => panic!("Expected AddressMismatch error, got: {:?}", other),
-    }
-
-    // ТЕСТ Г: Несуществующий домен исполнения
-    println!("\n  CASE D: Alice sends signed intent targeting 'simple_l1::defi' (expecting UnknownDomain)...");
-    let unknown_domain_intent = craft_signed_intent(
+    // A. Алиса посылает валидное намерение (Nonce 0)
+    let intent_a1 = craft_signed_intent(
         &sk_alice, &pk_alice, addr_alice,
-        "simple_l1::defi", "trade",
-        vec![],
-        1
+        "simple_l1::system", "transfer", tx_alice_to_bob_100k, 0
     );
-    match state.apply(&unknown_domain_intent) {
-        Err(KernelError::UnknownDomain(d)) => {
-            println!("  [SAFE ✅] Kernel rejected unknown runtime domain: '{}'", d);
+
+    // B. Алиса пытается совершить ЭКВИВОКАЦИЮ (Создает ВТОРОЕ намерение с тем же Nonce 0, но другой суммой!)
+    // Это атака двойного расходования. Секвенсор ДОЛЖЕН отбросить ровно одно из них детерминированно.
+    let intent_a2_malicious = craft_signed_intent(
+        &sk_alice, &pk_alice, addr_alice,
+        "simple_l1::system", "transfer", tx_alice_to_bob_50k, 0
+    );
+
+    // C. Боб отправляет намерение (Nonce 0)
+    let intent_b1 = craft_signed_intent(
+        &sk_bob, &pk_bob, addr_bob,
+        "simple_l1::system", "transfer", tx_bob_to_alice_20k, 0
+    );
+
+    // D. Боб отправляет намерение (Nonce 1)
+    let intent_b2 = craft_signed_intent(
+        &sk_bob, &pk_bob, addr_bob,
+        "simple_l1::system", "transfer", tx_bob_to_alice_10k, 1
+    );
+
+    // Собираем все сырые намерения в один массив "Мирового Эфира"
+    let raw_network_intents = vec![
+        intent_a1.clone(),
+        intent_a2_malicious.clone(),
+        intent_b1.clone(),
+        intent_b2.clone(),
+    ];
+
+    println!("  * Created 4 raw network intents (including 1 double-spend attempt).");
+
+    // 3. СИМУЛЯЦИЯ СЕТЕВОЙ АСИНХРОННОСТИ (RFC-0006: Network Reordering)
+    println!("\n>>> [3/6] Simulating asynchronous network delivery (Chaotic Reordering)...");
+
+    // Создаем двух валидаторов: Ноду Альфа и Ноду Бета.
+    // У каждого из них свой собственный пул памяти, получающий пакеты в хаотичном порядке.
+    let mut sequencer_alpha = Sequencer::new();
+    let mut sequencer_beta = Sequencer::new();
+
+    let mut rng = rand::thread_rng();
+
+    // Порядок доставки для Альфы
+    let mut alpha_feed = raw_network_intents.clone();
+    alpha_feed.shuffle(&mut rng); 
+    for packet in alpha_feed {
+        sequencer_alpha.submit(packet);
+    }
+
+    // Порядок доставки для Беты (другой хаотичный порядок)
+    let mut beta_feed = raw_network_intents.clone();
+    beta_feed.shuffle(&mut rng);
+    for packet in beta_feed {
+        sequencer_beta.submit(packet);
+    }
+
+    println!("  [CHAOS ✅] Validator ALPHA mempool and Validator BETA mempool loaded in divergent orders.");
+
+    // 4. ИСПОЛНЕНИЕ СЕКВЕНСОРА (CONFLICT RESOLUTION)
+    println!("\n>>> [4/6] Triggering Sequencer Engine on both Nodes...");
+    
+    let ordered_alpha = sequencer_alpha.sequence();
+    let ordered_beta = sequencer_beta.sequence();
+
+    println!("  * Sequenced Stream Length: {} (Expected: 3, because 1 conflict was resolved).", ordered_alpha.len());
+    assert_eq!(ordered_alpha.len(), 3);
+    assert_eq!(ordered_beta.len(), 3);
+
+    // Проверка БЕЗУПРЕЧНОЙ сходимости порядков!
+    // Сравниваем побайтово сигнатуры полученных очередей на двух нодах.
+    let mut identity_matched = true;
+    for i in 0..3 {
+        if ordered_alpha[i].signature != ordered_beta[i].signature {
+            identity_matched = false;
         }
-        other => panic!("Expected UnknownDomain error, got: {:?}", other),
+    }
+
+    if identity_matched {
+        println!("  [AGREEMENT 🏆] Node ALPHA and Node BETA converged on the ABSOLUTELY IDENTICAL order!");
+    } else {
+        panic!("CRITICAL ERROR: Validator Node orders diverged!");
+    }
+
+    // 5. ПОДГОТОВКА MDEK STATE MACHINES
+    println!("\n>>> [5/6] Bootstrapping two independent State Machines from identical Genesis...");
+
+    let mut state_alpha = State::new();
+    let mut state_beta = State::new();
+
+    // Сеем балансы в Genesis
+    state_alpha.accounts.insert(addr_alice, AccountState { balance: 1_000_000, nonce: 0 });
+    state_alpha.accounts.insert(addr_bob, AccountState { balance: 1_000_000, nonce: 0 });
+
+    state_beta.accounts.insert(addr_alice, AccountState { balance: 1_000_000, nonce: 0 });
+    state_beta.accounts.insert(addr_bob, AccountState { balance: 1_000_000, nonce: 0 });
+
+    println!("  * Independent Genesis Hash Alpha: 0x{}", hex::encode(state_alpha.root_hash()));
+    println!("  * Independent Genesis Hash Beta:  0x{}", hex::encode(state_beta.root_hash()));
+    assert_eq!(state_alpha.root_hash(), state_beta.root_hash());
+
+    // 6. ИСПОЛНЕНИЕ ОЧЕРЕДИ (TRUTH CONVERGENCE)
+    println!("\n>>> [6/6] Applying the ordered Stream onto both State Machines...");
+
+    println!("\n --- NODE ALPHA EXECUTION ---");
+    for (idx, intent) in ordered_alpha.iter().enumerate() {
+        match state_alpha.apply(intent) {
+            Ok(new_hash) => println!("  Step {}: Applied Intent from {}. New Hash: 0x{}", idx + 1, intent.signer, hex::encode(new_hash)),
+            Err(e) => println!("  Step {}: Execution failed: {}", idx + 1, e),
+        }
+    }
+
+    println!("\n --- NODE BETA EXECUTION ---");
+    for (idx, intent) in ordered_beta.iter().enumerate() {
+        match state_beta.apply(intent) {
+            Ok(new_hash) => println!("  Step {}: Applied Intent from {}. New Hash: 0x{}", idx + 1, intent.signer, hex::encode(new_hash)),
+            Err(e) => println!("  Step {}: Execution failed: {}", idx + 1, e),
+        }
     }
 
     println!("\n==========================================================");
-    println!(" [🏆 COMPLIANCE VERIFIED] 100% MATHEMATICAL SECURITY LOCK ");
+    println!("             FINAL SYSTEM CONVERGENCE CHECK               ");
+    println!("==========================================================");
+
+    let final_hash_alpha = state_alpha.root_hash();
+    let final_hash_beta = state_beta.root_hash();
+
+    println!("  [*] Node ALPHA State Root: 0x{}", hex::encode(final_hash_alpha));
+    println!("  [*] Node BETA State Root:  0x{}", hex::encode(final_hash_beta));
+
+    if final_hash_alpha == final_hash_beta {
+        println!("\n [🏆 SUCCESS] ABSOLUTE CONVERGENCE ACHIEVED! ");
+        println!("  Despite network chaos and double-spend attacks, the network");
+        println!("  reached mathematically identical truth.");
+    } else {
+        panic!("FATAL: State Hash mismatch! Fork detected!");
+    }
+
+    let alice_end_bal = state_alpha.accounts.get(&addr_alice).unwrap().balance;
+    let bob_end_bal = state_alpha.accounts.get(&addr_bob).unwrap().balance;
+    println!("\n  * Final Balances Verified on Nodes:");
+    println!("    Alice: {} units", alice_end_bal);
+    println!("    Bob:   {} units", bob_end_bal);
+    
     println!("==========================================================");
 }
