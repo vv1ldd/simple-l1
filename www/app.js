@@ -47,13 +47,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const runConsensusSimulation = async () => {
+        const userInput = document.getElementById('username-input');
+        const rawUsername = userInput.value.trim() || "@vv1ldd";
+        
         btn.disabled = true;
         btn.innerText = "⏳ ИСПОЛНЕНИЕ...";
         
-        consoleBody.innerHTML = '<div class="terminal-line text-highlight">[SYSTEM] Re-initializing execution layer kernel...</div>';
+        consoleBody.innerHTML = `<div class="terminal-line text-highlight">[SYSTEM] Initializing kernel context for ${rawUsername}...</div>`;
         await sleep(800);
 
-        // 1. Проверяем стейт устройства
+        // Проверяем, не сменился ли юзер. Если сменился - чистим старый локальный стейт для этого демо.
+        const lastUser = localStorage.getItem('sl1_last_user');
+        if (lastUser !== rawUsername) {
+            localStorage.removeItem('sl1_credential_id');
+            localStorage.removeItem('sl1_public_key');
+            localStorage.removeItem('sl1_address');
+            localStorage.setItem('sl1_last_user', rawUsername);
+        }
+
         const storedCredId = localStorage.getItem('sl1_credential_id');
         const storedPubKeyHex = localStorage.getItem('sl1_public_key');
         const storedAddress = localStorage.getItem('sl1_address');
@@ -69,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ШАГ 1: РЕГИСТРАЦИЯ КЛЮЧА (Только если его нет)
         // ==========================================
         if (!activeCredId || !activePubKeyHex || !activeAddress) {
-            appendLine("\n>>> [1/7] IDENTITY ENCLAVE: No local credential found. Initiating Keygen...", "prompt");
+            appendLine(`\n>>> [1/7] IDENTITY ENCLAVE: Provisioning key for ${rawUsername}...`, "prompt");
             appendLine("<span class='text-highlight'>[ACTION] PROMPT #1: Generate new physical P-256 Keypair...</span>");
             await sleep(1000);
 
@@ -87,8 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         rp: { name: "Simple-L1 Network", id: rpId },
                         user: {
                             id: userId,
-                            name: "root@sl1.network",
-                            displayName: "Root Administrator"
+                            name: `${rawUsername}@sl1.network`,
+                            displayName: rawUsername
                         },
                         pubKeyCredParams: [{alg: -7, type: "public-key"}],
                         authenticatorSelection: {

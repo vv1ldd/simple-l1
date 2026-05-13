@@ -91,7 +91,11 @@
                     <div class="terminal-line">[SYSTEM] Simple-L1 Embryonic Node Offline. Ready to sync.</div>
                     <div class="terminal-line text-highlight">Waiting for genesis block proposer...</div>
                 </div>
-                <div class="terminal-footer">
+                <div class="terminal-footer" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="input-group">
+                        <label for="username-input" class="brutal-label">IDENTITY HANDLE:</label>
+                        <input type="text" id="username-input" class="brutal-input" placeholder="e.g. @vv1ldd" value="@vv1ldd" autocomplete="off" spellcheck="false">
+                    </div>
                     <button id="btn-trigger-consensus" class="btn btn-purple w-100">⚡ ИНИЦИИРОВАТЬ КОНСЕНСУС</button>
                 </div>
             </div>
@@ -154,6 +158,6 @@
     </footer>
 
     <!-- Execution Script with Cache Buster -->
-    <script src="app.js?v=1.0.5"></script>
+    <script src="app.js?v=1.0.6"></script>
 </body>
 </html>

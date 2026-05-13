@@ -365,9 +365,42 @@ section {
 }
 
 .terminal-footer {
-    padding: 20px;
+    padding: 28px;
     background-color: var(--clr-white);
     border-top: var(--brutal-border);
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.brutal-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: var(--clr-black);
+    text-transform: uppercase;
+}
+
+.brutal-input {
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    border: var(--brutal-border);
+    background-color: #fff;
+    color: #000;
+    outline: none;
+    transition: var(--physics-transition);
+}
+
+.brutal-input:focus {
+    box-shadow: 4px 4px 0px #000;
+    background-color: #fefce8; /* Light yellow hint */
+    transform: translate(-2px, -2px);
 }
 
 /* Trace Log Styling inside Monospace */
