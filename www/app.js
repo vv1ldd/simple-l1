@@ -16,23 +16,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. ИНТЕРНАЦИОНАЛИЗАЦИЯ И УМНЫЙ ПРОФАЙЛЕР
     // ==========================================
     
-    // Улучшенный детектор вероятного языка
+    // Улучшенный детектор вероятного языка с поддержкой принудительного ручного выбора
     const detectBestLanguage = () => {
-        // Проверяем сохраненный стейт в первую очередь
-        const saved = localStorage.getItem('sl1_lang');
-        if (saved && window.SL1_TRANSLATIONS[saved]) {
-            return { lang: saved, isCached: true };
+        // Если пользователь когда-либо ВРУЧНУЮ выбрал язык — намертво используем его
+        const manualSaved = localStorage.getItem('sl1_lang_manual');
+        if (manualSaved && window.SL1_TRANSLATIONS[manualSaved]) {
+            return { lang: manualSaved, isManualOverride: true };
         }
         
-        // Анализируем массив настроек браузера по приоритету
+        // Если выбора не было — анализируем стек настроек браузера (вероятностный маппинг)
         const browserLangs = navigator.languages || [navigator.language || 'en'];
         for (let item of browserLangs) {
             const base = item.split('-')[0].toLowerCase();
             if (window.SL1_TRANSLATIONS[base]) {
-                return { lang: base, isCached: false };
+                return { lang: base, isManualOverride: false };
             }
         }
-        return { lang: 'en', isCached: false };
+        return { lang: 'en', isManualOverride: false };
     };
 
     // Сбор телеметрии и профайла для терминала
@@ -69,10 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return text;
     };
 
-    const setLanguage = (lang) => {
+    const setLanguage = (lang, persistAsManual = false) => {
         if (!window.SL1_TRANSLATIONS[lang]) return;
         currentLang = lang;
-        localStorage.setItem('sl1_lang', lang);
+        
+        // Сохраняем в localStorage только в том случае, если пользователь ЯВНО нажал кнопку в UI
+        if (persistAsManual) {
+            localStorage.setItem('sl1_lang_manual', lang);
+        }
         
         // Локализация статических элементов DOM
         document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -158,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appendLine(`  -> Browser Locale Graph: [${profile.langStack}]`);
         await sleep(300);
         
-        const matchType = detectionResult.isCached ? "STATE_CACHED" : "PROBABILISTIC_MAPPED";
+        const matchType = detectionResult.isManualOverride ? "USER_OVERRIDE_ACTIVE" : "PROBABILISTIC_MAPPED";
         appendLine(`[RESOLVER] Native Language Binding: <span class="trace-success">${currentLang.toUpperCase()} (${matchType})</span> ✅`);
         await sleep(400);
         
@@ -174,10 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
         appendLine(t('term_wait_gen'), "text-highlight");
     };
 
-    // Обработчик смены языка пользователем через селект
     if (langSelect) {
         langSelect.addEventListener('change', (e) => {
-            setLanguage(e.target.value);
+            // Второй флаг 'true' помечает действие как принудительный выбор пользователя
+            setLanguage(e.target.value, true);
             
             // Если терминал сейчас просто ждёт запуск консенсуса — локализуем последние две строки ожидания
             if (!btn.disabled) {
