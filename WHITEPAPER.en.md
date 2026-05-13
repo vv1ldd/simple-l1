@@ -1,6 +1,6 @@
 # SIMPLE-L1 Technical Whitepaper (English)
 
-🌐 **English | [Español](./WHITEPAPER.es.md) | [Русский](./WHITEPAPER.ru.md)**
+🌐 **English | [Español](./WHITEPAPER.es.md) | [Русский](./WHITEPAPER.md)**
 
 **Status:** Formal Specification (Formal Specification V1.0)  
 **Classification:** Distributed Systems Research Framework with Executable Semantics  
