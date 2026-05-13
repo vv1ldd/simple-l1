@@ -113,6 +113,7 @@ Intent {
 * [RFC-0007: Ordered Set Agreement & Fork-Choice Model](./rfc/0007-ordered-set-agreement-and-fork-choice.md)
 * [RFC-0008: Network Knowledge & View Divergence Model](./rfc/0008-network-knowledge-and-view-divergence-model.md)
 * [RFC-0009: Propagation Control & Information Flow Constraints](./rfc/0009-propagation-control-and-information-flow.md)
+* [RFC-0010: Adversarial Topology & Network Geometry Invariance](./rfc/0010-adversarial-topology-and-geometry.md)
 
 ---
 
