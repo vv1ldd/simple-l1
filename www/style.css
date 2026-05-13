@@ -124,6 +124,29 @@ h1, h2, h3 {
     font-size: 14px;
 }
 
+.lang-dropdown {
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    border: var(--brutal-border-thin);
+    background-color: var(--clr-white);
+    color: var(--clr-black);
+    box-shadow: 3px 3px 0px #000000;
+    cursor: pointer;
+    outline: none;
+    transition: var(--physics-transition);
+}
+
+.lang-dropdown:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #000000;
+}
+
+.lang-dropdown:focus {
+    background-color: var(--bg-lavender);
+}
+
 .w-100 {
     width: 100%;
 }

@@ -1,15 +1,91 @@
 /**
  * ===========================================================
- * SIMPLE-L1 | The Cryptographic Sovereignty Machine (v3.0)
- * 100% Honest Double-Prompt WebAuthn Blockchain Simulator
+ * SIMPLE-L1 | The Cryptographic Sovereignty Machine (v4.0)
+ * 100% Honest Multilingual WebAuthn Blockchain Simulator
+ * Supported: EN, RU, ES, TR, TK, KK
  * ===========================================================
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('btn-trigger-consensus');
     const consoleBody = document.getElementById('console-output');
+    const langSelect = document.getElementById('lang-select');
 
-    // Logger Helpers
+    // ==========================================
+    // 1. ИНТЕРНАЦИОНАЛИЗАЦИЯ И МЕНЕДЖЕР ЯЗЫКОВ
+    // ==========================================
+    
+    // Определяем стартовый язык
+    let currentLang = localStorage.getItem('sl1_lang') || 'ru';
+    
+    // Если язык из системы поддерживается и в куках пусто — берем его
+    if (!localStorage.getItem('sl1_lang')) {
+        const sysLang = navigator.language.substring(0, 2).toLowerCase();
+        if (window.SL1_TRANSLATIONS && window.SL1_TRANSLATIONS[sysLang]) {
+            currentLang = sysLang;
+        }
+    }
+
+    const t = (key, replacements = {}) => {
+        const dict = window.SL1_TRANSLATIONS[currentLang] || window.SL1_TRANSLATIONS.en;
+        let text = dict[key] || window.SL1_TRANSLATIONS.en[key] || key;
+        
+        for (const [k, v] of Object.entries(replacements)) {
+            text = text.replace(`{${k}}`, v);
+        }
+        return text;
+    };
+
+    const setLanguage = (lang) => {
+        if (!window.SL1_TRANSLATIONS[lang]) return;
+        currentLang = lang;
+        localStorage.setItem('sl1_lang', lang);
+        
+        // Обновляем визуальные элементы
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const translation = t(key);
+            
+            // Если элемент input/textarea
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.setAttribute('placeholder', translation);
+            } else {
+                el.innerHTML = translation;
+            }
+        });
+
+        // Синхронизируем селект в навбаре
+        if (langSelect) {
+            langSelect.value = lang;
+        }
+
+        // Локализация динамической кнопки (если она не в режиме исполнения)
+        if (!btn.disabled) {
+            btn.innerText = t('btn_consensus');
+        }
+    };
+
+    // Обработчик изменения языка в шапке
+    if (langSelect) {
+        langSelect.addEventListener('change', (e) => {
+            setLanguage(e.target.value);
+            
+            // Если консоль пустая, локализуем стартовое сообщение
+            if (consoleBody.children.length === 2 && !btn.disabled) {
+                consoleBody.innerHTML = `
+                    <div class="terminal-line">${t('term_offline')}</div>
+                    <div class="terminal-line text-highlight">${t('term_wait_gen')}</div>
+                `;
+            }
+        });
+    }
+
+    // Запускаем переключатель при старте
+    setLanguage(currentLang);
+
+    // ==========================================
+    // 2. УТИЛИТЫ И ПОМОЩНИКИ
+    // ==========================================
     const appendLine = (text, className = '') => {
         const div = document.createElement('div');
         div.className = `terminal-line ${className}`;
@@ -27,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return res;
     };
 
-    // Buffer Tools
     const bufToHex = (buffer) => Array.from(new Uint8Array(buffer))
         .map(b => b.toString(16).padStart(2, '0')).join('');
     
@@ -39,24 +114,27 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const abortSimulation = (message) => {
-        appendLine(`\n🚨 <span class='trace-warning' style='font-size:16px; padding: 8px;'>CRITICAL: CONSENSUS TERMINATED</span>`, "prompt");
+        appendLine(t('term_abort_title'), "prompt");
         appendLine(`  -> Reason: <span style='color:var(--clr-red); font-weight:900;'>${message}</span>`);
-        appendLine("  [*] Execution Pipeline -> HALTED 🛑");
+        appendLine(t('term_halted'));
         btn.disabled = false;
-        btn.innerText = "⚡ ПОВТОРИТЬ ПОПЫТКУ";
+        btn.innerText = t('btn_retry');
     };
 
+    // ==========================================
+    // 3. ГЛАВНЫЙ ИСПОЛНИТЕЛЬНЫЙ МЕХАНИЗМ КОНСЕНСУСА
+    // ==========================================
     const runConsensusSimulation = async () => {
         const userInput = document.getElementById('username-input');
         const rawUsername = userInput.value.trim() || "@vv1ldd";
         
         btn.disabled = true;
-        btn.innerText = "⏳ ИСПОЛНЕНИЕ...";
+        btn.innerText = t('btn_executing');
         
-        consoleBody.innerHTML = `<div class="terminal-line text-highlight">[SYSTEM] Initializing kernel context for ${rawUsername}...</div>`;
+        consoleBody.innerHTML = `<div class="terminal-line text-highlight">${t('term_init_kernel', {user: rawUsername})}</div>`;
         await sleep(800);
 
-        // Проверяем, не сменился ли юзер. Если сменился - чистим старый локальный стейт для этого демо.
+        // Стейт-контроллер смены имени пользователя
         const lastUser = localStorage.getItem('sl1_last_user');
         if (lastUser !== rawUsername) {
             localStorage.removeItem('sl1_credential_id');
@@ -77,16 +155,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const rpId = hostname === "localhost" || hostname === "127.0.0.1" || hostname.includes(".") ? hostname : undefined;
 
         // ==========================================
-        // ШАГ 1: РЕГИСТРАЦИЯ КЛЮЧА (Только если его нет)
+        // ЭТАП 1: ГЕНЕРАЦИЯ ИДЕНТИЧНОСТИ
         // ==========================================
         if (!activeCredId || !activePubKeyHex || !activeAddress) {
-            appendLine(`\n>>> [1/7] IDENTITY ENCLAVE: Provisioning key for ${rawUsername}...`, "prompt");
-            appendLine("<span class='text-highlight'>[ACTION] PROMPT #1: Generate new physical P-256 Keypair...</span>");
+            appendLine(t('term_keygen_title'), "prompt");
+            appendLine(`<span class='text-highlight'>${t('term_prompt1')}</span>`);
             await sleep(1000);
 
             try {
                 if (!navigator.credentials || !navigator.credentials.create) {
-                    throw new Error("WebAuthn create not supported in this environment.");
+                    throw new Error("WebAuthn not supported in this environment.");
                 }
 
                 const challenge = crypto.getRandomValues(new Uint8Array(32));
@@ -95,7 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const createOptions = {
                     publicKey: {
                         challenge: challenge,
-                        rp: { name: "Simple-L1 Network", id: rpId },
+                        rp: { 
+                            name: "Simple-L1 Network Protocol", // Глобальное имя протокола в Keychain
+                            id: rpId 
+                        },
                         user: {
                             id: userId,
                             name: `${rawUsername}@sl1.network`,
@@ -111,11 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
-                // Вызываем TouchID №1 (Генерация)
+                // ВЫЗОВ TouchID №1 (Keygen)
                 const credential = await navigator.credentials.create(createOptions);
                 
                 if (!credential) {
-                    throw new Error("Secure Enclave returned empty credential.");
+                    throw new Error("Secure Enclave response empty.");
                 }
 
                 activeCredId = credential.id;
@@ -124,54 +205,54 @@ document.addEventListener('DOMContentLoaded', () => {
                     const spkiBuffer = credential.response.getPublicKey();
                     activePubKeyHex = bufToHex(spkiBuffer);
 
-                    // Генерируем честный хэш адреса
+                    // Детерминированный хэш адреса
                     const hashBuffer = await crypto.subtle.digest('SHA-256', spkiBuffer);
                     const hashHex = bufToHex(hashBuffer);
                     activeAddress = `sl1_${hashHex.substring(0, 40)}`;
 
-                    // Сохраняем В НАСТОЯЩИЙ стейт браузера!
+                    // Атомарная запись в стейт
                     localStorage.setItem('sl1_credential_id', activeCredId);
                     localStorage.setItem('sl1_public_key', activePubKeyHex);
                     localStorage.setItem('sl1_address', activeAddress);
 
-                    appendLine(`[SUCCESS] Keypair provisioned & anchored in hardware. ✅`, "trace-success");
-                    appendLine(`  -> SPKI Public Key: <span class="trace-key">0x${activePubKeyHex.substring(0, 40)}...</span>`);
-                    appendLine(`  -> Deterministic L1 Address: <span class="trace-success">${activeAddress}</span>`);
+                    appendLine(t('term_success_keygen'), "trace-success");
+                    appendLine(`${t('term_spki_key')} <span class="trace-key">0x${activePubKeyHex.substring(0, 40)}...</span>`);
+                    appendLine(`${t('term_l1_addr')} <span class="trace-success">${activeAddress}</span>`);
                     await sleep(1500);
                 } else {
-                    throw new Error("Browser failed to extract public key from enclave.");
+                    throw new Error("Failed to get public key object.");
                 }
 
             } catch (e) {
-                abortSimulation(`USER_REJECTED_IDENTITY_GEN (${e.message})`);
+                abortSimulation(`USER_REJECTED_GEN (${e.message})`);
                 return;
             }
         } else {
-            // Если ключ уже есть в памяти — сразу пишем об этом!
-            appendLine("\n>>> [1/7] IDENTITY DETECTED: Re-using persistent Sovereign Identity.", "prompt");
-            appendLine(`  [*] Address Found: <span class="trace-success">${activeAddress}</span>`);
-            appendLine(`  [*] Public Key: <span style="color:#5c6370;">0x${activePubKeyHex.substring(0, 32)}...</span>`);
+            // Восстановление из сохраненной истории
+            appendLine(t('term_detected'), "prompt");
+            appendLine(`${t('term_addr_found')} <span class="trace-success">${activeAddress}</span>`);
+            appendLine(`${t('term_pubkey')} <span style="color:#5c6370;">0x${activePubKeyHex.substring(0, 32)}...</span>`);
             await sleep(1200);
         }
 
         // ==========================================
-        // ШАГ 2: ПОДГОТОВКА ТРАНЗАКЦИИ
+        // ЭТАП 2: СЕРИАЛИЗАЦИЯ ИНТЕНТА (Borsh)
         // ==========================================
-        appendLine("\n>>> [2/7] SERIALIZATION: Constructing Canonical Intent Buffer...", "prompt");
+        appendLine(t('term_serialize_title'), "prompt");
         await sleep(600);
-        appendLine("  -> Domain Separation: SIMPLE_L1::TX::V1");
-        appendLine(`  -> Signer Bound: ${activeAddress.substring(0, 12)}...`);
+        appendLine(t('term_domain_sep'));
+        appendLine(`${t('term_signer_bound')} ${activeAddress.substring(0, 12)}...`);
         
         const borshHex = `53494d504c455f4c313a3a54583a3a5631${randomHex(100)}`;
-        appendLine(`[BORSH] Structuring deterministic byte array (141 bytes):`);
+        appendLine(t('term_borsh_out'));
         appendLine(`<span style="color:#6f7687;">${borshHex.substring(0, 64)}...</span>`);
         await sleep(1200);
 
         // ==========================================
-        // ШАГ 3: ПОДПИСЬ ТРАНЗАКЦИИ (TouchID №2)
+        // ЭТАП 3: ПОДПИСЬ НАМЕРЕНИЯ (Biometric Assertion)
         // ==========================================
-        appendLine("\n>>> [3/7] CRYPTO PROVENANCE: Physical Attestation Request...", "prompt");
-        appendLine("<span class='text-highlight'>[ACTION] PROMPT #2: Sign Borsh Payload via Device Biometrics...</span>");
+        appendLine(t('term_attestation_title'), "prompt");
+        appendLine(`<span class='text-highlight'>${t('term_prompt2')}</span>`);
         await sleep(1000);
 
         let rawSignatureHex = "";
@@ -181,7 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("WebAuthn get not supported in this environment.");
             }
 
-            // Создаем случайный челлендж, который подпишет Enclave
             const challenge = crypto.getRandomValues(new Uint8Array(32));
             const credBuffer = base64UrlToBuffer(activeCredId);
 
@@ -198,64 +278,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            // ВЫЗЫВАЕМ ВТОРОЙ TOUCHID (ДЛЯ ПОДПИСИ)
+            // ВЫЗОВ TouchID №2 (Подпись бинарного пакета)
             const assertion = await navigator.credentials.get(getOptions);
 
             if (!assertion) {
-                throw new Error("Enclave rejected to sign payload.");
+                throw new Error("Signing failed.");
             }
 
             if (assertion.response && assertion.response.signature) {
                 const sigBuffer = assertion.response.signature;
                 rawSignatureHex = bufToHex(sigBuffer);
 
-                appendLine(`[SUCCESS] Biometric Signature generated by Secure Enclave! ✅`, "trace-success");
-                appendLine(`  -> Raw NIST P-256 Sig: <span class="trace-hash">0x${rawSignatureHex.substring(0, 40)}...</span>`);
+                appendLine(t('term_success_sig'), "trace-success");
+                appendLine(`${t('term_raw_sig')} <span class="trace-hash">0x${rawSignatureHex.substring(0, 40)}...</span>`);
                 await sleep(1500);
             } else {
-                throw new Error("No signature payload returned from device.");
+                throw new Error("Enclave assertion failed.");
             }
 
         } catch (e) {
-            abortSimulation(`USER_REJECTED_SIGNATURE_CHALLENGE (${e.message})`);
+            abortSimulation(`USER_REJECTED_SIGN (${e.message})`);
             return;
         }
 
         // ==========================================
-        // ШАГ 4: КОНСЕНСУС И ФИНАЛИЗАЦИЯ
+        // ЭТАП 4: АГРЕГАЦИЯ И MERKLE ДЕРЕВО
         // ==========================================
-        appendLine("\n>>> [4/7] BATCHING: Merkle-Root Proof Calculation...", "prompt");
+        appendLine(t('term_batch_title'), "prompt");
         await sleep(800);
         const txHash = randomHex(64);
-        appendLine(`  [*] Payload TxHash: <span class="trace-hash">0x${txHash}</span>`);
+        appendLine(`${t('term_payload_hash')} <span class="trace-hash">0x${txHash}</span>`);
         
         const merkleRoot = randomHex(64);
-        appendLine(`[MERKLE] Root Computed: <span class="trace-success">0x${merkleRoot}</span>`);
+        appendLine(`${t('term_merkle_root')} <span class="trace-success">0x${merkleRoot}</span>`);
         await sleep(1000);
 
-        appendLine("\n>>> [5/7] VERIFICATION: Validator Execution Phase...", "prompt");
+        // ==========================================
+        // ЭТАП 5: ВЕРИФИКАЦИЯ ВАЛИДАТОРАМИ
+        // ==========================================
+        appendLine(t('term_verify_title'), "prompt");
         await sleep(600);
-        appendLine("Node B: Fetching stored Public Key from state...");
-        appendLine(`Node B: Verifying physical P-256 Sig against 0x${activePubKeyHex.substring(0, 20)}...`);
+        appendLine(t('term_node_fetch'));
+        appendLine(`${t('term_node_verify')} (0x${activePubKeyHex.substring(0, 20)}...)`);
         await sleep(1000);
-        appendLine("  [*] Invariant 1: WebAuthn Signature cryptographic alignment -> <span class='trace-success'>VERIFIED ✅</span>");
+        appendLine(t('term_inv1'));
         
         const finalStateRoot = randomHex(64);
-        appendLine("  [*] Invariant 2: Executing balance mutations...");
+        appendLine(t('term_inv2'));
         await sleep(1200);
-        appendLine(`  [*] Final State Root [0x${finalStateRoot}] -> <span class='trace-success'>FULLY CONVERGED ✅</span>`);
+        appendLine(t('term_state_converged', {root: `[0x${finalStateRoot}]`}));
         await sleep(900);
 
-        appendLine("\n>>> [6/7] STORAGE DURABILITY: Ledger File Flush...", "prompt");
+        // ==========================================
+        // ЭТАП 6 И 7: ФИНАЛИЗАЦИЯ И ЗАПИСЬ
+        // ==========================================
+        appendLine(t('term_durability_title'), "prompt");
         await sleep(700);
-        appendLine(`[DISK] Atomic Ledger Lineage Sync committed successfully.`);
+        appendLine(t('term_disk_commit'));
         await sleep(500);
 
-        appendLine("\n>>> [7/7] FINALITY: Broadcast confirmation.", "prompt");
-        appendLine(`<span class='trace-success' style="font-weight:900; font-size: 15px;">💥 BLOCK SEALED! TRANSACTION FULLY COMMITTED!</span>`);
+        appendLine(t('term_finality_title'), "prompt");
+        appendLine(`<span class='trace-success' style="font-weight:900; font-size: 15px;">${t('term_block_sealed')}</span>`);
         
         btn.disabled = false;
-        btn.innerText = "⚡ ЗАПУСТИТЬ СНОВА";
+        btn.innerText = t('btn_retry');
     };
 
     btn.addEventListener('click', runConsensusSimulation);
