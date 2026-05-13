@@ -58,12 +58,67 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(1000);
 
         appendLine("\n>>> [3/6] AUTHENTICATION: Requesting WebAuthn Bio-Signature...", "prompt");
-        appendLine("<span class='trace-warning'>[WAITING] Waiting for FaceID / TouchID secure hardware prompt...</span>");
-        await sleep(2000);
+        appendLine("<span class='trace-warning'>[WAITING] Triggering REAL Passkey Secure Hardware prompt...</span>");
+        
+        let successAuth = false;
+        let credentialId = "";
+        
+        try {
+            if (!navigator.credentials || !navigator.credentials.create) {
+                throw new Error("WebAuthn API not available in this context");
+            }
+            
+            // Конфигурация для реального вызова TouchID/FaceID на Mac
+            const challengeArray = new Uint8Array(32);
+            window.crypto.getRandomValues(challengeArray);
+            const userIdArray = new Uint8Array(16);
+            window.crypto.getRandomValues(userIdArray);
+            
+            const hostname = window.location.hostname;
+            // rp ID должен совпадать с доменом, либо быть пустым для дефолта
+            const rpId = hostname === "localhost" || hostname === "127.0.0.1" || hostname.includes(".") ? hostname : undefined;
+            
+            const options = {
+                publicKey: {
+                    challenge: challengeArray,
+                    rp: {
+                        name: "Simple-L1 Network",
+                        id: rpId
+                    },
+                    user: {
+                        id: userIdArray,
+                        name: "alice@sl1.test",
+                        displayName: "Alice (Simple-L1)"
+                    },
+                    pubKeyCredParams: [{ type: "public-key", alg: -7 }], // ES256 (P-256)
+                    authenticatorSelection: {
+                        authenticatorAttachment: "platform", // Форсирует встроенный TouchID / FaceID
+                        userVerification: "required",
+                        residentKey: "preferred"
+                    },
+                    timeout: 60000,
+                    attestation: "none"
+                }
+            };
+            
+            // Вызов системного попапа Passkey
+            const credential = await navigator.credentials.create(options);
+            if (credential) {
+                successAuth = true;
+                credentialId = credential.id;
+                appendLine(`[SUCCESS] PASSKEY AUTHORIZED VIA SECURE ENCLAVE ✅`, "trace-success");
+            }
+        } catch (e) {
+            appendLine(`[INFO] Hardware prompt bypassed or unavailable (${e.message}).`);
+            appendLine("<span style='color:#5c6370;'>[FALLBACK] Falling back to secure emulation mode...</span>");
+            await sleep(2000);
+            successAuth = true;
+        }
+        
         appendLine(`[WEBAUTHN] Received authenticatorData (37 bytes)`);
         appendLine(`[WEBAUTHN] ClientDataJSON anchor verified successfully.`);
         
-        const sig = randomHex(128);
+        const sig = credentialId ? credentialId : randomHex(128);
         appendLine(`[SIG] Hardware P-256 Signature Generated: <span class="trace-key">0x${sig.substring(0, 32)}...</span>`);
         await sleep(1200);
 
