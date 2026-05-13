@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(1000);
 
         appendLine("\n>>> [3/6] AUTHENTICATION: Requesting WebAuthn Bio-Signature...", "prompt");
-        appendLine("<span class="trace-warning">[WAITING] Waiting for FaceID / TouchID secure hardware prompt...</span>");
+        appendLine("<span class='trace-warning'>[WAITING] Waiting for FaceID / TouchID secure hardware prompt...</span>");
         await sleep(2000);
         appendLine(`[WEBAUTHN] Received authenticatorData (37 bytes)`);
         appendLine(`[WEBAUTHN] ClientDataJSON anchor verified successfully.`);
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await sleep(600);
         appendLine("Validator Node B checking block invariants...");
         await sleep(800);
-        appendLine("  [*] Invariant 1: Block Transaction Merkle Root -> <span class="trace-success">VERIFIED ✅</span>");
+        appendLine("  [*] Invariant 1: Block Transaction Merkle Root -> <span class='trace-success'>VERIFIED ✅</span>");
         
         // Сходимость State Root
         const finalStateRoot = randomHex(64);
