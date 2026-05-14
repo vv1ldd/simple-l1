@@ -34,6 +34,8 @@ const calculateAddress = (pubKeyHex) => {
     return `sl1_${pubKeyHex.substring(0, 40)}`;
 };
 
+const NODE_NAME = process.env.NODE_NAME || 'node-alpha';
+
 // --- API ROUTES ---
 
 // Node Status
@@ -41,6 +43,7 @@ fastify.get('/api/status', async (request, reply) => {
     const handles = Object.values(ledger.accounts).map(a => a.handle).filter(Boolean);
     return {
         network: "Simple-L1 Alpha",
+        node_name: NODE_NAME,
         version: "0.1.0",
         nodes_count: 2,
         peers: ["node-alpha", "node-beta"],

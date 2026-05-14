@@ -12,7 +12,9 @@ async function updateNetworkStatus() {
         const elAccounts = document.getElementById('stat-accounts');
         const elUptime = document.getElementById('stat-uptime');
 
-        if (elNetwork) elNetwork.textContent = data.network;
+        if (elNetwork) {
+            elNetwork.textContent = data.node_name ? `${data.network} (${data.node_name})` : data.network;
+        }
         if (elNodes) elNodes.textContent = data.nodes_count || 2;
         if (elAccounts) elAccounts.textContent = data.total_accounts;
         

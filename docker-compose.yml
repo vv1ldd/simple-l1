@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  node-alpha:
+    build: 
+      context: ./node
+    environment:
+      - NODE_NAME=node-alpha
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - node-alpha-data:/app/data
+
+  node-beta:
+    build: 
+      context: ./node
+    environment:
+      - NODE_NAME=node-beta
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - node-beta-data:/app/data
+
+volumes:
+  node-alpha-data:
+  node-beta-data:
