@@ -7,6 +7,7 @@ const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@s
 const crypto = require('crypto');
 
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
+const GENESIS_FILE = path.join(__dirname, 'genesis.json');
 let ledger = {
     accounts: {},      // Derived state (View)
     event_log: [],     // Primary Source of Truth (Signed Transitions)
@@ -74,15 +75,30 @@ function applyEvent(event, isInitialReplay = false) {
     }
 }
 
-// Startup: Reconstruct state from event log
-if (fs.existsSync(LEDGER_FILE)) {
-    try {
-        const raw = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
-        if (raw.event_log) {
-            console.log(`[BOOT] Replaying ${raw.event_log.length} events...`);
-            raw.event_log.forEach(e => applyEvent(e, true));
-        }
-    } catch (err) { console.error('[BOOT] Failed to load ledger:', err); }
+async function start() {
+    // 1. Initial Load from persistence
+    if (fs.existsSync(LEDGER_FILE)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
+            ledger.event_log = data.event_log || [];
+        } catch (e) { console.error('[BOOT] Failed to parse ledger_db.json'); }
+    }
+
+    // 2. Inject Genesis Block if empty
+    if (ledger.event_log.length === 0 && fs.existsSync(GENESIS_FILE)) {
+        try {
+            const genesisEvent = JSON.parse(fs.readFileSync(GENESIS_FILE, 'utf8'));
+            console.log('[BOOT] Injecting Genesis Block 0...');
+            ledger.event_log.push(genesisEvent);
+        } catch (e) { console.error('[BOOT] Failed to load genesis.json'); }
+    }
+
+    // 3. Replay History
+    console.log(`[BOOT] Replaying ${ledger.event_log.length} events...`);
+    const history = [...ledger.event_log];
+    ledger.event_log = []; 
+    ledger.accounts = {};
+    history.forEach(ev => applyEvent(ev, true));
 }
 
 const saveLedger = () => {
