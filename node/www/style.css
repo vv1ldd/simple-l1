@@ -687,6 +687,67 @@ section {
     color: #ccc;
 }
 
+/* Policies Styles */
+.policies-body {
+    padding: 25px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.policy-section {
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+
+.policy-label {
+    font-size: 0.7rem;
+    color: #666;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.policy-tags {
+    display: flex;
+    gap: 10px;
+}
+
+.tag {
+    background: var(--card-yellow);
+    color: #000;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    font-weight: bold;
+}
+
+.policy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.policy-item {
+    font-size: 0.85rem;
+    color: #00ff00;
+}
+
+.policy-status {
+    margin-top: auto;
+    font-size: 0.75rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    background: #00ff00;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00ff00;
+}
+
 .footer {
     padding: 60px 0 40px;
     background-color: var(--clr-white);

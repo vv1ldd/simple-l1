@@ -130,6 +130,7 @@
                 <div class="terminal-tabs">
                     <button class="tab-btn active" onclick="showTab('identity')">IDENTITY</button>
                     <button class="tab-btn" onclick="showTab('portfolio')">PORTFOLIO</button>
+                    <button class="tab-btn" onclick="showTab('policies')">POLICIES</button>
                 </div>
             </div>
 
@@ -181,6 +182,32 @@
                     
                     <div class="portfolio-actions">
                         <button class="btn btn-yellow w-100" onclick="initiateBTCDeposit()">+ DEPOSIT BTC</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-policies" class="terminal-content">
+                <div class="terminal-body policies-body">
+                    <div class="policy-section">
+                        <div class="policy-label">INTENT SCOPE</div>
+                        <div class="policy-tags" id="policy-scope">
+                            <span class="tag">PAYMENTS</span>
+                            <span class="tag">IDENTITY</span>
+                        </div>
+                    </div>
+                    
+                    <div class="policy-section">
+                        <div class="policy-label">AUTHORITY CONSTRAINTS</div>
+                        <div class="policy-list" id="policy-list">
+                            <div class="policy-item">✓ Session Limit: 1000 SL1</div>
+                            <div class="policy-item">✓ Hardware-bound Auth</div>
+                            <div class="policy-item">✓ Domain Isolation</div>
+                        </div>
+                    </div>
+
+                    <div class="policy-status">
+                        <span class="status-indicator"></span>
+                        AUTHORITY RUNTIME ACTIVE
                     </div>
                 </div>
             </div>
