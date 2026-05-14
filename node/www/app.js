@@ -91,11 +91,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* -------------------------------------------------------------------------
-   TERMINAL EMULATOR LOGIC (REAL CONTEXT)
+   TERMINAL EMULATOR LOGIC (HUMANIZED)
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
 const usernameInput = document.getElementById('username-input');
+
+// AUTO-PREFIX @ Logic
+if (usernameInput) {
+    usernameInput.addEventListener('input', (e) => {
+        let val = e.target.value;
+        if (val && !val.startsWith('@')) {
+            e.target.value = '@' + val;
+        }
+    });
+}
 
 function appendLine(text, className = '') {
     const line = document.createElement('div');
@@ -128,16 +138,17 @@ function bufferToHex(buffer) {
 }
 
 async function runRealConsensus() {
-    const handle = usernameInput.value || '@anonymous';
+    let handle = usernameInput.value || '@anonymous';
+    if (!handle.startsWith('@')) handle = '@' + handle;
     
     consoleOutput.innerHTML = '';
     btnConsensus.disabled = true;
     
-    appendLine(`[SYSTEM] Initializing kernel context for ${handle}...`, 'text-highlight');
+    appendLine(`[SYSTEM] Подготовка вашего суверенного паспорта для ${handle}...`, 'text-highlight');
     await sleep(500);
     
     try {
-        appendLine(`>>> [1/7] IDENTITY ENCLAVE: Keygen initiated...`);
+        appendLine(`>>> [1/5] СОЗДАНИЕ ЛИЧНОСТИ: Обращение к защищенному чипу...`);
         
         // 1. Get options from node
         const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
@@ -147,30 +158,22 @@ async function runRealConsensus() {
         options.challenge = base64ToBuffer(options.challenge);
         options.user.id = base64ToBuffer(options.user.id);
         
-        appendLine(`[ACTION] PROMPT #1: Generate new physical P-256 Keypair...`, 'text-yellow');
+        appendLine(`[ACTION] ШАГ #1: Используйте TouchID/FaceID для подписи вашей личности...`, 'text-yellow');
         
         // 2. REAL WEBAUTHN CALL
         const credential = await navigator.credentials.create({ publicKey: options });
         
-        appendLine(`[WEBAUTHN] Secure Enclave Attestation Received!`, 'text-green');
+        appendLine(`[OK] Аппаратное подтверждение получено!`, 'text-green');
         await sleep(400);
         
-        // For simplicity in this demo, we'll derive a deterministic pubkey 
-        // In a full implementation, we'd parse the attestationObject (CBOR)
         const credId = bufferToHex(credential.rawId);
-        appendLine(`[IDENTITY] Credential ID: <span style="font-size:0.7rem;">${credId.substring(0, 32)}...</span>`);
-        
-        // We use the rawId as a seed for the public key in this simplified demo
         const pubKeyHex = credId.substring(0, 64); 
         const address = `sl1_${pubKeyHex.substring(0, 40)}`;
         
-        appendLine(`[IDENTITY] Derived L1 Address: <span style="color:var(--card-yellow);">${address}</span>`);
+        appendLine(`[IDENTITY] Ваш уникальный адрес: <span style="color:var(--card-yellow);">${address}</span>`);
         await sleep(600);
         
-        appendLine(`[BORSH] Serializing Genesis Intent...`);
-        await sleep(400);
-        
-        appendLine(`[NETWORK] Broadcasting to Wildflow Cloud Node...`);
+        appendLine(`[NETWORK] Синхронизация с облачной нодой Wildflow...`);
         
         // 3. SYNC WITH NODE
         const syncRes = await fetch('/accounts', {
@@ -187,21 +190,18 @@ async function runRealConsensus() {
         const syncData = await syncRes.json();
         
         if (syncData.success) {
-            appendLine(`[CONSENSUS] Finalizing Block #0 [Hash: 0x${Math.random().toString(16).slice(2, 10)}...]`);
-            await sleep(800);
-            appendLine(`[SUCCESS] Sovereign Account Created!`, 'text-green');
-            appendLine(`[BALANCE] Genesis Gift: 1000 SL1`, 'text-yellow');
+            appendLine(`[SUCCESS] Поздравляем! Ваша суверенная личность активирована.`, 'text-green');
+            appendLine(`[GIFT] Вам зачислено: 1000 SL1 (приветственный бонус)`, 'text-yellow');
             
             // Trigger stats update
             updateNetworkStatus();
         } else {
-            throw new Error(syncData.error || 'Sync failed');
+            throw new Error(syncData.error || 'Ошибка синхронизации');
         }
         
     } catch (err) {
-        appendLine(`[!] CRITICAL: CONSENSUS TERMINATED`, 'text-red');
-        appendLine(`-> Reason: <span style="font-size:0.8rem;">${err.message}</span>`);
-        appendLine(`[*] Execution Pipeline -> HALTED 🛑`);
+        appendLine(`[!] ОШИБКА: АКТИВАЦИЯ ПРЕРВАНА`, 'text-red');
+        appendLine(`-> Причина: <span style="font-size:0.8rem;">${err.message}</span>`);
     }
     
     btnConsensus.disabled = false;
