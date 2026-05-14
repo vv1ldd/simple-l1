@@ -15,7 +15,13 @@ async function updateNetworkStatus() {
         if (elNetwork) {
             elNetwork.textContent = data.node_name ? `${data.network} (${data.node_name})` : data.network;
         }
-        if (elNodes) elNodes.textContent = data.nodes_count || 2;
+        
+        if (elNodes) {
+            const peersCount = (data.peers || []).length;
+            elNodes.textContent = `${peersCount + 1} (Live)`;
+            elNodes.title = `Peers: ${(data.peers || []).join(', ')}`;
+        }
+
         if (elAccounts) elAccounts.textContent = data.total_accounts;
         
         if (elUptime) {
@@ -42,8 +48,8 @@ async function refreshAccountData() {
         window.currentAccount = account; 
         
         // Update Balances
-        document.getElementById('balance-sl1').textContent = account.balances.SL1.toLocaleString();
-        document.getElementById('balance-btc').textContent = account.balances.BTC.toFixed(8);
+        document.getElementById('balance-sl1').textContent = (account.balances.SL1 || 0).toLocaleString();
+        document.getElementById('balance-btc').textContent = (account.balances.BTC || 0).toFixed(8);
         document.getElementById('balance-eth').textContent = (account.balances.ETH || 0).toFixed(4);
 
         // Update Status Indicators
@@ -79,7 +85,7 @@ async function refreshAccountData() {
             list.innerHTML = policyItems.join('');
             
             const scope = document.getElementById('policy-scope');
-            scope.innerHTML = account.authority_policies.intent_scope.map(s => `<span class="tag">${s.toUpperCase()}</span>`).join('');
+            scope.innerHTML = (account.authority_policies.intent_scope || []).map(s => `<span class="tag">${s.toUpperCase()}</span>`).join('');
         }
 
         // Update Provenance Log

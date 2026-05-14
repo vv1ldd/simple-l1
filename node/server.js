@@ -35,6 +35,23 @@ const calculateAddress = (pubKeyHex) => {
 };
 
 const NODE_NAME = process.env.NODE_NAME || 'node-alpha';
+const PEERS = (process.env.PEERS || '').split(',').filter(Boolean);
+
+// --- NETWORK SYNC HELPER ---
+async function broadcast(path, payload) {
+    for (const peer of PEERS) {
+        try {
+            await fetch(`${peer}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log(`[NETWORK] Broadcast to ${peer} success: ${path}`);
+        } catch (err) {
+            console.warn(`[NETWORK] Broadcast to ${peer} failed: ${err.message}`);
+        }
+    }
+}
 
 // --- API ROUTES ---
 
@@ -45,13 +62,33 @@ fastify.get('/api/status', async (request, reply) => {
         network: "Simple-L1 Alpha",
         node_name: NODE_NAME,
         version: "0.1.0",
-        nodes_count: 2,
-        peers: ["node-alpha", "node-beta"],
-        uptime: process.uptime(),
+        peers: PEERS,
         total_accounts: Object.keys(ledger.accounts).length,
         total_transactions: ledger.transactions.length,
-        active_handles: handles
+        active_handles: handles,
+        uptime: process.uptime()
     };
+});
+
+// Network Broadcast Receiver (Gossip)
+fastify.post('/api/network/broadcast', async (request, reply) => {
+    const { type, data } = request.body;
+    console.log(`[NETWORK] Received broadcast: ${type}`);
+    
+    if (type === 'SYNC_ACCOUNT') {
+        ledger.accounts[data.address] = data.account;
+        saveLedger();
+    } else if (type === 'SYNC_TRANSACTION') {
+        if (!ledger.transactions.find(tx => tx.tx_id === data.tx_id)) {
+            ledger.transactions.push(data);
+            const sender = ledger.accounts[data.from];
+            const recipient = Object.values(ledger.accounts).find(a => a.handle === data.to_handle);
+            if (sender) sender.balances[data.asset] -= data.amount;
+            if (recipient) recipient.balances[data.asset] += data.amount;
+            saveLedger();
+        }
+    }
+    return { success: true };
 });
 
 // 2. Get Registration Options (for Portal)
@@ -211,14 +248,29 @@ fastify.post('/transactions', async (request, reply) => {
     sender.nonce++;
     
     // PROVENANCE
+    const tx_record = {
+        tx_id,
+        from,
+        to_handle,
+        amount,
+        asset: assetKey,
+        intent_hash,
+        timestamp: new Date().toISOString()
+    };
+    
     sender.provenance_log.push({
         type: delegation_proof ? 'DELEGATED_EXEC' : 'TRANSFER',
         detail: `${delegation_proof ? sender.handle + ' (via delegation)' : 'Sent'} ${amount} ${assetKey} to ${to_handle}`,
         intent_hash,
-        timestamp: new Date().toISOString()
+        timestamp: tx_record.timestamp
     });
 
     saveLedger();
+    
+    // BROADCAST TO NETWORK
+    broadcast('/api/network/broadcast', { type: 'SYNC_TRANSACTION', data: tx_record });
+    broadcast('/api/network/broadcast', { type: 'SYNC_ACCOUNT', data: { address: from, account: sender } });
+
     return { success: true, intent_hash };
 });
 
