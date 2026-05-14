@@ -1,23 +1,28 @@
 version: '3.8'
 
 services:
+  # The Sovereign Node Runtime
   sl1-node:
-    image: node:20-slim
+    image: ghcr.io/vv1ldd/simple-l1:latest
     container_name: simple-l1-node
-    working_dir: /app
     ports:
       - "3000:3000"
     environment:
       - NODE_NAME=${NODE_NAME:-community-node}
       - PEERS=${PEERS:-https://l1.wildflow.dev}
       - PORT=3000
-    volumes:
-      - .:/app
-    command: >
-      sh -c "npm install && node server.js"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/status').then(r => process.exit(r.ok ? 0 : 1))"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Auto-Update Agent (Keeps the node fresh from the public registry)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: sl1-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 3600 --cleanup
+    restart: unless-stopped
