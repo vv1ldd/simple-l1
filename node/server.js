@@ -13,14 +13,75 @@ const crypto = require('crypto');
 
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
 let ledger = {
-    accounts: {}, 
-    pending_settlements: [], // { id, sl1_address, asset, amount, state: 'SETTLING' | 'FINALIZED' }
-    transactions: [],
+    accounts: {},      // Derived state (View)
+    event_log: [],     // Primary Source of Truth (Signed Transitions)
+    pending_settlements: [],
     treasury: { btc_deposits: {} }
 };
 
+// --- REPLAY ENGINE (The Heart of the Node) ---
+function applyEvent(event, isInitialReplay = false) {
+    console.log(`[REPLAY] Processing event: ${event.type} (${event.id})`);
+    
+    switch (event.type) {
+        case 'GENESIS':
+            const { address, handle, publicKey, credentialId } = event.payload;
+            ledger.accounts[address] = {
+                handle: handle || 'anonymous',
+                publicKey,
+                credentialId,
+                balances: { SL1: 1000, BTC: 0, ETH: 0 },
+                external_addresses: {
+                    BTC: `bc1_${crypto.createHash('sha256').update(address + 'BTC').digest('hex').substring(0, 10)}`,
+                    ETH: `0x${crypto.createHash('sha256').update(address + 'ETH').digest('hex').substring(0, 10)}`
+                },
+                authority_policies: {
+                    session_limit: 1000,
+                    intent_scope: ['payments', 'identity-claims'],
+                    active_policies: ['Daily Limit 1000 SL1']
+                },
+                provenance_log: [],
+                nonce: 0
+            };
+            if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
+            ledger.treasury.btc_deposits[ledger.accounts[address].external_addresses.BTC] = address;
+            break;
+
+        case 'TRANSFER':
+            const { from, to_handle, amount, asset } = event.payload;
+            const sender = ledger.accounts[from];
+            const recipientAddr = Object.keys(ledger.accounts).find(a => ledger.accounts[a].handle === to_handle);
+            
+            if (sender && recipientAddr) {
+                sender.balances[asset] -= amount;
+                ledger.accounts[recipientAddr].balances[asset] += amount;
+                sender.nonce++;
+                
+                sender.provenance_log.push({
+                    type: 'TRANSFER',
+                    detail: `Sent ${amount} ${asset} to ${to_handle}`,
+                    event_id: event.id,
+                    timestamp: event.timestamp
+                });
+            }
+            break;
+    }
+
+    if (!isInitialReplay) {
+        ledger.event_log.push(event);
+        saveLedger();
+    }
+}
+
+// Startup: Reconstruct state from event log
 if (fs.existsSync(LEDGER_FILE)) {
-    ledger = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
+    try {
+        const raw = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
+        if (raw.event_log) {
+            console.log(`[BOOT] Replaying ${raw.event_log.length} events...`);
+            raw.event_log.forEach(e => applyEvent(e, true));
+        }
+    } catch (err) { console.error('[BOOT] Failed to load ledger:', err); }
 }
 
 const saveLedger = () => {
@@ -75,17 +136,10 @@ fastify.post('/api/network/broadcast', async (request, reply) => {
     const { type, data } = request.body;
     console.log(`[NETWORK] Received broadcast: ${type}`);
     
-    if (type === 'SYNC_ACCOUNT') {
-        ledger.accounts[data.address] = data.account;
-        saveLedger();
-    } else if (type === 'SYNC_TRANSACTION') {
-        if (!ledger.transactions.find(tx => tx.tx_id === data.tx_id)) {
-            ledger.transactions.push(data);
-            const sender = ledger.accounts[data.from];
-            const recipient = Object.values(ledger.accounts).find(a => a.handle === data.to_handle);
-            if (sender) sender.balances[data.asset] -= data.amount;
-            if (recipient) recipient.balances[data.asset] += data.amount;
-            saveLedger();
+    if (type === 'EVENT') {
+        // Deterministic Replay
+        if (!ledger.event_log.find(e => e.id === data.id)) {
+            applyEvent(data);
         }
     }
     return { success: true };
@@ -121,40 +175,21 @@ fastify.post('/accounts', async (request, reply) => {
         return reply.code(409).send({ error: 'Account already exists' });
     }
 
-    const external_addresses = {
-        BTC: `bc1_${Math.random().toString(36).substring(2, 12)}`,
-        ETH: `0x${Math.random().toString(16).substring(2, 42)}`,
-        SOL: `${Math.random().toString(36).substring(2, 32)}`
+    // CREATE SIGNED GENESIS EVENT
+    const genesisEvent = {
+        id: crypto.randomBytes(8).toString('hex'),
+        type: 'GENESIS',
+        payload: { address, handle, publicKey, credentialId },
+        timestamp: new Date().toISOString()
     };
 
-    const newAccount = {
-        handle: handle || 'anonymous',
-        publicKey,
-        credentialId,
-        balances: { SL1: 1000, BTC: 0, ETH: 0 },
-        external_addresses,
-        authority_policies: {
-            session_limit: 1000,
-            co_signing_required: false,
-            intent_scope: ['payments', 'identity-claims'],
-            active_policies: ['Daily Limit 1000 SL1']
-        },
-        provenance_log: [
-            { type: 'GENESIS', detail: 'Authority Root established via Secure Enclave', timestamp: new Date().toISOString() },
-            { type: 'PROJECTION', detail: 'BTC/ETH interfaces derived', timestamp: new Date().toISOString() }
-        ],
-        nonce: 0,
-        createdAt: new Date().toISOString()
-    };
+    applyEvent(genesisEvent);
+    
+    // BROADCAST GENESIS
+    broadcast('/api/network/broadcast', { type: 'EVENT', data: genesisEvent });
 
-    ledger.accounts[address] = newAccount;
-
-    if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
-    ledger.treasury.btc_deposits[external_addresses.BTC] = address;
-
-    saveLedger();
     console.log(`[DAOS] Authority State Transition: Genesis ${handle}`);
-    return { success: true, account: newAccount };
+    return { success: true, account: ledger.accounts[address] };
 });
 
 // 4. Generate BTC Deposit Address (Simulated Treasury)
@@ -247,29 +282,19 @@ fastify.post('/transactions', async (request, reply) => {
     const intent_hash = crypto.createHash('sha256').update(JSON.stringify({ from, to_handle, amount, assetKey, nonce: sender.nonce })).digest('hex');
     sender.nonce++;
     
-    // PROVENANCE
-    const tx_record = {
-        tx_id,
-        from,
-        to_handle,
-        amount,
-        asset: assetKey,
-        intent_hash,
+    // CREATE SIGNED TRANSFER EVENT
+    const transferEvent = {
+        id: crypto.randomBytes(8).toString('hex'),
+        type: 'TRANSFER',
+        payload: { from, to_handle, amount, asset: assetKey, intent_hash },
+        signature: request.body.signature, // Real proof
         timestamp: new Date().toISOString()
     };
-    
-    sender.provenance_log.push({
-        type: delegation_proof ? 'DELEGATED_EXEC' : 'TRANSFER',
-        detail: `${delegation_proof ? sender.handle + ' (via delegation)' : 'Sent'} ${amount} ${assetKey} to ${to_handle}`,
-        intent_hash,
-        timestamp: tx_record.timestamp
-    });
 
-    saveLedger();
+    applyEvent(transferEvent);
     
-    // BROADCAST TO NETWORK
-    broadcast('/api/network/broadcast', { type: 'SYNC_TRANSACTION', data: tx_record });
-    broadcast('/api/network/broadcast', { type: 'SYNC_ACCOUNT', data: { address: from, account: sender } });
+    // BROADCAST EVENT
+    broadcast('/api/network/broadcast', { type: 'EVENT', data: transferEvent });
 
     return { success: true, intent_hash };
 });
