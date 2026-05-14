@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  sl1-node:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./ledger.json:/app/ledger.json
+    environment:
+      - NODE_ENV=production
+    restart: always
