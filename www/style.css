@@ -791,6 +791,30 @@ section {
     padding: 50px;
 }
 
+.send-form-overlay {
+    background: var(--bg-black);
+    border: 2px solid var(--card-yellow);
+    padding: 20px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.send-form-overlay .brutal-label {
+    font-size: 0.65rem;
+    color: var(--card-yellow);
+    margin-bottom: 5px;
+}
+
+.send-form-overlay .brutal-input {
+    background: #111;
+    border: 1px solid #333;
+    color: #fff;
+    font-size: 0.9rem;
+    padding: 8px;
+}
+
 .footer {
     padding: 60px 0 40px;
     background-color: var(--clr-white);

@@ -155,6 +155,66 @@ fastify.post('/api/assets/simulate-mint', async (request, reply) => {
 });
 
 
+// 6. Process Transaction (Intent Orchestration)
+fastify.post('/transactions', async (request, reply) => {
+    const { from, to_handle, amount, asset } = request.body;
+    
+    const sender = ledger.accounts[from];
+    if (!sender) return reply.code(404).send({ error: 'Sender not found' });
+    
+    // Find recipient by handle
+    const recipientAddress = Object.keys(ledger.accounts).find(addr => ledger.accounts[addr].handle === to_handle);
+    if (!recipientAddress) return reply.code(404).send({ error: 'Recipient handle not found' });
+    
+    const assetKey = asset || 'SL1';
+    if ((sender.balances[assetKey] || 0) < amount) {
+        return reply.code(400).send({ error: 'Insufficient funds' });
+    }
+
+    // POLICY CHECK: Session Limit
+    if (amount > sender.authority_policies.session_limit) {
+        sender.provenance_log.push({
+            type: 'POLICY_VIOLATION',
+            detail: `Intent rejected: amount ${amount} exceeds session limit ${sender.authority_policies.session_limit}`,
+            timestamp: new Date().toISOString()
+        });
+        saveLedger();
+        return reply.code(403).send({ error: 'Policy violation: Session limit exceeded' });
+    }
+
+    // EXECUTION
+    sender.balances[assetKey] -= amount;
+    ledger.accounts[recipientAddress].balances[assetKey] += amount;
+    
+    const tx = {
+        from,
+        to: recipientAddress,
+        to_handle,
+        amount,
+        asset: assetKey,
+        timestamp: new Date().toISOString()
+    };
+    
+    ledger.transactions.push(tx);
+    
+    // PROVENANCE LOGGING
+    sender.provenance_log.push({
+        type: 'TRANSACTION',
+        detail: `Sent ${amount} ${assetKey} to ${to_handle}`,
+        timestamp: tx.timestamp
+    });
+    
+    ledger.accounts[recipientAddress].provenance_log.push({
+        type: 'RECEIVE',
+        detail: `Received ${amount} ${assetKey} from ${sender.handle}`,
+        timestamp: tx.timestamp
+    });
+
+    saveLedger();
+    console.log(`[ORCHESTRATOR] Intent executed: ${sender.handle} -> ${to_handle} (${amount} ${assetKey})`);
+    return { success: true, tx };
+});
+
 // 3. Get Account State
 fastify.get('/accounts/:address', async (request, reply) => {
     const { address } = request.params;
@@ -168,7 +228,7 @@ fastify.get('/accounts/:address', async (request, reply) => {
 });
 
 // 4. Submit Transaction
-fastify.post('/transactions', async (request, reply) => {
+fastify.post('/transactions-legacy', async (request, reply) => {
     const { from, to, amount, signature, challenge } = request.body;
 
     const sender = ledger.accounts[from];
