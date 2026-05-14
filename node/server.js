@@ -99,6 +99,15 @@ async function start() {
     ledger.event_log = []; 
     ledger.accounts = {};
     history.forEach(ev => applyEvent(ev, true));
+
+    // 4. Start HTTP Server
+    try {
+        await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
+        console.log(`[DAOS] ${NODE_NAME} is active on port ${process.env.PORT || 3000}`);
+    } catch (err) {
+        fastify.log.error(err);
+        process.exit(1);
+    }
 }
 
 const saveLedger = () => {
@@ -413,15 +422,7 @@ fastify.post('/transactions-legacy', async (request, reply) => {
 });
 
 // --- START SERVER ---
-const start = async () => {
-    try {
-        await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-        console.log(`[DAOS] ${NODE_NAME} is active and listening on port ${process.env.PORT || 3000}`);
-    } catch (err) {
-        fastify.log.error(err);
-        process.exit(1);
-    }
-};
+// (Already handled in the main start() function above)
 
 // --- STATIC FILES (Last Resort) ---
 fastify.register(require('@fastify/static'), {
