@@ -104,6 +104,10 @@ async function start() {
     try {
         await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
         console.log(`[DAOS] ${NODE_NAME} is active on port ${process.env.PORT || 3000}`);
+        
+        // 5. Automated Discovery
+        discoverPeers();
+        setInterval(discoverPeers, 60000); // Refresh every minute
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
@@ -430,5 +434,37 @@ fastify.register(require('@fastify/static'), {
     prefix: '/',
     index: 'index.html',
 });
+
+// Peer Exchange (PEX)
+fastify.get('/api/network/peers', async () => {
+    return {
+        node: NODE_NAME,
+        peers: PEERS 
+    };
+});
+
+// Startup: Peer Discovery
+async function discoverPeers() {
+    const initialPeers = (PEERS || '').split(',').filter(Boolean);
+    for (const peer of initialPeers) {
+        try {
+            console.log(`[PEX] Discovering peers from ${peer}...`);
+            const res = await fetch(`${peer.replace(/\/$/, '')}/api/network/peers`);
+            if (res.ok) {
+                const data = await res.json();
+                const neighbors = (data.peers || '').split(',').filter(Boolean);
+                const newPeers = neighbors.filter(p => p && !(PEERS || '').includes(p));
+                
+                if (newPeers.length > 0) {
+                    const updated = [...new Set([...(PEERS || '').split(','), ...newPeers])].filter(Boolean);
+                    PEERS = updated.join(',');
+                    console.log(`[PEX] Discovered new neighbors: ${newPeers.join(', ')}`);
+                }
+            }
+        } catch (e) {
+            // Silently fail, common for offline nodes
+        }
+    }
+}
 
 start();

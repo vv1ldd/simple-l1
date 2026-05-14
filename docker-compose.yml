@@ -1,28 +1,23 @@
 version: '3.8'
 
 services:
-  node-alpha:
-    build: 
-      context: ./node
-    environment:
-      - NODE_NAME=node-alpha
-      - PORT=3000
+  sl1-node:
+    image: node:20-slim
+    container_name: simple-l1-node
+    working_dir: /app
     ports:
       - "3000:3000"
-    volumes:
-      - node-alpha-data:/app/data
-
-  node-beta:
-    build: 
-      context: ./node
     environment:
-      - NODE_NAME=node-beta
-      - PORT=3001
-    ports:
-      - "3001:3001"
+      - NODE_NAME=${NODE_NAME:-community-node}
+      - PEERS=${PEERS:-https://l1.wildflow.dev}
+      - PORT=3000
     volumes:
-      - node-beta-data:/app/data
-
-volumes:
-  node-alpha-data:
-  node-beta-data:
+      - .:/app
+    command: >
+      sh -c "npm install && node server.js"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
