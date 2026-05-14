@@ -82,12 +82,26 @@ async function updateNetworkStatus() {
     if (elAcc) elAcc.textContent = maxAccounts;
     
     if (elUp) {
-        const days = Math.floor(avgUptime / 86400);
-        const hours = Math.floor((avgUptime % 86400) / 3600);
-        const minutes = Math.floor((avgUptime % 3600) / 60);
-        const seconds = Math.floor(avgUptime % 60);
+        let totalSecs = Math.floor(avgUptime);
+        
+        const years = Math.floor(totalSecs / 31536000);
+        totalSecs %= 31536000;
+        
+        const months = Math.floor(totalSecs / 2592000);
+        totalSecs %= 2592000;
+        
+        const days = Math.floor(totalSecs / 86400);
+        totalSecs %= 86400;
+        
+        const hours = Math.floor(totalSecs / 3600);
+        totalSecs %= 3600;
+        
+        const minutes = Math.floor(totalSecs / 60);
+        const seconds = totalSecs % 60;
         
         let uptimeStr = '';
+        if (years > 0) uptimeStr += `${years}y `;
+        if (months > 0) uptimeStr += `${months}mo `;
         if (days > 0) uptimeStr += `${days}d `;
         if (hours > 0 || days > 0) uptimeStr += `${hours}h `;
         uptimeStr += `${minutes}m ${seconds}s`;
