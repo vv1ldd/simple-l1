@@ -455,6 +455,14 @@ fastify.get('/api/network/peers', async () => {
     };
 });
 
+// Deployment Info (for Relay)
+fastify.get('/api/network/deploy-info', async () => {
+    return {
+        node: NODE_NAME,
+        webhook: process.env.SELF_WEBHOOK || null
+    };
+});
+
 // Startup: Peer Discovery
 async function discoverPeers() {
     const initialPeers = [...PEERS];
