@@ -35,6 +35,7 @@ async function refreshAccountData() {
         const res = await fetch(`/accounts/${window.currentAddress}`);
         if (!res.ok) return;
         const account = await res.json();
+        window.currentAccount = account; // Store for nonce access
         
         // Update Balances
         document.getElementById('balance-sl1').textContent = account.balances.SL1.toLocaleString();
@@ -51,7 +52,6 @@ async function refreshAccountData() {
         if (account.authority_policies) {
             const list = document.getElementById('policy-list');
             list.innerHTML = account.authority_policies.active_policies.map(p => `<div class="policy-item">✓ ${p}</div>`).join('');
-            
             const scope = document.getElementById('policy-scope');
             scope.innerHTML = account.authority_policies.intent_scope.map(s => `<span class="tag">${s.toUpperCase()}</span>`).join('');
         }
@@ -63,6 +63,8 @@ async function refreshAccountData() {
                 <div class="log-entry">
                     <div class="log-time">${new Date(entry.timestamp).toLocaleTimeString()}</div>
                     <div><span class="log-type">${entry.type}</span> <span class="log-detail">${entry.detail}</span></div>
+                    ${entry.intent_hash ? `<div class="log-meta">INTENT: ${entry.intent_hash.substring(0, 12)}...</div>` : ''}
+                    ${entry.signature ? `<div class="log-meta">PROOF: ${entry.signature}</div>` : ''}
                 </div>
             `).reverse().join('');
         }
@@ -78,9 +80,7 @@ document.addEventListener('DOMContentLoaded', updateNetworkStatus);
 window.showTab = function(tabName) {
     document.querySelectorAll('.terminal-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
     document.getElementById(`tab-${tabName}`).classList.add('active');
-    // Find the button that was clicked or the button with matching tabName
     const btn = event?.currentTarget || [...document.querySelectorAll('.tab-btn')].find(b => b.innerText.toLowerCase() === tabName);
     if (btn) btn.classList.add('active');
 };
@@ -89,7 +89,7 @@ window.showSendForm = () => document.getElementById('send-form').style.display =
 window.hideSendForm = () => document.getElementById('send-form').style.display = 'none';
 
 /* -------------------------------------------------------------------------
-   I18N & TERMINAL UTILS
+   UTILITIES
 -------------------------------------------------------------------------- */
 function appendLine(text, className = '') {
     const line = document.createElement('div');
@@ -100,27 +100,28 @@ function appendLine(text, className = '') {
     return line;
 }
 
-async function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 function base64ToBuffer(base64) {
     const binary = window.atob(base64);
     const buffer = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        buffer[i] = binary.charCodeAt(i);
-    }
+    for (let i = 0; i < binary.length; i++) { buffer[i] = binary.charCodeAt(i); }
     return buffer.buffer;
 }
 
 function bufferToHex(buffer) {
-    return Array.from(new Uint8Array(buffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function bufferToBase64URL(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let str = '';
+    for (const charCode of bytes) { str += String.fromCharCode(charCode); }
+    return window.btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 /* -------------------------------------------------------------------------
-   CORE ORCHESTRATION: REGISTRATION & TRANSACTIONS
+   CORE AUTHORIZATION
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
@@ -129,78 +130,83 @@ const usernameInput = document.getElementById('username-input');
 async function runRealConsensus() {
     let handle = usernameInput.value || '@anonymous';
     if (!handle.startsWith('@')) handle = '@' + handle;
-    
     consoleOutput.innerHTML = '';
     btnConsensus.disabled = true;
-    
     appendLine(`[AUTHORITY] Инициализация канонического корня для ${handle}...`, 'text-highlight');
-    await sleep(500);
-    
     try {
         appendLine(`>>> [1/5] АНКОРИНГ: Привязка авторитета к аппаратному анклаву...`);
         const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
         const options = await optionsRes.json();
         options.challenge = base64ToBuffer(options.challenge);
         options.user.id = base64ToBuffer(options.user.id);
-        
-        appendLine(`[ACTION] Подпишите глобальный манифест личности через TouchID/FaceID...`, 'text-yellow');
+        appendLine(`[ACTION] Подпишите манифест личности через TouchID/FaceID...`, 'text-yellow');
         const credential = await navigator.credentials.create({ publicKey: options });
-        
-        appendLine(`[OK] Hardware-bound Authority Established!`, 'text-green');
         const credId = bufferToHex(credential.rawId);
         const pubKeyHex = credId.substring(0, 64); 
         const address = `sl1_${pubKeyHex.substring(0, 40)}`;
         window.currentAddress = address;
-        
-        appendLine(`[ROOT] Canonical ID: <span style="color:var(--card-yellow);">${address}</span>`);
-        await sleep(600);
-        appendLine(`[PROJECTION] Развертывание расчетных интерфейсов BTC и ETH...`);
-        
+        appendLine(`[ROOT] Canonical ID: ${address}`, 'text-green');
         const syncRes = await fetch('/accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address, publicKey: pubKeyHex, credentialId: credId, handle })
         });
-        const syncData = await syncRes.json();
-        
-        if (syncData.success) {
+        if ((await syncRes.json()).success) {
             appendLine(`[SUCCESS] Суверенный манифест опубликован.`, 'text-green');
             refreshAccountData();
-            await sleep(1500);
-            showTab('portfolio');
-        } else { throw new Error('Ошибка манифеста'); }
-        
-    } catch (err) {
-        appendLine(`[!] ОШИБКА: НАРУШЕНИЕ ЦЕПОЧКИ АВТОРИТЕТА`, 'text-red');
-        appendLine(`-> Причина: <span style="font-size:0.8rem;">${err.message}</span>`);
-    }
+            await sleep(1500); showTab('portfolio');
+        }
+    } catch (err) { appendLine(`[!] ОШИБКА АВТОРИТЕТА: ${err.message}`, 'text-red'); }
     btnConsensus.disabled = false;
 }
 
 if (btnConsensus) btnConsensus.addEventListener('click', runRealConsensus);
 
 /* -------------------------------------------------------------------------
-   INTENT EXECUTION: SEND & DEPOSIT
+   CRYPTOGRAPHIC INTENT EXECUTION
 -------------------------------------------------------------------------- */
 window.executeSend = async function() {
-    const toHandle = document.getElementById('send-to').value;
+    const to_handle = document.getElementById('send-to').value;
     const amount = parseFloat(document.getElementById('send-amount').value);
-    
-    if (!toHandle || isNaN(amount)) return alert('Укажите получателя и сумму');
+    if (!to_handle || isNaN(amount)) return alert('Укажите получателя и сумму');
     
     const btn = event.currentTarget;
     btn.disabled = true;
-    btn.innerHTML = 'AUTHORIZING INTENT...';
+    btn.innerHTML = 'SIGNING INTENT...';
     
     try {
-        // In a real system, we would sign this intent with WebAuthn here
-        // For the MVP demo, we assume the session is active
-        appendLine(`[INTENT] Создание намерения: ${amount} SL1 -> ${toHandle}...`, 'text-highlight');
+        const intent = { from: window.currentAddress, to_handle, amount, asset: 'SL1', nonce: window.currentAccount.nonce };
+        const intent_json = JSON.stringify(intent);
+        const encoder = new TextEncoder();
+        const intent_data = encoder.encode(intent_json);
+        const intent_hash_buffer = await crypto.subtle.digest('SHA-256', intent_data);
+        const intent_hash = bufferToHex(intent_hash_buffer);
+
+        appendLine(`[INTENT] Создание намерения: ${intent_hash.substring(0, 12)}...`, 'text-highlight');
         
+        // REAL WEBAUTHN ASSERTION
+        const authOptions = {
+            challenge: intent_hash_buffer,
+            allowCredentials: [{ id: base64ToBuffer(window.currentAccount.credentialId), type: 'public-key' }],
+            userVerification: 'required'
+        };
+        
+        appendLine(`[ACTION] Подтвердите перевод через FaceID/TouchID...`, 'text-yellow');
+        const assertion = await navigator.credentials.get({ publicKey: authOptions });
+        
+        const sigHex = bufferToHex(assertion.response.signature);
+        
+        appendLine(`[OK] Намерение подписано криптографически.`, 'text-green');
+
         const res = await fetch('/transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: window.currentAddress, to_handle: toHandle, amount, asset: 'SL1' })
+            body: JSON.stringify({
+                ...intent,
+                signature: sigHex,
+                clientDataJSON: bufferToBase64URL(assertion.response.clientDataJSON),
+                authenticatorData: bufferToBase64URL(assertion.response.authenticatorData)
+            })
         });
         
         const data = await res.json();
@@ -214,9 +220,7 @@ window.executeSend = async function() {
                 btn.classList.replace('btn-green', 'btn-purple');
                 btn.disabled = false;
             }, 3000);
-        } else {
-            throw new Error(data.error);
-        }
+        } else { throw new Error(data.error); }
     } catch (err) {
         alert(`Ошибка: ${err.message}`);
         btn.innerHTML = 'CONFIRM INTENT';
@@ -225,7 +229,7 @@ window.executeSend = async function() {
 };
 
 window.initiateBTCDeposit = async function() {
-    if (!window.currentAddress) { alert('Сначала активируйте ROOT AUTHORITY'); showTab('identity'); return; }
+    if (!window.currentAddress) { alert('Активируйте ROOT AUTHORITY'); showTab('identity'); return; }
     const btn = event.currentTarget;
     const oldText = btn.innerHTML;
     btn.disabled = true;
@@ -237,7 +241,7 @@ window.initiateBTCDeposit = async function() {
             body: JSON.stringify({ sl1_address: window.currentAddress, asset: 'BTC' })
         });
         const { deposit_address } = await res.json();
-        btn.innerHTML = `BTC ADDR: <span style="font-size:0.6rem;">${deposit_address}</span>`;
+        btn.innerHTML = `BTC ADDR: ${deposit_address.substring(0, 10)}...`;
         await sleep(4000);
         btn.innerHTML = 'SETTLEMENT IN PROGRESS...';
         await sleep(2000);
