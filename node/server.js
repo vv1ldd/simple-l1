@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
 fastify.register(require('@fastify/cors'), { origin: '*' });
 fastify.register(require('@fastify/static'), {
@@ -5,8 +7,6 @@ fastify.register(require('@fastify/static'), {
     prefix: '/', // Serve at root
 });
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
-const fs = require('fs');
-const path = require('path');
 
 // --- DATABASE (LowDB-like simple JSON ledger) ---
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
