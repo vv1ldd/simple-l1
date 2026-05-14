@@ -152,26 +152,29 @@
                 <div class="terminal-body portfolio-body">
                     <div class="asset-card sl1">
                         <div class="asset-info">
-                            <span class="asset-name">Simple-L1</span>
+                            <span class="asset-name">Simple-L1 Root</span>
                             <span class="asset-symbol">SL1</span>
+                            <span class="custody-badge non-custodial">NON-CUSTODIAL</span>
                         </div>
                         <div class="asset-balance" id="balance-sl1">0</div>
                     </div>
                     
                     <div class="asset-card btc">
                         <div class="asset-info">
-                            <span class="asset-name">Bitcoin (Sovereign)</span>
+                            <span class="asset-name">Bitcoin Projection</span>
                             <span class="asset-symbol">sBTC</span>
                             <span class="native-addr" id="addr-btc">bc1...</span>
+                            <span class="custody-badge delegated">DELEGATED (MPC-READY)</span>
                         </div>
                         <div class="asset-balance" id="balance-btc">0.00000000</div>
                     </div>
 
                     <div class="asset-card eth">
                         <div class="asset-info">
-                            <span class="asset-name">Ethereum (Sovereign)</span>
+                            <span class="asset-name">Ethereum Projection</span>
                             <span class="asset-symbol">sETH</span>
                             <span class="native-addr" id="addr-eth">0x...</span>
+                            <span class="custody-badge delegated">DELEGATED (AA-READY)</span>
                         </div>
                         <div class="asset-balance" id="balance-eth">0.0000</div>
                     </div>
@@ -186,15 +189,23 @@
 
     <section id="specs" class="specs-section">
         <div class="container">
-            <h2 class="section-title">AUTHORITY ARCHITECTURE</h2>
+            <h2 class="section-title">AUTHORITY SEMANTICS (RFC ROADMAP)</h2>
             <div class="architecture-grid">
                 <div class="arch-card">
-                    <h3>Canonical Root</h3>
-                    <p>sl1:handle — the immutable source of authority anchored in hardware. Not a wallet, but a universal identity namespace.</p>
+                    <h3>RFC-001: Authority Root</h3>
+                    <p>Formalizing hardware-anchored P-256 entropy derivation and the sl1_ namespace specification.</p>
                 </div>
                 <div class="arch-card">
-                    <h3>Settlement Projections</h3>
-                    <p>Network-native interfaces (BTC, ETH, SOL) derived deterministically from the root authority. Execution surfaces for global liquidity.</p>
+                    <h3>RFC-002: Projection Derivation</h3>
+                    <p>Deterministic mapping between Authority Root and network-native identities (BTC, ETH, SOL).</p>
+                </div>
+                <div class="arch-card">
+                    <h3>RFC-003: Recovery Topology</h3>
+                    <p>Social recovery, multi-device sync, and revocation semantics without seed phrases.</p>
+                </div>
+                <div class="arch-card">
+                    <h3>RFC-004: Intent Orchestration</h3>
+                    <p>The serialization format for cross-chain execution intents and deterministic validation.</p>
                 </div>
             </div>
 
@@ -203,16 +214,15 @@
                 <pre class="json-content">
 {
   <span class="json-key">"authority"</span>: <span class="json-string">"sl1:user_handle"</span>,
-  <span class="json-key">"authentication"</span>: {
-    <span class="json-key">"method"</span>: <span class="json-string">"Passkey / P-256"</span>,
-    <span class="json-key">"enclave"</span>: <span class="json-string">"Hardware-bound"</span>
+  <span class="json-key">"topology"</span>: {
+    <span class="json-key">"root"</span>: <span class="json-string">"hardware-enclave"</span>,
+    <span class="json-key">"projections"</span>: <span class="json-string">"deterministic-derived"</span>
   },
-  <span class="json-key">"projections"</span>: {
-    <span class="json-key">"bitcoin"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"native-segwit"</span> },
-    <span class="json-key">"ethereum"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"evm-projection"</span> },
-    <span class="json-key">"solana"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"pda-authority"</span> }
-  },
-  <span class="json-key">"orchestration"</span>: <span class="json-string">"Simple-L1 Fabric"</span>
+  <span class="json-key">"custody_semantics"</span>: {
+    <span class="json-key">"sl1"</span>: <span class="json-string">"full-sovereign"</span>,
+    <span class="json-key">"btc"</span>: <span class="json-string">"delegated-mpc"</span>,
+    <span class="json-key">"eth"</span>: <span class="json-string">"delegated-aa"</span>
+  }
 }
                 </pre>
             </div>
@@ -229,9 +239,7 @@
         </div>
     </footer>
 
-    <!-- Load i18n dictionary first -->
     <script src="i18n.js?v=1.0.5"></script>
-    <!-- Execution Script with Cache Buster -->
     <script src="app.js?v=1.1.2"></script>
 </body>
 </html>
