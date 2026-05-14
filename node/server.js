@@ -120,7 +120,7 @@ fastify.get('/api/status', async (request, reply) => {
         version: "0.1.0",
         peers: PEERS,
         total_accounts: Object.keys(ledger.accounts).length,
-        total_transactions: ledger.transactions.length,
+        total_events: ledger.event_log.length,
         active_handles: handles,
         uptime: process.uptime()
     };
