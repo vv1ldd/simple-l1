@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // --- DATABASE (LowDB-like simple JSON ledger) ---
-const LEDGER_FILE = path.join(__dirname, 'ledger.json');
+const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
 let ledger = {
     accounts: {}, // address -> { publicKey, balance, nonce }
     transactions: []
