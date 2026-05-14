@@ -125,7 +125,19 @@ const calculateAddress = (pubKeyHex) => {
     return `sl1_${pubKeyHex.substring(0, 40)}`;
 };
 
-const NODE_NAME = process.env.NODE_NAME || 'node-alpha';
+const IDENTITY_FILE = path.join(__dirname, 'node_identity.json');
+let NODE_NAME = process.env.NODE_NAME;
+
+// 1. Load or Define Identity
+if (!NODE_NAME && fs.existsSync(IDENTITY_FILE)) {
+    try {
+        const idData = JSON.parse(fs.readFileSync(IDENTITY_FILE, 'utf8'));
+        NODE_NAME = idData.name;
+    } catch (e) {}
+}
+if (!NODE_NAME) NODE_NAME = 'node-pending';
+
+const GREEK_ALPHABET = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
 let PEERS = (process.env.PEERS || '').split(',').filter(Boolean);
 
 // --- NETWORK SYNC HELPER ---
@@ -446,12 +458,16 @@ fastify.get('/api/network/peers', async () => {
 // Startup: Peer Discovery
 async function discoverPeers() {
     const initialPeers = [...PEERS];
+    const discoveredNames = [];
+
     for (const peer of initialPeers) {
         try {
             console.log(`[PEX] Discovering peers from ${peer}...`);
             const res = await fetch(`${peer.replace(/\/$/, '')}/api/network/peers`);
             if (res.ok) {
                 const data = await res.json();
+                if (data.node) discoveredNames.push(data.node);
+                
                 const neighbors = (data.peers || '').split(',').filter(Boolean);
                 const newPeers = neighbors.filter(p => p && !PEERS.includes(p));
                 
@@ -461,6 +477,14 @@ async function discoverPeers() {
                 }
             }
         } catch (e) {}
+    }
+
+    // Dynamic Naming Logic
+    if (NODE_NAME === 'node-pending') {
+        const nextLetter = GREEK_ALPHABET.find(letter => !discoveredNames.includes(`node-${letter}`));
+        NODE_NAME = `node-${nextLetter || 'omega'}`;
+        console.log(`[IDENTITY] Adopted name: ${NODE_NAME}`);
+        fs.writeFileSync(IDENTITY_FILE, JSON.stringify({ name: NODE_NAME }));
     }
 }
 
