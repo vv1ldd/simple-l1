@@ -44,7 +44,29 @@ fastify.get('/api/status', async (request, reply) => {
     };
 });
 
-// 2. Register Account (Onboarding)
+// 2. Get Registration Options (for Portal)
+fastify.get('/api/register/options', async (request, reply) => {
+    const { handle } = request.query;
+    const userHandle = handle || 'anonymous';
+    
+    // In a real L1, this challenge is deterministic or linked to block height
+    const challenge = Buffer.from(Date.now().toString()).toString('base64').replace(/=/g, '');
+    
+    return {
+        challenge,
+        rp: { name: "Simple-L1 Network", id: request.hostname },
+        user: {
+            id: Buffer.from(userHandle).toString('base64').replace(/=/g, ''),
+            name: userHandle,
+            displayName: userHandle
+        },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
+        timeout: 60000,
+        attestation: "none"
+    };
+});
+
+// 3. Register Account (Onboarding)
 fastify.post('/accounts', async (request, reply) => {
     const { address, publicKey, credentialId } = request.body;
 

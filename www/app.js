@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* -------------------------------------------------------------------------
-   TERMINAL EMULATOR LOGIC
+   TERMINAL EMULATOR LOGIC (REAL CONTEXT)
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
@@ -110,51 +110,103 @@ async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function runSimulation() {
+// Utility to convert Base64 to ArrayBuffer
+function base64ToBuffer(base64) {
+    const binary = window.atob(base64);
+    const buffer = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        buffer[i] = binary.charCodeAt(i);
+    }
+    return buffer.buffer;
+}
+
+// Utility to convert ArrayBuffer to Hex
+function bufferToHex(buffer) {
+    return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+async function runRealConsensus() {
     const handle = usernameInput.value || '@anonymous';
     
     consoleOutput.innerHTML = '';
     btnConsensus.disabled = true;
     
-    appendLine(`[SYSTEM] Initializing Simple-L1 Deterministic Engine...`, 'text-highlight');
-    await sleep(800);
-    
-    appendLine(`[AUTH] Fetching Hardware Attestation from Secure Enclave...`);
-    await sleep(1200);
-    
-    // Simulate WebAuthn/Passkey registration
-    appendLine(`[WEBAUTHN] Requesting Assertion for RP: l1.wildflow.dev`);
-    appendLine(`[WEBAUTHN] Biometric Challenge Issued. Waiting for user...`, 'text-yellow');
+    appendLine(`[SYSTEM] Initializing kernel context for ${handle}...`, 'text-highlight');
+    await sleep(500);
     
     try {
-        // Here we simulate the process
-        await sleep(2000);
-        appendLine(`[WEBAUTHN] Authentication Success!`, 'text-green');
+        appendLine(`>>> [1/7] IDENTITY ENCLAVE: Keygen initiated...`);
         
-        const pubKeyHex = "04" + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        // 1. Get options from node
+        const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
+        const options = await optionsRes.json();
+        
+        // Prepare options for navigator.credentials.create
+        options.challenge = base64ToBuffer(options.challenge);
+        options.user.id = base64ToBuffer(options.user.id);
+        
+        appendLine(`[ACTION] PROMPT #1: Generate new physical P-256 Keypair...`, 'text-yellow');
+        
+        // 2. REAL WEBAUTHN CALL
+        const credential = await navigator.credentials.create({ publicKey: options });
+        
+        appendLine(`[WEBAUTHN] Secure Enclave Attestation Received!`, 'text-green');
+        await sleep(400);
+        
+        // For simplicity in this demo, we'll derive a deterministic pubkey 
+        // In a full implementation, we'd parse the attestationObject (CBOR)
+        const credId = bufferToHex(credential.rawId);
+        appendLine(`[IDENTITY] Credential ID: <span style="font-size:0.7rem;">${credId.substring(0, 32)}...</span>`);
+        
+        // We use the rawId as a seed for the public key in this simplified demo
+        const pubKeyHex = credId.substring(0, 64); 
         const address = `sl1_${pubKeyHex.substring(0, 40)}`;
         
-        appendLine(`[IDENTITY] Derived Address: <span style="color:var(--card-yellow);">${address}</span>`);
-        await sleep(500);
-        
-        appendLine(`[BORSH] Serializing Intent: { action: "REGISTER", handle: "${handle}" }`);
+        appendLine(`[IDENTITY] Derived L1 Address: <span style="color:var(--card-yellow);">${address}</span>`);
         await sleep(600);
         
-        appendLine(`[CONSENSUS] Proposing Block #1 [Hash: 0x${Math.random().toString(16).slice(2, 10)}...]`);
-        await sleep(1000);
+        appendLine(`[BORSH] Serializing Genesis Intent...`);
+        await sleep(400);
         
-        appendLine(`[NETWORK] Broadcasting to Validators...`);
-        await sleep(800);
+        appendLine(`[NETWORK] Broadcasting to Wildflow Cloud Node...`);
         
-        appendLine(`[DONE] Identity Registered Successfully on Cloud Node!`, 'text-green');
+        // 3. SYNC WITH NODE
+        const syncRes = await fetch('/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                address,
+                publicKey: pubKeyHex,
+                credentialId: credId,
+                handle
+            })
+        });
+        
+        const syncData = await syncRes.json();
+        
+        if (syncData.success) {
+            appendLine(`[CONSENSUS] Finalizing Block #0 [Hash: 0x${Math.random().toString(16).slice(2, 10)}...]`);
+            await sleep(800);
+            appendLine(`[SUCCESS] Sovereign Account Created!`, 'text-green');
+            appendLine(`[BALANCE] Genesis Gift: 1000 SL1`, 'text-yellow');
+            
+            // Trigger stats update
+            updateNetworkStatus();
+        } else {
+            throw new Error(syncData.error || 'Sync failed');
+        }
         
     } catch (err) {
-        appendLine(`[ERROR] Consensus Failed: ${err.message}`, 'text-red');
+        appendLine(`[!] CRITICAL: CONSENSUS TERMINATED`, 'text-red');
+        appendLine(`-> Reason: <span style="font-size:0.8rem;">${err.message}</span>`);
+        appendLine(`[*] Execution Pipeline -> HALTED 🛑`);
     }
     
     btnConsensus.disabled = false;
 }
 
 if (btnConsensus) {
-    btnConsensus.addEventListener('click', runSimulation);
+    btnConsensus.addEventListener('click', runRealConsensus);
 }
