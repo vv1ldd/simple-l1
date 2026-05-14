@@ -1,4 +1,5 @@
 const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
+fastify.register(require('@fastify/cors'), { origin: '*' });
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 const fs = require('fs');
 const path = require('path');
