@@ -11,12 +11,18 @@ let ledger = {
     accounts: {},      // Derived state (View)
     event_log: [],     // Primary Source of Truth (Signed Transitions)
     pending_settlements: [],
+    cluster_genesis: null, // Network Birthday
     treasury: { btc_deposits: {} }
 };
 
 // --- REPLAY ENGINE (The Heart of the Node) ---
 function applyEvent(event, isInitialReplay = false) {
     console.log(`[REPLAY] Processing event: ${event.type} (${event.id})`);
+    
+    // Set network birthday if not set
+    if (!ledger.cluster_genesis && event.timestamp) {
+        ledger.cluster_genesis = event.timestamp;
+    }
     
     switch (event.type) {
         case 'GENESIS':
@@ -114,6 +120,10 @@ async function broadcast(path, payload) {
 // Node Status
 fastify.get('/api/status', async (request, reply) => {
     const handles = Object.values(ledger.accounts).map(a => a.handle).filter(Boolean);
+    const network_uptime = ledger.cluster_genesis 
+        ? Math.floor((Date.now() - new Date(ledger.cluster_genesis).getTime()) / 1000)
+        : process.uptime();
+
     return {
         network: "Simple-L1 Alpha",
         node_name: NODE_NAME,
@@ -122,7 +132,7 @@ fastify.get('/api/status', async (request, reply) => {
         total_accounts: Object.keys(ledger.accounts).length,
         total_events: ledger.event_log.length,
         active_handles: handles,
-        uptime: process.uptime()
+        uptime: network_uptime 
     };
 });
 
