@@ -748,6 +748,49 @@ section {
     box-shadow: 0 0 10px #00ff00;
 }
 
+/* Provenance Styles */
+.provenance-body {
+    padding: 20px !important;
+}
+
+.log-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.log-entry {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    border-left: 2px solid var(--card-yellow);
+    padding-left: 15px;
+    padding-bottom: 5px;
+}
+
+.log-time {
+    color: #555;
+    font-size: 0.65rem;
+    margin-bottom: 4px;
+}
+
+.log-type {
+    font-weight: bold;
+    color: var(--text-white);
+    text-transform: uppercase;
+    margin-right: 8px;
+}
+
+.log-detail {
+    color: #aaa;
+}
+
+.log-entry.empty {
+    border: none;
+    color: #555;
+    text-align: center;
+    padding: 50px;
+}
+
 .footer {
     padding: 60px 0 40px;
     background-color: var(--clr-white);

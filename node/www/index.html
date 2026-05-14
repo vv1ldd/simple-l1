@@ -131,6 +131,7 @@
                     <button class="tab-btn active" onclick="showTab('identity')">IDENTITY</button>
                     <button class="tab-btn" onclick="showTab('portfolio')">PORTFOLIO</button>
                     <button class="tab-btn" onclick="showTab('policies')">POLICIES</button>
+                    <button class="tab-btn" onclick="showTab('provenance')">PROVENANCE</button>
                 </div>
             </div>
 
@@ -208,6 +209,14 @@
                     <div class="policy-status">
                         <span class="status-indicator"></span>
                         AUTHORITY RUNTIME ACTIVE
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-provenance" class="terminal-content">
+                <div class="terminal-body provenance-body">
+                    <div class="log-container" id="provenance-log">
+                        <div class="log-entry empty">Waiting for authority anchoring...</div>
                     </div>
                 </div>
             </div>

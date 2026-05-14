@@ -12,10 +12,10 @@ const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@s
 // --- DATABASE (LowDB-like simple JSON ledger) ---
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
 let ledger = {
-    accounts: {}, // address -> { handle, publicKey, balances: { SL1, BTC }, nonce }
+    accounts: {}, // address -> { handle, publicKey, balances, authority_policies, provenance_log }
     transactions: [],
     treasury: {
-        btc_deposits: {} // btc_address -> sl1_address
+        btc_deposits: {}
     }
 };
 
@@ -85,29 +85,34 @@ fastify.post('/accounts', async (request, reply) => {
         SOL: `${Math.random().toString(36).substring(2, 32)}`
     };
 
-    ledger.accounts[address] = {
+    const newAccount = {
         handle: handle || 'anonymous',
         publicKey,
         credentialId,
         balances: { SL1: 1000, BTC: 0, ETH: 0 },
         external_addresses,
-        // PROGRAMMABLE AUTHORITY POLICIES
         authority_policies: {
             session_limit: 1000,
             co_signing_required: false,
             intent_scope: ['payments', 'identity-claims'],
             active_policies: ['Daily Limit 1000 SL1']
         },
+        provenance_log: [
+            { type: 'GENESIS', detail: 'Authority Root established via Secure Enclave', timestamp: new Date().toISOString() },
+            { type: 'PROJECTION', detail: 'BTC/ETH interfaces derived', timestamp: new Date().toISOString() }
+        ],
         nonce: 0,
         createdAt: new Date().toISOString()
     };
+
+    ledger.accounts[address] = newAccount;
 
     if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
     ledger.treasury.btc_deposits[external_addresses.BTC] = address;
 
     saveLedger();
-    console.log(`[RUNTIME] Authority Runtime initialized for ${handle}. Policies active.`);
-    return { success: true, address, balances: ledger.accounts[address].balances, external_addresses, policies: ledger.accounts[address].authority_policies };
+    console.log(`[DAOS] Authority State Transition: Genesis ${handle}`);
+    return { success: true, account: newAccount };
 });
 
 // 4. Generate BTC Deposit Address (Simulated Treasury)
