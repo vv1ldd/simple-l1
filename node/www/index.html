@@ -60,6 +60,23 @@
 
     <header class="hero">
         <div class="container hero-container">
+            <!-- Live Network Status Bar -->
+            <div class="network-status-bar">
+                <div class="status-item">
+                    <span class="status-dot pulse"></span>
+                    <span class="status-label">NETWORK:</span>
+                    <span id="stat-network" class="status-value">LOADING...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">ACCOUNTS:</span>
+                    <span id="stat-accounts" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">UPTIME:</span>
+                    <span id="stat-uptime" class="status-value">--</span>
+                </div>
+            </div>
+            
             <div class="badge-brutal" data-i18n="hero_badge">SOVEREIGN LEDGER</div>
             <h1 class="hero-title" data-i18n="hero_title">THE AUTHORITY OF HUMAN INTENT.</h1>
             <p class="hero-sub" data-i18n="hero_sub">
