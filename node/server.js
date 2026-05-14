@@ -31,15 +31,16 @@ const calculateAddress = (pubKeyHex) => {
     return `sl1_${pubKeyHex.substring(0, 40)}`;
 };
 
-// --- ROUTES ---
+// --- API ROUTES ---
 
-// 1. Root Info
-fastify.get('/', async () => {
+// Node Status
+fastify.get('/api/status', async (request, reply) => {
     return {
-        network: 'Simple-L1 Alpha',
-        version: '0.1.0',
+        network: "Simple-L1 Alpha",
+        version: "0.1.0",
         uptime: process.uptime(),
-        total_accounts: Object.keys(ledger.accounts).length
+        total_accounts: Object.keys(ledger.accounts).length,
+        total_transactions: ledger.transactions.length
     };
 });
 
