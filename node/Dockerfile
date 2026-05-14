@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 # Install PHP for the MDK Kernel
-RUN apk add --no-cache php82 php82-json php82-openssl php82-mbstring php82-tokenizer
+RUN apk add --no-cache php83 php83-json php83-openssl php83-mbstring php83-tokenizer
 
 WORKDIR /app
 
