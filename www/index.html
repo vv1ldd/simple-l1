@@ -186,45 +186,35 @@
 
     <section id="specs" class="specs-section">
         <div class="container">
-            <div class="section-header">
-                <h2 class="section-title" data-i18n="sect_specs_title">СПЕЦИФИКАЦИИ (RFC)</h2>
+            <h2 class="section-title">AUTHORITY ARCHITECTURE</h2>
+            <div class="architecture-grid">
+                <div class="arch-card">
+                    <h3>Canonical Root</h3>
+                    <p>sl1:handle — the immutable source of authority anchored in hardware. Not a wallet, but a universal identity namespace.</p>
+                </div>
+                <div class="arch-card">
+                    <h3>Settlement Projections</h3>
+                    <p>Network-native interfaces (BTC, ETH, SOL) derived deterministically from the root authority. Execution surfaces for global liquidity.</p>
+                </div>
             </div>
-            <div class="specs-list">
-                <div class="spec-item">
-                    <div class="spec-badge">RFC-0001</div>
-                    <div class="spec-info">
-                        <h3>Core Cryptography & Addressing Scheme</h3>
-                        <p data-i18n="spec1_desc">Кривая NIST P-256, хэш BLAKE3-160 и Bech32m адресация с префиксом 'sl1'.</p>
-                    </div>
-                </div>
-                <div class="spec-item">
-                    <div class="spec-badge">RFC-0002</div>
-                    <div class="spec-info">
-                        <h3>Intent & WebAuthn Serialization Schema</h3>
-                        <p data-i18n="spec2_desc">Математический мост между ClientDataJSON и BLAKE3-хэшем намерения.</p>
-                    </div>
-                </div>
-                <div class="spec-item">
-                    <div class="spec-badge">RFC-0003</div>
-                    <div class="spec-info">
-                        <h3>Canonical Serialization & Replay Protection</h3>
-                        <p data-i18n="spec3_desc">Borsh-лейаут, 32-байтовый Domain Separation и защита Nonce.</p>
-                    </div>
-                </div>
-                <div class="spec-item">
-                    <div class="spec-badge">RFC-0004</div>
-                    <div class="spec-info">
-                        <h3>Block Structure & Deterministic Execution</h3>
-                        <p data-i18n="spec4_desc">Связывание Merkle, инварианты времени и атомарное пакетное выполнение.</p>
-                    </div>
-                </div>
-                <div class="spec-item">
-                    <div class="spec-badge">RFC-0005</div>
-                    <div class="spec-info">
-                        <h3>Ledger Lineage Persistence & Recovery</h3>
-                        <p data-i18n="spec5_desc">Аппенд-онли Block Log, fsync-гарантии и Deterministic Replay из пепла.</p>
-                    </div>
-                </div>
+
+            <div class="json-manifest-box">
+                <div class="json-header">IDENTITY MANIFEST [VERSION 0.1.0]</div>
+                <pre class="json-content">
+{
+  <span class="json-key">"authority"</span>: <span class="json-string">"sl1:user_handle"</span>,
+  <span class="json-key">"authentication"</span>: {
+    <span class="json-key">"method"</span>: <span class="json-string">"Passkey / P-256"</span>,
+    <span class="json-key">"enclave"</span>: <span class="json-string">"Hardware-bound"</span>
+  },
+  <span class="json-key">"projections"</span>: {
+    <span class="json-key">"bitcoin"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"native-segwit"</span> },
+    <span class="json-key">"ethereum"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"evm-projection"</span> },
+    <span class="json-key">"solana"</span>: { <span class="json-key">"interface"</span>: <span class="json-string">"pda-authority"</span> }
+  },
+  <span class="json-key">"orchestration"</span>: <span class="json-string">"Simple-L1 Fabric"</span>
+}
+                </pre>
             </div>
         </div>
     </section>

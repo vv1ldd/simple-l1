@@ -618,6 +618,55 @@ section {
 }
 
 /* Footer */
+/* Architecture Section */
+.architecture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.arch-card {
+    background: #fbfbfb;
+    border: 3px solid var(--border-black);
+    padding: 30px;
+    box-shadow: 8px 8px 0px var(--border-black);
+}
+
+.arch-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+}
+
+.json-manifest-box {
+    background: #111;
+    border: 3px solid var(--border-black);
+    box-shadow: 12px 12px 0px var(--card-yellow);
+    overflow: hidden;
+}
+
+.json-header {
+    background: #333;
+    color: #fff;
+    padding: 10px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+}
+
+.json-content {
+    padding: 30px;
+    color: #eee;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.json-key { color: var(--card-yellow); }
+.json-string { color: #00ff00; }
+
 .footer {
     padding: 60px 0 40px;
     background-color: var(--clr-white);

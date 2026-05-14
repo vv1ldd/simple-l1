@@ -20,7 +20,6 @@ async function updateNetworkStatus() {
             elUptime.textContent = `${minutes}m ${seconds}s`;
         }
         
-        // Update portfolio balances if address exists
         if (window.currentAddress) {
             updateBalances();
         }
@@ -48,7 +47,6 @@ async function updateBalances() {
     } catch (err) {}
 }
 
-// Poll every 5 seconds
 setInterval(updateNetworkStatus, 5000);
 document.addEventListener('DOMContentLoaded', updateNetworkStatus);
 
@@ -101,19 +99,10 @@ function setLanguage(lang) {
         }
     });
 
-    // Update placeholders
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[lang][key]) {
-            el.placeholder = translations[lang][key];
-        }
-    });
-
     document.documentElement.lang = lang;
     localStorage.setItem('preferred-lang', lang);
 }
 
-// Initial language setup
 document.addEventListener('DOMContentLoaded', () => {
     const savedLang = localStorage.getItem('preferred-lang') || 'ru';
     const langSelect = document.getElementById('lang-select');
@@ -125,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* -------------------------------------------------------------------------
-   TERMINAL EMULATOR LOGIC (IDENTITY & ASSETS)
+   TERMINAL LOGIC (AUTHORITY NARRATIVE)
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
@@ -175,11 +164,11 @@ async function runRealConsensus() {
     consoleOutput.innerHTML = '';
     btnConsensus.disabled = true;
     
-    appendLine(`[SYSTEM] Подготовка вашего суверенного паспорта для ${handle}...`, 'text-highlight');
+    appendLine(`[AUTHORITY] Инициализация канонического корня для ${handle}...`, 'text-highlight');
     await sleep(500);
     
     try {
-        appendLine(`>>> [1/5] СОЗДАНИЕ ЛИЧНОСТИ: Обращение к защищенному чипу...`);
+        appendLine(`>>> [1/5] АНКОРИНГ: Привязка авторитета к аппаратному анклаву...`);
         
         const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
         const options = await optionsRes.json();
@@ -187,22 +176,23 @@ async function runRealConsensus() {
         options.challenge = base64ToBuffer(options.challenge);
         options.user.id = base64ToBuffer(options.user.id);
         
-        appendLine(`[ACTION] ШАГ #1: Используйте TouchID/FaceID для подписи вашей личности...`, 'text-yellow');
+        appendLine(`[ACTION] Подпишите глобальный манифест личности через TouchID/FaceID...`, 'text-yellow');
         
         const credential = await navigator.credentials.create({ publicKey: options });
         
-        appendLine(`[OK] Аппаратное подтверждение получено!`, 'text-green');
+        appendLine(`[OK] Hardware-bound Authority Established!`, 'text-green');
         await sleep(400);
         
         const credId = bufferToHex(credential.rawId);
         const pubKeyHex = credId.substring(0, 64); 
         const address = `sl1_${pubKeyHex.substring(0, 40)}`;
-        window.currentAddress = address; // Global for portfolio
+        window.currentAddress = address;
         
-        appendLine(`[IDENTITY] Ваш уникальный адрес: <span style="color:var(--card-yellow);">${address}</span>`);
+        appendLine(`[ROOT] Canonical ID: <span style="color:var(--card-yellow);">${address}</span>`);
         await sleep(600);
         
-        appendLine(`[NETWORK] Синхронизация с облачной нодой Wildflow...`);
+        appendLine(`[PROJECTION] Развертывание расчетных интерфейсов BTC и ETH...`);
+        await sleep(800);
         
         const syncRes = await fetch('/accounts', {
             method: 'POST',
@@ -213,19 +203,18 @@ async function runRealConsensus() {
         const syncData = await syncRes.json();
         
         if (syncData.success) {
-            appendLine(`[SUCCESS] Поздравляем! Ваша суверенная личность активирована.`, 'text-green');
-            appendLine(`[GIFT] Вам зачислено: 1000 SL1 (приветственный бонус)`, 'text-yellow');
+            appendLine(`[SUCCESS] Суверенный манифест опубликован в Simple-L1 Fabric.`, 'text-green');
+            appendLine(`[ASSETS] Проекции активированы. Баланс: 1000 SL1.`, 'text-yellow');
             updateNetworkStatus();
             
-            // Switch to Portfolio after success
             await sleep(1500);
             showTab('portfolio');
         } else {
-            throw new Error(syncData.error || 'Ошибка синхронизации');
+            throw new Error(syncData.error || 'Ошибка манифеста');
         }
         
     } catch (err) {
-        appendLine(`[!] ОШИБКА: АКТИВАЦИЯ ПРЕРВАНА`, 'text-red');
+        appendLine(`[!] ОШИБКА: НАРУШЕНИЕ ЦЕПОЧКИ АВТОРИТЕТА`, 'text-red');
         appendLine(`-> Причина: <span style="font-size:0.8rem;">${err.message}</span>`);
     }
     btnConsensus.disabled = false;
@@ -236,11 +225,11 @@ if (btnConsensus) {
 }
 
 /* -------------------------------------------------------------------------
-   BTC DEPOSIT FLOW
+   ASSET SETTLEMENT (BTC PROJECTION)
 -------------------------------------------------------------------------- */
 window.initiateBTCDeposit = async function() {
     if (!window.currentAddress) {
-        alert('Пожалуйста, сначала активируйте свою личность (IDENTITY)');
+        alert('Пожалуйста, сначала активируйте свой ROOT AUTHORITY');
         showTab('identity');
         return;
     }
@@ -248,7 +237,7 @@ window.initiateBTCDeposit = async function() {
     const btn = event.currentTarget;
     const oldText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = 'GENERATING ADDRESS...';
+    btn.innerHTML = 'SYNCING PROJECTION...';
     
     try {
         const res = await fetch('/api/assets/deposit', {
@@ -258,14 +247,12 @@ window.initiateBTCDeposit = async function() {
         });
         const { deposit_address } = await res.json();
         
-        btn.innerHTML = `SEND BTC TO: <span style="font-size:0.7rem;">${deposit_address}</span>`;
+        btn.innerHTML = `BTC INTERFACE: <span style="font-size:0.7rem;">${deposit_address}</span>`;
         
-        // Wait 5 seconds to simulate Bitcoin network confirmation
-        await sleep(5000);
-        btn.innerHTML = 'CONFIRMING ON BITCOIN...';
-        await sleep(3000);
+        await sleep(4000);
+        btn.innerHTML = 'VALIDATING BITCOIN SETTLEMENT...';
+        await sleep(2000);
         
-        // Simulate minting on SL1
         const mintRes = await fetch('/api/assets/simulate-mint', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -273,7 +260,7 @@ window.initiateBTCDeposit = async function() {
         });
         
         if (mintRes.ok) {
-            btn.innerHTML = 'DEPOSIT SUCCESSFUL! ✨';
+            btn.innerHTML = 'SETTLEMENT COMPLETE! ✨';
             btn.classList.replace('btn-yellow', 'btn-green');
             updateBalances();
             setTimeout(() => {
@@ -284,7 +271,7 @@ window.initiateBTCDeposit = async function() {
         }
         
     } catch (err) {
-        btn.innerHTML = 'ERROR IN DEPOSIT';
+        btn.innerHTML = 'SETTLEMENT FAILED';
         console.error(err);
     }
 };
