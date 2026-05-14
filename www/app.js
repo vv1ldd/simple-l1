@@ -1,12 +1,44 @@
 /* -------------------------------------------------------------------------
-   NETWORK STATUS POLLING & DATA REFRESH
+   HA NETWORK STATUS POLLING (Failover Logic)
 -------------------------------------------------------------------------- */
+window.known_peers = [];
+window.active_node_url = ''; // Empty means current origin
+
+async function smartFetch(path, options = {}) {
+    const urls = [window.active_node_url, ...window.known_peers, ''];
+    for (const baseUrl of urls) {
+        try {
+            const fullUrl = baseUrl ? (baseUrl.endsWith('/') ? baseUrl + path.substring(1) : baseUrl + path) : path;
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 3000); // 3s timeout
+            
+            const response = await fetch(fullUrl, { ...options, signal: controller.signal });
+            clearTimeout(id);
+            
+            if (response.ok) {
+                if (baseUrl !== window.active_node_url) {
+                    console.log(`[HA] Switched active node to: ${baseUrl || 'origin'}`);
+                    window.active_node_url = baseUrl;
+                }
+                return response;
+            }
+        } catch (err) {
+            console.warn(`[HA] Node ${baseUrl || 'origin'} failed, trying next...`);
+        }
+    }
+    throw new Error('All nodes unreachable');
+}
+
 async function updateNetworkStatus() {
     try {
-        const response = await fetch('/api/status');
-        if (!response.ok) return;
+        const response = await smartFetch('/api/status');
         const data = await response.json();
         
+        // Discovery: Update peers list
+        if (data.peers && data.peers.length > 0) {
+            window.known_peers = [...new Set([...window.known_peers, ...data.peers])];
+        }
+
         const elNetwork = document.getElementById('stat-network');
         const elNodes = document.getElementById('stat-nodes');
         const elAccounts = document.getElementById('stat-accounts');
@@ -17,9 +49,8 @@ async function updateNetworkStatus() {
         }
         
         if (elNodes) {
-            const peersCount = (data.peers || []).length;
-            elNodes.textContent = `${peersCount + 1} (Live)`;
-            elNodes.title = `Peers: ${(data.peers || []).join(', ')}`;
+            const totalNodes = (data.peers || []).length + 1;
+            elNodes.textContent = `${totalNodes} (Live)`;
         }
 
         if (elAccounts) elAccounts.textContent = data.total_accounts;
@@ -35,67 +66,39 @@ async function updateNetworkStatus() {
         }
         
     } catch (err) {
-        console.warn('Failed to fetch network status:', err);
+        console.error('[HA] Network totally offline');
     }
 }
 
 async function refreshAccountData() {
     if (!window.currentAddress) return;
     try {
-        const res = await fetch(`/accounts/${window.currentAddress}`);
-        if (!res.ok) return;
+        const res = await smartFetch(`/accounts/${window.currentAddress}`);
         const account = await res.json();
         window.currentAccount = account; 
         
-        // Update Balances
+        // Update UI
         document.getElementById('balance-sl1').textContent = (account.balances.SL1 || 0).toLocaleString();
         document.getElementById('balance-btc').textContent = (account.balances.BTC || 0).toFixed(8);
         document.getElementById('balance-eth').textContent = (account.balances.ETH || 0).toFixed(4);
 
-        // Update Status Indicators
-        const hasPendingBTC = account.provenance_log.some(e => e.type === 'SETTLE_START') && 
-                             !account.provenance_log.some(e => e.type === 'SETTLE_FINAL' && new Date(e.timestamp) > new Date(account.provenance_log.find(x => x.type === 'SETTLE_START').timestamp));
-        
-        const elStatusBTC = document.getElementById('status-btc');
-        if (elStatusBTC) {
-            if (hasPendingBTC) {
-                elStatusBTC.textContent = 'STATUS: SETTLING';
-                elStatusBTC.style.color = 'var(--card-yellow)';
-            } else {
-                elStatusBTC.textContent = 'STATUS: FINALIZED';
-                elStatusBTC.style.color = '#888';
-            }
-        }
-
-        // Update Projections
         const addrBTC = document.getElementById('addr-btc');
         const addrETH = document.getElementById('addr-eth');
         if (addrBTC) addrBTC.textContent = account.external_addresses.BTC || 'REVOKED';
         if (addrETH) addrETH.textContent = account.external_addresses.ETH || 'REVOKED';
 
-        // Update Policies
         if (account.authority_policies) {
             const list = document.getElementById('policy-list');
             let policyItems = account.authority_policies.active_policies.map(p => `<div class="policy-item">✓ ${p}</div>`);
-            if (account.authority_policies.delegations) {
-                account.authority_policies.delegations.forEach(d => {
-                    policyItems.push(`<div class="policy-item" style="color:var(--card-yellow)">→ Delegate: ${d.to} (${d.limit} ${d.asset})</div>`);
-                });
-            }
             list.innerHTML = policyItems.join('');
-            
-            const scope = document.getElementById('policy-scope');
-            scope.innerHTML = (account.authority_policies.intent_scope || []).map(s => `<span class="tag">${s.toUpperCase()}</span>`).join('');
         }
 
-        // Update Provenance Log
         if (account.provenance_log) {
             const logContainer = document.getElementById('provenance-log');
             logContainer.innerHTML = account.provenance_log.map(entry => `
                 <div class="log-entry">
                     <div class="log-time">${new Date(entry.timestamp).toLocaleTimeString()}</div>
                     <div><span class="log-type">${entry.type}</span> <span class="log-detail">${entry.detail}</span></div>
-                    ${entry.intent_hash ? `<div class="log-meta">INTENT: ${entry.intent_hash.substring(0, 12)}...</div>` : ''}
                 </div>
             `).reverse().join('');
         }
@@ -120,46 +123,7 @@ window.showSendForm = () => document.getElementById('send-form').style.display =
 window.hideSendForm = () => document.getElementById('send-form').style.display = 'none';
 
 /* -------------------------------------------------------------------------
-   AUTHORITY MANAGEMENT (DELEGATE / REVOKE)
--------------------------------------------------------------------------- */
-window.executeDelegate = async function() {
-    const target = document.getElementById('delegate-to').value;
-    const limit = parseFloat(document.getElementById('delegate-limit').value);
-    if (!target || isNaN(limit)) return alert('Укажите получателя и лимит');
-
-    const btn = event.currentTarget;
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch('/api/authority/manage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address: window.currentAddress, type: 'DELEGATE', target, asset: 'SL1', limit })
-        });
-        if ((await res.json()).success) {
-            refreshAccountData();
-            alert(`Доступ к ${limit} SL1 делегирован пользователю ${target}`);
-        }
-    } catch (err) { alert('Ошибка делегирования'); }
-    btn.disabled = false;
-};
-
-window.revokeProjection = async function(asset) {
-    if (!confirm(`Вы уверены, что хотите отозвать проекцию ${asset}? Это действие необратимо.`)) return;
-    try {
-        const res = await fetch('/api/authority/manage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address: window.currentAddress, type: 'REVOKE', asset })
-        });
-        if ((await res.json()).success) {
-            refreshAccountData();
-        }
-    } catch (err) { alert('Ошибка отзыва'); }
-};
-
-/* -------------------------------------------------------------------------
-   CORE AUTHORIZATION & ORCHESTRATION
+   CORE AUTHORIZATION
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
@@ -184,7 +148,7 @@ async function runRealConsensus() {
     try {
         const address = `sl1_${Math.random().toString(16).substring(2, 42)}`;
         window.currentAddress = address;
-        const syncRes = await fetch('/accounts', {
+        const syncRes = await smartFetch('/accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address, publicKey: '0x...', credentialId: '...', handle })
@@ -212,7 +176,7 @@ window.executeSend = async function() {
     btn.disabled = true;
     
     try {
-        const res = await fetch('/transactions', {
+        const res = await smartFetch('/transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ from: window.currentAddress, to_handle, amount, asset: 'SL1' })
@@ -231,7 +195,7 @@ window.initiateBTCDeposit = async function() {
     const btn = event.currentTarget;
     btn.disabled = true;
     try {
-        const res = await fetch('/api/assets/deposit', {
+        const res = await smartFetch('/api/assets/deposit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sl1_address: window.currentAddress, asset: 'BTC' })
@@ -239,7 +203,7 @@ window.initiateBTCDeposit = async function() {
         const { deposit_address } = await res.json();
         btn.innerHTML = `BTC: ${deposit_address.substring(0, 10)}...`;
         await sleep(3000);
-        await fetch('/api/assets/simulate-mint', {
+        await smartFetch('/api/assets/simulate-mint', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ btc_address: deposit_address, amount: 0.125 })
