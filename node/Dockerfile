@@ -1,13 +1,13 @@
 FROM node:20-alpine
 
 # Install PHP for the MDK Kernel
-RUN apk add --no-cache php83 php83-json php83-openssl php83-mbstring php83-tokenizer build-base && \
+RUN apk add --no-cache php83 php83-json php83-openssl php83-mbstring php83-tokenizer build-base python3 && \
     ln -sf /usr/bin/php83 /usr/bin/php
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --verbose
 
 # Copy kernel source (now local to node folder)
 COPY kernel ./kernel
