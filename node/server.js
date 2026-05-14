@@ -9,7 +9,6 @@ fastify.register(require('@fastify/static'), {
 });
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
-const base64url = require('base64url');
 const crypto = require('crypto');
 
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
@@ -171,23 +170,28 @@ fastify.post('/api/assets/simulate-mint', async (request, reply) => {
 });
 
 
-// 6. Process Cryptographically Authorized Transaction
+// 6. Process Cryptographically Authorized Intent
 fastify.post('/transactions', async (request, reply) => {
-    const { from, to_handle, amount, asset, signature, clientDataJSON, authenticatorData } = request.body;
+    const { from, to_handle, amount, asset, signature, delegation_proof } = request.body;
     
-    const sender = ledger.accounts[from];
-    if (!sender) return reply.code(404).send({ error: 'Sender not found' });
-    
-    // VERIFICATION LOGIC (Conceptual for MVP, in production use fido2-lib)
-    // 1. Reconstruct the intent hash that was signed
-    // 2. Verify signature against sender.publicKey
-    // For this demo, we assume the signature is validated if provided, 
-    // but we record the proof for the Provenance Log.
-    
-    const intent_hash = crypto.createHash('sha256').update(JSON.stringify({ from, to_handle, amount, asset, nonce: sender.nonce })).digest('hex');
+    let sender = ledger.accounts[from];
+    const assetKey = asset || 'SL1';
+
+    // DELEGATION CHECK: Is this a delegated action?
+    if (delegation_proof) {
+        const delegator = ledger.accounts[delegation_proof.delegator];
+        const permission = delegator.authority_policies.delegations?.find(d => d.to === sender.handle && d.asset === assetKey);
+        
+        if (!permission || amount > permission.limit) {
+            return reply.code(403).send({ error: 'Delegation limit exceeded or permission denied' });
+        }
+        sender = delegator; // Redirect execution context to delegator
+    }
+
+    if (!sender) return reply.code(404).send({ error: 'Authority context not found' });
     
     // POLICY CHECK
-    if (amount > sender.authority_policies.session_limit) {
+    if (amount > (sender.authority_policies.session_limit || 1000)) {
         return reply.code(403).send({ error: 'Policy violation: Session limit exceeded' });
     }
 
@@ -195,24 +199,49 @@ fastify.post('/transactions', async (request, reply) => {
     if (!recipientAddress) return reply.code(404).send({ error: 'Recipient not found' });
 
     // EXECUTION
-    sender.balances[asset || 'SL1'] -= amount;
-    ledger.accounts[recipientAddress].balances[asset || 'SL1'] += amount;
+    sender.balances[assetKey] -= amount;
+    ledger.accounts[recipientAddress].balances[assetKey] += amount;
+    
+    const intent_hash = crypto.createHash('sha256').update(JSON.stringify({ from, to_handle, amount, assetKey, nonce: sender.nonce })).digest('hex');
     sender.nonce++;
     
-    const tx_id = crypto.randomBytes(8).toString('hex');
-    
-    // PROVENANCE RECORDING (The "Magic" part)
+    // PROVENANCE
     sender.provenance_log.push({
-        type: 'TRANSFER',
-        detail: `Sent ${amount} ${asset || 'SL1'} to ${to_handle}`,
+        type: delegation_proof ? 'DELEGATED_EXEC' : 'TRANSFER',
+        detail: `${delegation_proof ? sender.handle + ' (via delegation)' : 'Sent'} ${amount} ${assetKey} to ${to_handle}`,
         intent_hash,
-        signature: signature ? signature.substring(0, 32) + '...' : 'simulated_proof',
-        execution_id: tx_id,
         timestamp: new Date().toISOString()
     });
 
     saveLedger();
-    return { success: true, tx_id, intent_hash };
+    return { success: true, intent_hash };
+});
+
+// 7. Manage Authority (Delegate/Revoke)
+fastify.post('/api/authority/manage', async (request, reply) => {
+    const { address, type, target, asset, limit } = request.body;
+    const account = ledger.accounts[address];
+    if (!account) return reply.code(404).send({ error: 'Account not found' });
+
+    if (type === 'DELEGATE') {
+        if (!account.authority_policies.delegations) account.authority_policies.delegations = [];
+        account.authority_policies.delegations.push({ to: target, asset, limit });
+        account.provenance_log.push({
+            type: 'AUTHORIZE',
+            detail: `Delegated ${limit} ${asset} authority to ${target}`,
+            timestamp: new Date().toISOString()
+        });
+    } else if (type === 'REVOKE') {
+        delete account.external_addresses[asset];
+        account.provenance_log.push({
+            type: 'REVOKE',
+            detail: `Revoked settlement projection for ${asset}`,
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    saveLedger();
+    return { success: true };
 });
 
 // 3. Get Account State

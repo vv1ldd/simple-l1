@@ -170,6 +170,7 @@
                             <span class="custody-badge delegated">DELEGATED (MPC-READY)</span>
                         </div>
                         <div class="asset-balance" id="balance-btc">0.00000000</div>
+                        <button class="btn-mini btn-red" onclick="revokeProjection('BTC')">REVOKE</button>
                     </div>
 
                     <div class="asset-card eth">
@@ -181,6 +182,7 @@
                             <span class="custody-badge delegated">DELEGATED (AA-READY)</span>
                         </div>
                         <div class="asset-balance" id="balance-eth">0.0000</div>
+                        <button class="btn-mini btn-red" onclick="revokeProjection('ETH')">REVOKE</button>
                     </div>
                     
                     <div class="portfolio-actions" style="display: flex; gap: 10px;">
@@ -221,6 +223,15 @@
                             <div class="policy-item">✓ Session Limit: 1000 SL1</div>
                             <div class="policy-item">✓ Hardware-bound Auth</div>
                             <div class="policy-item">✓ Domain Isolation</div>
+                        </div>
+                    </div>
+
+                    <div class="policy-section">
+                        <div class="policy-label">DELEGATE AUTHORITY</div>
+                        <div class="delegate-form">
+                            <input type="text" id="delegate-to" class="brutal-input-mini" placeholder="@partner">
+                            <input type="number" id="delegate-limit" class="brutal-input-mini" placeholder="limit">
+                            <button class="btn-mini btn-purple" onclick="executeDelegate()">GRANT</button>
                         </div>
                     </div>
 
