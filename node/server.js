@@ -9,16 +9,15 @@ fastify.register(require('@fastify/static'), {
 });
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
-const base64url = require('base64url'); // We'll need a way to handle base64url or use Buffer
+const base64url = require('base64url');
 const crypto = require('crypto');
 
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
 let ledger = {
-    accounts: {}, // address -> { handle, publicKey, balances, authority_policies, provenance_log }
+    accounts: {}, 
+    pending_settlements: [], // { id, sl1_address, asset, amount, state: 'SETTLING' | 'FINALIZED' }
     transactions: [],
-    treasury: {
-        btc_deposits: {}
-    }
+    treasury: { btc_deposits: {} }
 };
 
 if (fs.existsSync(LEDGER_FILE)) {
@@ -120,40 +119,55 @@ fastify.post('/accounts', async (request, reply) => {
 // 4. Generate BTC Deposit Address (Simulated Treasury)
 fastify.post('/api/assets/deposit', async (request, reply) => {
     const { sl1_address, asset } = request.body;
-    if (asset !== 'BTC') return reply.code(400).send({ error: 'Only BTC supported' });
-    
-    // Generate a unique BTC address linked to this SL1 account
-    const btcAddress = `bc1_${Math.random().toString(36).substring(2, 15)}`;
-    
-    if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
-    ledger.treasury.btc_deposits[btcAddress] = sl1_address;
-    
+    if (!ledger.accounts[sl1_address]) return reply.code(404).send({ error: 'Account not found' });
+    const deposit_address = ledger.accounts[sl1_address].external_addresses[asset] || `bc1_${crypto.randomBytes(5).toString('hex')}`;
+    ledger.treasury.btc_deposits[deposit_address] = sl1_address;
     saveLedger();
-    return { deposit_address: btcAddress, asset: 'BTC' };
+    return { deposit_address };
 });
 
-// 5. Simulate BTC Deposit (For Demo)
+// 5. Simulate Bridge Intent (Asynchronous Settlement)
 fastify.post('/api/assets/simulate-mint', async (request, reply) => {
     const { btc_address, amount } = request.body;
     const sl1_address = ledger.treasury.btc_deposits[btc_address];
-    
-    if (!sl1_address || !ledger.accounts[sl1_address]) {
-        return reply.code(404).send({ error: 'Deposit address not found' });
-    }
-    
-    ledger.accounts[sl1_address].balances.BTC += parseFloat(amount);
-    
-    // Log pseudo-transaction
-    ledger.transactions.push({
-        type: 'MINT',
-        asset: 'BTC',
-        to: sl1_address,
-        amount,
-        timestamp: new Date().toISOString()
+    if (!sl1_address) return reply.code(404).send({ error: 'Deposit address not recognized' });
+
+    const settlement_id = crypto.randomBytes(4).toString('hex');
+    const settlement = {
+        id: settlement_id, sl1_address, asset: 'BTC', amount, state: 'SETTLING', startedAt: new Date().toISOString()
+    };
+    if (!ledger.pending_settlements) ledger.pending_settlements = [];
+    ledger.pending_settlements.push(settlement);
+
+    const account = ledger.accounts[sl1_address];
+    account.provenance_log.push({
+        type: 'SETTLE_START',
+        detail: `Bridge intent detected: ${amount} BTC (ID: ${settlement_id})`,
+        state: 'SETTLING',
+        timestamp: settlement.startedAt
     });
-    
+
     saveLedger();
-    return { success: true, new_balance: ledger.accounts[sl1_address].balances.BTC };
+
+    // Simulate asynchronous finality (8s delay)
+    setTimeout(() => {
+        const s = ledger.pending_settlements.find(x => x.id === settlement_id);
+        if (s && ledger.accounts[s.sl1_address]) {
+            const acc = ledger.accounts[s.sl1_address];
+            s.state = 'FINALIZED';
+            acc.balances.BTC += parseFloat(amount);
+            acc.provenance_log.push({
+                type: 'SETTLE_FINAL',
+                detail: `Bridge finalized: ${amount} BTC credited`,
+                state: 'FINALIZED',
+                timestamp: new Date().toISOString()
+            });
+            saveLedger();
+            console.log(`[SETTLEMENT] Finalized ID: ${settlement_id} for ${acc.handle}`);
+        }
+    }, 8000);
+
+    return { success: true, settlement_id, state: 'SETTLING' };
 });
 
 

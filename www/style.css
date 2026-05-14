@@ -815,6 +815,14 @@ section {
     padding: 8px;
 }
 
+.asset-status {
+    font-size: 0.6rem;
+    color: #888;
+    margin: 4px 0;
+    letter-spacing: 0.5px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
 .footer {
     padding: 60px 0 40px;
     background-color: var(--clr-white);

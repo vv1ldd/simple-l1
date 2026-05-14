@@ -35,12 +35,25 @@ async function refreshAccountData() {
         const res = await fetch(`/accounts/${window.currentAddress}`);
         if (!res.ok) return;
         const account = await res.json();
-        window.currentAccount = account; // Store for nonce access
+        window.currentAccount = account; 
         
         // Update Balances
         document.getElementById('balance-sl1').textContent = account.balances.SL1.toLocaleString();
         document.getElementById('balance-btc').textContent = account.balances.BTC.toFixed(8);
         document.getElementById('balance-eth').textContent = (account.balances.ETH || 0).toFixed(4);
+
+        // Update Status Indicators (Asynchronous Finality)
+        const hasPendingBTC = account.provenance_log.some(e => e.type === 'SETTLE_START') && 
+                             !account.provenance_log.some(e => e.type === 'SETTLE_FINAL' && new Date(e.timestamp) > new Date(account.provenance_log.find(x => x.type === 'SETTLE_START').timestamp));
+        
+        const elStatusBTC = document.getElementById('status-btc');
+        if (hasPendingBTC) {
+            elStatusBTC.textContent = 'STATUS: SETTLING (WAITING CONFIRMATIONS)';
+            elStatusBTC.style.color = 'var(--card-yellow)';
+        } else {
+            elStatusBTC.textContent = 'STATUS: FINALIZED';
+            elStatusBTC.style.color = '#888';
+        }
 
         // Update Projections
         if (account.external_addresses) {
@@ -71,7 +84,7 @@ async function refreshAccountData() {
     } catch (err) {}
 }
 
-setInterval(updateNetworkStatus, 5000);
+setInterval(updateNetworkStatus, 3000); // Polling faster for better async feedback
 document.addEventListener('DOMContentLoaded', updateNetworkStatus);
 
 /* -------------------------------------------------------------------------
@@ -183,8 +196,6 @@ window.executeSend = async function() {
         const intent_hash = bufferToHex(intent_hash_buffer);
 
         appendLine(`[INTENT] Создание намерения: ${intent_hash.substring(0, 12)}...`, 'text-highlight');
-        
-        // REAL WEBAUTHN ASSERTION
         const authOptions = {
             challenge: intent_hash_buffer,
             allowCredentials: [{ id: base64ToBuffer(window.currentAccount.credentialId), type: 'public-key' }],
@@ -193,9 +204,7 @@ window.executeSend = async function() {
         
         appendLine(`[ACTION] Подтвердите перевод через FaceID/TouchID...`, 'text-yellow');
         const assertion = await navigator.credentials.get({ publicKey: authOptions });
-        
         const sigHex = bufferToHex(assertion.response.signature);
-        
         appendLine(`[OK] Намерение подписано криптографически.`, 'text-green');
 
         const res = await fetch('/transactions', {
@@ -242,18 +251,21 @@ window.initiateBTCDeposit = async function() {
         });
         const { deposit_address } = await res.json();
         btn.innerHTML = `BTC ADDR: ${deposit_address.substring(0, 10)}...`;
-        await sleep(4000);
-        btn.innerHTML = 'SETTLEMENT IN PROGRESS...';
+        
+        await sleep(3000);
+        btn.innerHTML = 'DETECTING DEPOSIT...';
+        
         await sleep(2000);
         const mintRes = await fetch('/api/assets/simulate-mint', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ btc_address: deposit_address, amount: 0.125 })
         });
+        
         if (mintRes.ok) {
-            btn.innerHTML = 'SETTLEMENT COMPLETE! ✨';
+            btn.innerHTML = 'SETTLEMENT STARTED ⏳';
             refreshAccountData();
-            setTimeout(() => { btn.innerHTML = oldText; btn.disabled = false; }, 5000);
+            setTimeout(() => { btn.innerHTML = oldText; btn.disabled = false; }, 4000);
         }
     } catch (err) { btn.innerHTML = 'FAILED'; btn.disabled = false; }
 };
