@@ -481,8 +481,21 @@ section {
     color: var(--card-yellow);
 }
 
+.native-addr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: #555;
+    margin-top: 4px;
+    word-break: break-all;
+    max-width: 150px;
+}
+
 .asset-card.btc .asset-symbol {
     color: #f7931a;
+}
+
+.asset-card.eth .asset-symbol {
+    color: #627eea;
 }
 
 .portfolio-actions {

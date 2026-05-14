@@ -79,21 +79,35 @@ fastify.post('/accounts', async (request, reply) => {
         return reply.code(409).send({ error: 'Account already exists' });
     }
 
+    // NATIVE MULTI-CHAIN ADDRESS GENERATION
+    // In a real implementation, these would be derived via MPC or HD Wallet from the identity root
+    const external_addresses = {
+        BTC: `bc1_${Math.random().toString(36).substring(2, 12)}`,
+        ETH: `0x${Math.random().toString(16).substring(2, 42)}`,
+        SOL: `${Math.random().toString(36).substring(2, 32)}`
+    };
+
     ledger.accounts[address] = {
         handle: handle || 'anonymous',
         publicKey,
         credentialId,
         balances: {
-            SL1: 1000, // Genesis gift
-            BTC: 0
+            SL1: 1000,
+            BTC: 0,
+            ETH: 0
         },
+        external_addresses,
         nonce: 0,
         createdAt: new Date().toISOString()
     };
 
+    // Link deposit addresses in treasury
+    if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
+    ledger.treasury.btc_deposits[external_addresses.BTC] = address;
+
     saveLedger();
-    console.log(`[LEDGER] New account registered: ${handle} (${address})`);
-    return { success: true, address, balances: ledger.accounts[address].balances };
+    console.log(`[LEDGER] New sovereign identity: ${handle} with native multi-chain support.`);
+    return { success: true, address, balances: ledger.accounts[address].balances, external_addresses };
 });
 
 // 4. Generate BTC Deposit Address (Simulated Treasury)

@@ -39,6 +39,12 @@ async function updateBalances() {
         
         document.getElementById('balance-sl1').textContent = account.balances.SL1.toLocaleString();
         document.getElementById('balance-btc').textContent = account.balances.BTC.toFixed(8);
+        document.getElementById('balance-eth').textContent = (account.balances.ETH || 0).toFixed(4);
+
+        if (account.external_addresses) {
+            document.getElementById('addr-btc').textContent = account.external_addresses.BTC;
+            document.getElementById('addr-eth').textContent = account.external_addresses.ETH;
+        }
     } catch (err) {}
 }
 
