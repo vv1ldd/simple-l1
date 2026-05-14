@@ -369,8 +369,8 @@ fastify.post('/transactions-legacy', async (request, reply) => {
 // --- START SERVER ---
 const start = async () => {
     try {
-        await fastify.listen({ port: 3000, host: '0.0.0.0' });
-        console.log(`🚀 Simple-L1 Node running at http://localhost:3000`);
+        await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
+        console.log(`[DAOS] ${NODE_NAME} is active and listening on port ${process.env.PORT || 3000}`);
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
