@@ -5,8 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ./ledger_db.json:/app/ledger_db.json
     environment:
       - NODE_ENV=production
     restart: always
