@@ -35,12 +35,14 @@ const calculateAddress = (pubKeyHex) => {
 
 // Node Status
 fastify.get('/api/status', async (request, reply) => {
+    const handles = Object.values(ledger.accounts).map(a => a.handle).filter(Boolean);
     return {
         network: "Simple-L1 Alpha",
         version: "0.1.0",
         uptime: process.uptime(),
         total_accounts: Object.keys(ledger.accounts).length,
-        total_transactions: ledger.transactions.length
+        total_transactions: ledger.transactions.length,
+        active_handles: handles
     };
 });
 
@@ -68,13 +70,14 @@ fastify.get('/api/register/options', async (request, reply) => {
 
 // 3. Register Account (Onboarding)
 fastify.post('/accounts', async (request, reply) => {
-    const { address, publicKey, credentialId } = request.body;
+    const { address, publicKey, credentialId, handle } = request.body;
 
     if (ledger.accounts[address]) {
         return reply.code(409).send({ error: 'Account already exists' });
     }
 
     ledger.accounts[address] = {
+        handle: handle || 'anonymous',
         publicKey,
         credentialId,
         balance: 1000, // Genesis gift
@@ -83,6 +86,7 @@ fastify.post('/accounts', async (request, reply) => {
     };
 
     saveLedger();
+    console.log(`[LEDGER] New account registered: ${handle} (${address})`);
     return { success: true, address, balance: 1000 };
 });
 

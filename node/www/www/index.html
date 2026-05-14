@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple-L1 | The Sovereign Ledger Substrate</title>
+    <meta name="description" content="Минималистичный L1-протокол с passkey-first идеологией, детерминированной Borsh-сериализацией и аппаратным консенсусом.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css?v=2.0.1">
+</head>
+<body>
+    <!-- Stark Neo-Brutalist Grid Background -->
+    <div class="bg-brutalist">
+        <div class="grid-overlay"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-group">
+                <span class="logo-text">SIMPLE<span>-L1</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#manifesto" class="nav-link" data-i18n="nav_manifest">Манифест</a>
+                <a href="#engine" class="nav-link" data-i18n="nav_runtime">Рантайм</a>
+                <a href="#specs" class="nav-link" data-i18n="nav_specs">Спецификации</a>
+                
+                <!-- Neo-Brutalist Language Switcher -->
+                <select id="lang-select" class="lang-dropdown">
+                    <option value="ru">RU 🇷🇺</option>
+                    <option value="en">EN 🇺🇸</option>
+                    <option value="es">ES 🇪🇸</option>
+                    <option value="es-ar">ES 🇦🇷</option>
+                    <option value="tr">TR 🇹🇷</option>
+                    <option value="tk">TK 🇹🇲</option>
+                    <option value="kk">KK 🇰🇿</option>
+                    <option value="zh">ZH 🇨🇳</option>
+                    <option value="ja">JA 🇯🇵</option>
+                    <option value="ko">KO 🇰🇷</option>
+                    <option value="de">DE 🇩🇪</option>
+                    <option value="fr">FR 🇫🇷</option>
+                    <option value="pt">PT 🇧🇷</option>
+                    <option value="it">IT 🇮🇹</option>
+                    <option value="nl">NL 🇳🇱</option>
+                    <option value="pl">PL 🇵🇱</option>
+                    <option value="uk">UK 🇺🇦</option>
+                    <option value="hi">HI 🇮🇳</option>
+                    <option value="ar">AR 🇦🇪</option>
+                </select>
+
+                <a href="https://github.com/vv1ldd/simple-l1" class="btn btn-nav" target="_blank">GITHUB</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container hero-container">
+            <!-- Live Network Status Bar -->
+            <div class="network-status-bar">
+                <div class="status-item">
+                    <span class="status-dot pulse"></span>
+                    <span class="status-label">NETWORK:</span>
+                    <span id="stat-network" class="status-value">LOADING...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">ACCOUNTS:</span>
+                    <span id="stat-accounts" class="status-value">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">UPTIME:</span>
+                    <span id="stat-uptime" class="status-value">--</span>
+                </div>
+            </div>
+            
+            <div class="badge-brutal" data-i18n="hero_badge">SOVEREIGN LEDGER</div>
+            <h1 class="hero-title" data-i18n="hero_title">THE AUTHORITY OF HUMAN INTENT.</h1>
+            <p class="hero-sub" data-i18n="hero_sub">
+                Детерминированный консенсусный рантайм с нативной поддержкой <strong>Secure Enclave</strong>.
+                Никаких сид-фраз. Никаких мостов. Чистый хардкорный код.
+            </p>
+            <div class="hero-cta">
+                <a href="#engine" class="btn btn-yellow" data-i18n="hero_btn_engine">ЗАПУСТИТЬ ENGINE</a>
+                <a href="#specs" class="btn btn-white" data-i18n="hero_btn_specs">ТЕХ. СПЕЦИФИКАЦИИ</a>
+            </div>
+        </div>
+    </header>
+
+    <section id="manifesto" class="manifesto-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title" data-i18n="sect_manifest_title">ФУНДАМЕНТ ПРОТОКОЛА</h2>
+            </div>
+            <div class="manifesto-grid">
+                <div class="brutal-card card-yellow">
+                    <div class="card-icon">🔑</div>
+                    <h3 data-i18n="card_p1_title">PASSKEY‑FIRST</h3>
+                    <p data-i18n="card_p1_desc">Владение ключом аппаратным способом (NIST P-256). Биометрия как единственный доверенный подписывающий узел.</p>
+                </div>
+                <div class="brutal-card card-purple">
+                    <div class="card-icon">🧬</div>
+                    <h3 data-i18n="card_p2_title">CANONICAL INTENT</h3>
+                    <p data-i18n="card_p2_desc">Подпись ставится не над «текстом», а над детерминированным бинарным слепком Borsh. Ноль неопределенности.</p>
+                </div>
+                <div class="brutal-card card-red">
+                    <div class="card-icon">🛡️</div>
+                    <h3 data-i18n="card_p3_title">LINEAGE DURABILITY</h3>
+                    <p data-i18n="card_p3_desc">Холодное восстановление через Deterministic Replay. Реальность вычисляется из истории, а не диктуется памятью.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="engine" class="engine-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title" data-i18n="sect_engine_title">THE CONSENSUS ENGINE</h2>
+            </div>
+
+            <div class="brutal-terminal">
+                <div class="terminal-header">
+                    <div class="window-controls">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="window-title">validator_node_b@sl1.network</div>
+                </div>
+                <div class="terminal-body" id="console-output">
+                    <!-- Dynamic state initialization handled in JS -->
+                    <div class="terminal-line" data-i18n="term_offline">[SYSTEM] Simple-L1 Embryonic Node Offline. Ready to sync.</div>
+                    <div class="terminal-line text-highlight" data-i18n="term_wait_gen">Waiting for genesis block proposer...</div>
+                </div>
+                <div class="terminal-footer" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="input-group">
+                        <label for="username-input" class="brutal-label" data-i18n="input_label">IDENTITY HANDLE:</label>
+                        <input type="text" id="username-input" class="brutal-input" placeholder="nickname" autocomplete="off" spellcheck="false">
+                    </div>
+                    <button id="btn-trigger-consensus" class="btn btn-purple w-100" data-i18n="btn_consensus">⚡ АКТИВИРОВАТЬ ЛИЧНОСТЬ</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="specs" class="specs-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title" data-i18n="sect_specs_title">СПЕЦИФИКАЦИИ (RFC)</h2>
+            </div>
+            <div class="specs-list">
+                <div class="spec-item">
+                    <div class="spec-badge">RFC-0001</div>
+                    <div class="spec-info">
+                        <h3>Core Cryptography & Addressing Scheme</h3>
+                        <p data-i18n="spec1_desc">Кривая NIST P-256, хэш BLAKE3-160 и Bech32m адресация с префиксом 'sl1'.</p>
+                    </div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-badge">RFC-0002</div>
+                    <div class="spec-info">
+                        <h3>Intent & WebAuthn Serialization Schema</h3>
+                        <p data-i18n="spec2_desc">Математический мост между ClientDataJSON и BLAKE3-хэшем намерения.</p>
+                    </div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-badge">RFC-0003</div>
+                    <div class="spec-info">
+                        <h3>Canonical Serialization & Replay Protection</h3>
+                        <p data-i18n="spec3_desc">Borsh-лейаут, 32-байтовый Domain Separation и защита Nonce.</p>
+                    </div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-badge">RFC-0004</div>
+                    <div class="spec-info">
+                        <h3>Block Structure & Deterministic Execution</h3>
+                        <p data-i18n="spec4_desc">Связывание Merkle, инварианты времени и атомарное пакетное выполнение.</p>
+                    </div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-badge">RFC-0005</div>
+                    <div class="spec-info">
+                        <h3>Ledger Lineage Persistence & Recovery</h3>
+                        <p data-i18n="spec5_desc">Аппенд-онли Block Log, fsync-гарантии и Deterministic Replay из пепла.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-brand">SIMPLE-L1</div>
+            <p data-i18n="footer_sub">© 2026 SIMPLE NETWORK. ПОСТРОЕНО НА ХЭНДШЕЙКАХ.</p>
+            <div class="footer-domains">
+                <span>l1.wildflow.dev</span> | <span>sl1.network</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Load i18n dictionary first -->
+    <script src="i18n.js?v=1.0.5"></script>
+    <!-- Execution Script with Cache Buster -->
+    <script src="app.js?v=1.1.2"></script>
+</body>
+</html>
