@@ -42,6 +42,8 @@ fastify.get('/api/status', async (request, reply) => {
     return {
         network: "Simple-L1 Alpha",
         version: "0.1.0",
+        nodes_count: 2,
+        peers: ["node-alpha", "node-beta"],
         uptime: process.uptime(),
         total_accounts: Object.keys(ledger.accounts).length,
         total_transactions: ledger.transactions.length,

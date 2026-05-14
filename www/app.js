@@ -8,10 +8,12 @@ async function updateNetworkStatus() {
         const data = await response.json();
         
         const elNetwork = document.getElementById('stat-network');
+        const elNodes = document.getElementById('stat-nodes');
         const elAccounts = document.getElementById('stat-accounts');
         const elUptime = document.getElementById('stat-uptime');
 
         if (elNetwork) elNetwork.textContent = data.network;
+        if (elNodes) elNodes.textContent = data.nodes_count || 2;
         if (elAccounts) elAccounts.textContent = data.total_accounts;
         
         if (elUptime) {
@@ -57,7 +59,7 @@ async function refreshAccountData() {
             }
         }
 
-        // Update Projections (Handle Revocation)
+        // Update Projections
         const addrBTC = document.getElementById('addr-btc');
         const addrETH = document.getElementById('addr-eth');
         if (addrBTC) addrBTC.textContent = account.external_addresses.BTC || 'REVOKED';
@@ -165,10 +167,6 @@ function appendLine(text, className = '') {
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-function bufferToHex(buffer) {
-    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 async function runRealConsensus() {
     let handle = usernameInput.value || '@anonymous';
     if (!handle.startsWith('@')) handle = '@' + handle;
@@ -176,9 +174,6 @@ async function runRealConsensus() {
     btnConsensus.disabled = true;
     appendLine(`[AUTHORITY] Инициализация канонического корня для ${handle}...`, 'text-highlight');
     try {
-        const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
-        const options = await optionsRes.json();
-        // WebAuthn simulation / registration
         const address = `sl1_${Math.random().toString(16).substring(2, 42)}`;
         window.currentAddress = address;
         const syncRes = await fetch('/accounts', {
