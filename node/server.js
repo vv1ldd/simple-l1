@@ -126,7 +126,7 @@ const calculateAddress = (pubKeyHex) => {
 };
 
 const NODE_NAME = process.env.NODE_NAME || 'node-alpha';
-const PEERS = (process.env.PEERS || '').split(',').filter(Boolean);
+let PEERS = (process.env.PEERS || '').split(',').filter(Boolean);
 
 // --- NETWORK SYNC HELPER ---
 async function broadcast(path, payload) {
@@ -439,13 +439,13 @@ fastify.register(require('@fastify/static'), {
 fastify.get('/api/network/peers', async () => {
     return {
         node: NODE_NAME,
-        peers: PEERS 
+        peers: PEERS.join(',') 
     };
 });
 
 // Startup: Peer Discovery
 async function discoverPeers() {
-    const initialPeers = (PEERS || '').split(',').filter(Boolean);
+    const initialPeers = [...PEERS];
     for (const peer of initialPeers) {
         try {
             console.log(`[PEX] Discovering peers from ${peer}...`);
@@ -453,17 +453,14 @@ async function discoverPeers() {
             if (res.ok) {
                 const data = await res.json();
                 const neighbors = (data.peers || '').split(',').filter(Boolean);
-                const newPeers = neighbors.filter(p => p && !(PEERS || '').includes(p));
+                const newPeers = neighbors.filter(p => p && !PEERS.includes(p));
                 
                 if (newPeers.length > 0) {
-                    const updated = [...new Set([...(PEERS || '').split(','), ...newPeers])].filter(Boolean);
-                    PEERS = updated.join(',');
+                    PEERS = [...new Set([...PEERS, ...newPeers])].filter(Boolean);
                     console.log(`[PEX] Discovered new neighbors: ${newPeers.join(', ')}`);
                 }
             }
-        } catch (e) {
-            // Silently fail, common for offline nodes
-        }
+        } catch (e) {}
     }
 }
 
