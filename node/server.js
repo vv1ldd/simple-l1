@@ -12,8 +12,11 @@ const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@s
 // --- DATABASE (LowDB-like simple JSON ledger) ---
 const LEDGER_FILE = path.join(__dirname, 'ledger_db.json');
 let ledger = {
-    accounts: {}, // address -> { publicKey, balance, nonce }
-    transactions: []
+    accounts: {}, // address -> { handle, publicKey, balances: { SL1, BTC }, nonce }
+    transactions: [],
+    treasury: {
+        btc_deposits: {} // btc_address -> sl1_address
+    }
 };
 
 if (fs.existsSync(LEDGER_FILE)) {
@@ -80,15 +83,58 @@ fastify.post('/accounts', async (request, reply) => {
         handle: handle || 'anonymous',
         publicKey,
         credentialId,
-        balance: 1000, // Genesis gift
+        balances: {
+            SL1: 1000, // Genesis gift
+            BTC: 0
+        },
         nonce: 0,
         createdAt: new Date().toISOString()
     };
 
     saveLedger();
     console.log(`[LEDGER] New account registered: ${handle} (${address})`);
-    return { success: true, address, balance: 1000 };
+    return { success: true, address, balances: ledger.accounts[address].balances };
 });
+
+// 4. Generate BTC Deposit Address (Simulated Treasury)
+fastify.post('/api/assets/deposit', async (request, reply) => {
+    const { sl1_address, asset } = request.body;
+    if (asset !== 'BTC') return reply.code(400).send({ error: 'Only BTC supported' });
+    
+    // Generate a unique BTC address linked to this SL1 account
+    const btcAddress = `bc1_${Math.random().toString(36).substring(2, 15)}`;
+    
+    if (!ledger.treasury.btc_deposits) ledger.treasury.btc_deposits = {};
+    ledger.treasury.btc_deposits[btcAddress] = sl1_address;
+    
+    saveLedger();
+    return { deposit_address: btcAddress, asset: 'BTC' };
+});
+
+// 5. Simulate BTC Deposit (For Demo)
+fastify.post('/api/assets/simulate-mint', async (request, reply) => {
+    const { btc_address, amount } = request.body;
+    const sl1_address = ledger.treasury.btc_deposits[btc_address];
+    
+    if (!sl1_address || !ledger.accounts[sl1_address]) {
+        return reply.code(404).send({ error: 'Deposit address not found' });
+    }
+    
+    ledger.accounts[sl1_address].balances.BTC += parseFloat(amount);
+    
+    // Log pseudo-transaction
+    ledger.transactions.push({
+        type: 'MINT',
+        asset: 'BTC',
+        to: sl1_address,
+        amount,
+        timestamp: new Date().toISOString()
+    });
+    
+    saveLedger();
+    return { success: true, new_balance: ledger.accounts[sl1_address].balances.BTC };
+});
+
 
 // 3. Get Account State
 fastify.get('/accounts/:address', async (request, reply) => {

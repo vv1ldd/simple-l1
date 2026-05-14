@@ -20,14 +20,42 @@ async function updateNetworkStatus() {
             elUptime.textContent = `${minutes}m ${seconds}s`;
         }
         
+        // Update portfolio balances if address exists
+        if (window.currentAddress) {
+            updateBalances();
+        }
+        
     } catch (err) {
         console.warn('Failed to fetch network status:', err);
     }
 }
 
+async function updateBalances() {
+    if (!window.currentAddress) return;
+    try {
+        const res = await fetch(`/accounts/${window.currentAddress}`);
+        if (!res.ok) return;
+        const account = await res.json();
+        
+        document.getElementById('balance-sl1').textContent = account.balances.SL1.toLocaleString();
+        document.getElementById('balance-btc').textContent = account.balances.BTC.toFixed(8);
+    } catch (err) {}
+}
+
 // Poll every 5 seconds
 setInterval(updateNetworkStatus, 5000);
 document.addEventListener('DOMContentLoaded', updateNetworkStatus);
+
+/* -------------------------------------------------------------------------
+   TABS LOGIC
+-------------------------------------------------------------------------- */
+window.showTab = function(tabName) {
+    document.querySelectorAll('.terminal-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    event.currentTarget.classList.add('active');
+};
 
 /* -------------------------------------------------------------------------
    I18N HANDLING
@@ -91,13 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* -------------------------------------------------------------------------
-   TERMINAL EMULATOR LOGIC (HUMANIZED)
+   TERMINAL EMULATOR LOGIC (IDENTITY & ASSETS)
 -------------------------------------------------------------------------- */
 const consoleOutput = document.getElementById('console-output');
 const btnConsensus = document.getElementById('btn-trigger-consensus');
 const usernameInput = document.getElementById('username-input');
 
-// AUTO-PREFIX @ Logic
 if (usernameInput) {
     usernameInput.addEventListener('input', (e) => {
         let val = e.target.value;
@@ -120,7 +147,6 @@ async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Utility to convert Base64 to ArrayBuffer
 function base64ToBuffer(base64) {
     const binary = window.atob(base64);
     const buffer = new Uint8Array(binary.length);
@@ -130,7 +156,6 @@ function base64ToBuffer(base64) {
     return buffer.buffer;
 }
 
-// Utility to convert ArrayBuffer to Hex
 function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer))
         .map(b => b.toString(16).padStart(2, '0'))
@@ -150,17 +175,14 @@ async function runRealConsensus() {
     try {
         appendLine(`>>> [1/5] СОЗДАНИЕ ЛИЧНОСТИ: Обращение к защищенному чипу...`);
         
-        // 1. Get options from node
         const optionsRes = await fetch(`/api/register/options?handle=${encodeURIComponent(handle)}`);
         const options = await optionsRes.json();
         
-        // Prepare options for navigator.credentials.create
         options.challenge = base64ToBuffer(options.challenge);
         options.user.id = base64ToBuffer(options.user.id);
         
         appendLine(`[ACTION] ШАГ #1: Используйте TouchID/FaceID для подписи вашей личности...`, 'text-yellow');
         
-        // 2. REAL WEBAUTHN CALL
         const credential = await navigator.credentials.create({ publicKey: options });
         
         appendLine(`[OK] Аппаратное подтверждение получено!`, 'text-green');
@@ -169,22 +191,17 @@ async function runRealConsensus() {
         const credId = bufferToHex(credential.rawId);
         const pubKeyHex = credId.substring(0, 64); 
         const address = `sl1_${pubKeyHex.substring(0, 40)}`;
+        window.currentAddress = address; // Global for portfolio
         
         appendLine(`[IDENTITY] Ваш уникальный адрес: <span style="color:var(--card-yellow);">${address}</span>`);
         await sleep(600);
         
         appendLine(`[NETWORK] Синхронизация с облачной нодой Wildflow...`);
         
-        // 3. SYNC WITH NODE
         const syncRes = await fetch('/accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                address,
-                publicKey: pubKeyHex,
-                credentialId: credId,
-                handle
-            })
+            body: JSON.stringify({ address, publicKey: pubKeyHex, credentialId: credId, handle })
         });
         
         const syncData = await syncRes.json();
@@ -192,9 +209,11 @@ async function runRealConsensus() {
         if (syncData.success) {
             appendLine(`[SUCCESS] Поздравляем! Ваша суверенная личность активирована.`, 'text-green');
             appendLine(`[GIFT] Вам зачислено: 1000 SL1 (приветственный бонус)`, 'text-yellow');
-            
-            // Trigger stats update
             updateNetworkStatus();
+            
+            // Switch to Portfolio after success
+            await sleep(1500);
+            showTab('portfolio');
         } else {
             throw new Error(syncData.error || 'Ошибка синхронизации');
         }
@@ -203,10 +222,63 @@ async function runRealConsensus() {
         appendLine(`[!] ОШИБКА: АКТИВАЦИЯ ПРЕРВАНА`, 'text-red');
         appendLine(`-> Причина: <span style="font-size:0.8rem;">${err.message}</span>`);
     }
-    
     btnConsensus.disabled = false;
 }
 
 if (btnConsensus) {
     btnConsensus.addEventListener('click', runRealConsensus);
 }
+
+/* -------------------------------------------------------------------------
+   BTC DEPOSIT FLOW
+-------------------------------------------------------------------------- */
+window.initiateBTCDeposit = async function() {
+    if (!window.currentAddress) {
+        alert('Пожалуйста, сначала активируйте свою личность (IDENTITY)');
+        showTab('identity');
+        return;
+    }
+    
+    const btn = event.currentTarget;
+    const oldText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'GENERATING ADDRESS...';
+    
+    try {
+        const res = await fetch('/api/assets/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sl1_address: window.currentAddress, asset: 'BTC' })
+        });
+        const { deposit_address } = await res.json();
+        
+        btn.innerHTML = `SEND BTC TO: <span style="font-size:0.7rem;">${deposit_address}</span>`;
+        
+        // Wait 5 seconds to simulate Bitcoin network confirmation
+        await sleep(5000);
+        btn.innerHTML = 'CONFIRMING ON BITCOIN...';
+        await sleep(3000);
+        
+        // Simulate minting on SL1
+        const mintRes = await fetch('/api/assets/simulate-mint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ btc_address: deposit_address, amount: 0.125 })
+        });
+        
+        if (mintRes.ok) {
+            btn.innerHTML = 'DEPOSIT SUCCESSFUL! ✨';
+            btn.classList.replace('btn-yellow', 'btn-green');
+            updateBalances();
+            setTimeout(() => {
+                btn.innerHTML = oldText;
+                btn.classList.replace('btn-green', 'btn-yellow');
+                btn.disabled = false;
+            }, 5000);
+        }
+        
+    } catch (err) {
+        btn.innerHTML = 'ERROR IN DEPOSIT';
+        console.error(err);
+    }
+};
