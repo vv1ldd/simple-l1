@@ -11,6 +11,7 @@ RUN npm install --verbose
 
 # Copy kernel source (now local to node folder)
 COPY kernel ./kernel
+COPY www ./www
 COPY . .
 
 # We assume MDK Kernel is copied into the /app/kernel directory during build
