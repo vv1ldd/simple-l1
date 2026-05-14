@@ -5,6 +5,7 @@ fastify.register(require('@fastify/cors'), { origin: '*' });
 fastify.register(require('@fastify/static'), {
     root: path.join(__dirname, 'www'),
     prefix: '/', // Serve at root
+    index: 'index.html',
 });
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
