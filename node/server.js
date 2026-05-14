@@ -2,11 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
 fastify.register(require('@fastify/cors'), { origin: '*' });
-fastify.register(require('@fastify/static'), {
-    root: path.join(__dirname, 'www'),
-    prefix: '/', // Serve at root
-    index: 'index.html',
-});
 const { verifyRegistrationResponse, verifyAuthenticationResponse } = require('@simplewebauthn/server');
 
 const crypto = require('crypto');
@@ -401,5 +396,12 @@ const start = async () => {
         process.exit(1);
     }
 };
+
+// --- STATIC FILES (Last Resort) ---
+fastify.register(require('@fastify/static'), {
+    root: path.join(__dirname, 'www'),
+    prefix: '/',
+    index: 'index.html',
+});
 
 start();
