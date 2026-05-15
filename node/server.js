@@ -151,6 +151,10 @@ if (fs.existsSync(IDENTITY_FILE)) {
 }
 if (!NODE_NAME) NODE_NAME = process.env.NODE_NAME || 'node-pending';
 
+// Regional Compliance & Branding
+const NETWORK_NAME = process.env.NETWORK_NAME || "Simple-L1 Alpha";
+const NODE_TYPE_LABEL = process.env.NODE_TYPE_LABEL || "Sovereign Node";
+
 const GREEK_ALPHABET = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
 const SEED_NODES = [
     'https://l1.wildflow.dev',
@@ -191,7 +195,8 @@ fastify.get('/api/status', async (request, reply) => {
         : process.uptime();
 
     return {
-        network: "Simple-L1 Alpha",
+        network: NETWORK_NAME,
+        node_type: NODE_TYPE_LABEL,
         node_id: NODE_ID,
         node_name: NODE_NAME,
         version: NODE_VERSION,

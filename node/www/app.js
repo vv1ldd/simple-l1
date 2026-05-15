@@ -7,6 +7,8 @@ window.copyInstallCmd = function() {
 
 console.log('🚀 SIMPLE-L1 APP v2.1.5 BOOTSTRAP...');
 
+window.NETWORK_NAME = 'Simple-L1';
+
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('[CRITICAL ERROR]', msg, 'at', lineNo, ':', columnNo);
     const el = document.getElementById('stat-network');
@@ -87,7 +89,13 @@ async function updateNetworkStatus() {
         }
     }
 
-    if (elNet) elNet.textContent = first.network || 'Simple-L1 Alpha';
+    if (elNet) {
+        elNet.textContent = first.network || 'Simple-L1 Alpha';
+        document.title = first.network || 'Simple-L1';
+        // Обновляем брендинг в хедере
+        const brand = document.querySelector('.header-brand');
+        if (brand) brand.textContent = (first.network || 'SIMPLE-L1').toUpperCase();
+    }
     if (elNodes) elNodes.textContent = `${successful.length} ACTIVE`;
     
     const elNodeList = document.getElementById('stat-node-list');
