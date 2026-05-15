@@ -10,31 +10,23 @@ class BusinessRegistrationManager
 {
     /**
      * Поиск по ИНН и подготовка к якорению в L1
+     * Название и реквизиты подтягиваются АВТОМАТИЧЕСКИ (Zero-Input)
      */
     public function searchAndAnchor(string $inn, string $sl1Address)
     {
-        // 1. В реальности здесь будет вызов DaData API
+        // Fetch from DaData (Mock)
+        $officialName = "ООО 'Авто-Вектор' (по ИНН $inn)"; 
+        
         $businessData = [
             'inn' => $inn,
-            'name' => "ООО 'ИНН-$inn'",
-            'address' => 'г. Москва, ул. Суверенная, д. 1',
-            'ogrn' => '1234567890123'
-        ];
-
-        // 2. Формируем "Бизнес-Манифест" для L1
-        $manifest = [
-            'type' => 'BUSINESS_VERIFICATION',
-            'subject' => $sl1Address,
-            'data' => $businessData,
-            'timestamp' => now()->toIso8601String(),
-            'issuer' => 'Meanly Marketplace'
+            'name' => $officialName,
+            'address' => 'г. Москва, ул. Автоматизации, д. 42',
         ];
 
         return [
             'verified' => true,
-            'data' => $businessData,
-            'l1_claim_ready' => true,
-            'manifest_hash' => hash('sha256', json_encode($manifest))
+            'name' => $officialName, // Для моментального отображения в UI
+            'l1_claim_ready' => true
         ];
     }
 }
