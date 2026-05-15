@@ -71,8 +71,20 @@ function applyEvent(event, isInitialReplay = false) {
 
     if (!isInitialReplay) {
         ledger.event_log.push(event);
+        ledger.state_root = calculateStateRoot(); // New: Deterministic State Proof
         saveLedger();
     }
+}
+
+function calculateStateRoot() {
+    // Canonical serialization of accounts (sorted by address to ensure determinism)
+    const sortedAddresses = Object.keys(ledger.accounts).sort();
+    const stateData = sortedAddresses.map(addr => ({
+        a: addr,
+        b: ledger.accounts[addr].balances,
+        n: ledger.accounts[addr].nonce
+    }));
+    return crypto.createHash('sha256').update(JSON.stringify(stateData)).digest('hex');
 }
 
 async function start() {
@@ -99,6 +111,7 @@ async function start() {
     ledger.event_log = []; 
     ledger.accounts = {};
     history.forEach(ev => applyEvent(ev, true));
+    ledger.state_root = calculateStateRoot(); // Initial root after replay
 
     // 4. Start HTTP Server
     try {
@@ -182,6 +195,7 @@ fastify.get('/api/status', async (request, reply) => {
         node_id: NODE_ID,
         node_name: NODE_NAME,
         version: NODE_VERSION,
+        state_root: ledger.state_root || "genesis", // The Proof of Correctness
         capabilities: NODE_CAPABILITIES,
         peers_count: PEERS.length,
         peers: PEERS, // In production, we might want to truncate this
