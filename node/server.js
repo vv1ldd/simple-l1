@@ -138,7 +138,13 @@ if (!NODE_NAME && fs.existsSync(IDENTITY_FILE)) {
 if (!NODE_NAME) NODE_NAME = 'node-pending';
 
 const GREEK_ALPHABET = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
-let PEERS = (process.env.PEERS || '').split(',').filter(Boolean);
+const SEED_NODES = [
+    'https://l1.wildflow.dev',
+    'https://l1-beta.wildflow.dev',
+    'https://l1-gamma.wildflow.dev'
+];
+
+let PEERS = [...new Set([...(process.env.PEERS || '').split(','), ...SEED_NODES])].filter(Boolean);
 
 // --- NETWORK SYNC HELPER ---
 async function broadcast(path, payload) {
@@ -189,6 +195,20 @@ fastify.post('/api/network/broadcast', async (request, reply) => {
         }
     }
     return { success: true };
+});
+
+// Peer Announcement Receiver (For Dynamic Discovery)
+fastify.post('/api/network/announce', async (request, reply) => {
+    const { url } = request.body;
+    if (!url) return reply.code(400).send({ error: 'URL required' });
+    
+    const cleanUrl = url.replace(/\/$/, '');
+    if (!PEERS.includes(cleanUrl) && cleanUrl !== process.env.SELF_WEBHOOK) {
+        console.log(`[PEX] New peer announced: ${cleanUrl}`);
+        PEERS.push(cleanUrl);
+        PEERS = [...new Set(PEERS)]; // Keep unique
+    }
+    return { success: true, known_peers: PEERS };
 });
 
 // 2. Get Registration Options (for Portal)
@@ -463,8 +483,27 @@ fastify.get('/api/network/deploy-info', async () => {
     };
 });
 
+// Self-Announce to Seeds
+async function announceSelf() {
+    const selfUrl = process.env.SELF_WEBHOOK;
+    if (!selfUrl) return;
+
+    console.log(`[PEX] Announcing self (${selfUrl}) to seeds...`);
+    for (const seed of SEED_NODES) {
+        if (selfUrl.includes(seed)) continue; // Don't announce to self
+        try {
+            await fetch(`${seed.replace(/\/$/, '')}/api/network/announce`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: selfUrl })
+            });
+        } catch (e) {}
+    }
+}
+
 // Startup: Peer Discovery
 async function discoverPeers() {
+    await announceSelf();
     const initialPeers = [...PEERS];
     const discoveredNames = [];
 
