@@ -26,12 +26,16 @@ pkill -f "node server.js" || true
 INSTALL_DIR="$HOME/simple-l1"
 if [ -d "$INSTALL_DIR" ]; then
     echo "Found installation at $INSTALL_DIR"
-    read -p "Do you want to delete ALL data (including identity and ledger)? [y/N]: " CONFIRM
-    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-        echo "Removing project directory and all data..."
-        rm -rf "$INSTALL_DIR"
+    
+    # Check if we are in a non-interactive shell (pipe)
+    if [ ! -t 0 ]; then
+        echo "Non-interactive shell detected. To remove the directory, please run the script manually or use rm -rf $INSTALL_DIR"
     else
-        echo "Keeping project directory. Manual cleanup required."
+        read -p "Do you want to delete ALL data (including identity and ledger)? [y/N]: " CONFIRM
+        if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+            echo "Removing project directory and all data..."
+            rm -rf "$INSTALL_DIR"
+        fi
     fi
 fi
 
