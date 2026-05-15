@@ -181,39 +181,49 @@
             </div>
 
             <div id="tab-portfolio" class="terminal-content">
-                <div class="terminal-body portfolio-body">
-                    <div class="asset-card sl1">
-                        <div class="asset-info">
-                            <span class="asset-name">Simple-L1 Root</span>
-                            <span class="asset-symbol">SL1</span>
-                            <span class="custody-badge non-custodial">NON-CUSTODIAL</span>
+                <div class="terminal-body portfolio-body" style="padding: 20px;">
+                    <div class="portfolio-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 15px;">
+                        <h3 style="color: #0f0; margin: 0;">SOVEREIGN PORTFOLIO</h3>
+                        <div class="total-value" style="text-align: right;">
+                            <div style="font-size: 10px; color: #888;">ESTIMATED TOTAL</div>
+                            <div style="font-size: 18px; color: #fff; font-weight: bold;">$12,450.00</div>
                         </div>
-                        <div class="asset-balance" id="balance-sl1">0</div>
-                    </div>
-                    
-                    <div class="asset-card btc">
-                        <div class="asset-info">
-                            <span class="asset-name">Bitcoin Projection</span>
-                            <span class="asset-symbol">sBTC</span>
-                            <span class="native-addr" id="addr-btc">bc1...</span>
-                            <div class="asset-status" id="status-btc">STATUS: FINALIZED</div>
-                            <span class="custody-badge delegated">DELEGATED (MPC-READY)</span>
-                        </div>
-                        <div class="asset-balance" id="balance-btc">0.00000000</div>
-                        <button class="btn-mini btn-red" onclick="revokeProjection('BTC')">REVOKE</button>
                     </div>
 
-                    <div class="asset-card eth">
-                        <div class="asset-info">
-                            <span class="asset-name">Ethereum Projection</span>
-                            <span class="asset-symbol">sETH</span>
-                            <span class="native-addr" id="addr-eth">0x...</span>
-                            <div class="asset-status" id="status-eth">STATUS: FINALIZED</div>
-                            <span class="custody-badge delegated">DELEGATED (AA-READY)</span>
+                    <div class="asset-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <!-- Bitcoin Card -->
+                        <div class="asset-card" style="background: rgba(255, 153, 0, 0.05); border: 1px solid rgba(255, 153, 0, 0.2); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <div style="width: 32px; height: 32px; background: #f90; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;">₿</div>
+                                <div style="font-weight: bold; color: #fff;">Bitcoin</div>
+                            </div>
+                            <div style="font-size: 18px; color: #fff;">0.245 BTC</div>
+                            <div style="font-size: 11px; color: #888;">≈ $11,200.40</div>
                         </div>
-                        <div class="asset-balance" id="balance-eth">0.0000</div>
-                        <button class="btn-mini btn-red" onclick="revokeProjection('ETH')">REVOKE</button>
+
+                        <!-- Ethereum Card -->
+                        <div class="asset-card" style="background: rgba(100, 100, 255, 0.05); border: 1px solid rgba(100, 100, 255, 0.2); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <div style="width: 32px; height: 32px; background: #66f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;">Ξ</div>
+                                <div style="font-weight: bold; color: #fff;">Ethereum</div>
+                            </div>
+                            <div style="font-size: 18px; color: #fff;">0.420 ETH</div>
+                            <div style="font-size: 11px; color: #888;">≈ $1,149.60</div>
+                        </div>
+
+                        <!-- Native L1 Card -->
+                        <div class="asset-card" style="background: rgba(0, 255, 0, 0.05); border: 1px solid rgba(0, 255, 0, 0.2); padding: 15px; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <div style="width: 32px; height: 32px; background: #0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold;">L1</div>
+                                <div style="font-weight: bold; color: #fff;">Simple-L1</div>
+                            </div>
+                            <div style="font-size: 18px; color: #fff;">10,000 SL1</div>
+                            <div style="font-size: 11px; color: #888;">Genesis Allocation</div>
+                        </div>
                     </div>
+                </div>
+            </div>
+
                     
                     <div class="portfolio-actions" style="display: flex; gap: 10px;">
                         <button class="btn btn-yellow w-100" onclick="initiateBTCDeposit()">+ DEPOSIT BTC</button>
