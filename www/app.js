@@ -100,8 +100,18 @@ async function updateNetworkStatus() {
     
     const elNodeList = document.getElementById('stat-node-list');
     if (elNodeList) {
-        const names = successful.map(s => s.node_name).filter(Boolean);
-        elNodeList.textContent = names.join(' • ');
+        const uniqueNodes = {};
+        successful.forEach(node => {
+            const id = node.node_id || node.url;
+            if (!uniqueNodes[id]) uniqueNodes[id] = node;
+        });
+
+        const nodesHtml = Object.values(uniqueNodes).map(node => {
+            const name = node.node_name || 'unknown';
+            return `<span class="node-tag">${name}</span>`;
+        }).join(' • ');
+        
+        elNodeList.innerHTML = nodesHtml;
     }
     
     if (elAcc) elAcc.textContent = maxAccounts;
