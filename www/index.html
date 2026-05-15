@@ -29,29 +29,14 @@
                 <a href="#manifesto" class="nav-link" data-i18n="nav_manifest">Манифест</a>
                 <a href="#engine" class="nav-link" data-i18n="nav_runtime">Рантайм</a>
                 <a href="#specs" class="nav-link" data-i18n="nav_specs">Спецификации</a>
-                <a href="#engine" class="nav-link text-highlight" onclick="showTab('join')" style="color: #0f0; font-weight: 900;">RUN A NODE</a>
+                <a href="#engine" class="nav-link text-highlight" onclick="showTab('join')" style="color: #0f0; font-weight: 900;" data-i18n="nav_join">RUN A NODE</a>
                 
                 <!-- Neo-Brutalist Language Switcher -->
                 <select id="lang-select" class="lang-dropdown">
                     <option value="ru">RU 🇷🇺</option>
                     <option value="en">EN 🇺🇸</option>
                     <option value="es">ES 🇪🇸</option>
-                    <option value="es-ar">ES 🇦🇷</option>
                     <option value="tr">TR 🇹🇷</option>
-                    <option value="tk">TK 🇹🇲</option>
-                    <option value="kk">KK 🇰🇿</option>
-                    <option value="zh">ZH 🇨🇳</option>
-                    <option value="ja">JA 🇯🇵</option>
-                    <option value="ko">KO 🇰🇷</option>
-                    <option value="de">DE 🇩🇪</option>
-                    <option value="fr">FR 🇫🇷</option>
-                    <option value="pt">PT 🇧🇷</option>
-                    <option value="it">IT 🇮🇹</option>
-                    <option value="nl">NL 🇳🇱</option>
-                    <option value="pl">PL 🇵🇱</option>
-                    <option value="uk">UK 🇺🇦</option>
-                    <option value="hi">HI 🇮🇳</option>
-                    <option value="ar">AR 🇦🇪</option>
                 </select>
 
                 <a href="https://github.com/vv1ldd/simple-l1" class="btn btn-nav" target="_blank">GITHUB</a>
@@ -239,8 +224,8 @@
                     </div>
                     <div class="spec-card">
                         <div class="spec-id">RFC-0005</div>
-                        <h3>Proof of Intent (PoI)</h3>
-                        <p>Consensus model based on human handshakes and hardware-anchored utility.</p>
+                        <h3 data-i18n="rfc_poi_title">Proof of Intent (PoI)</h3>
+                        <p data-i18n="rfc_poi_desc">Consensus model based on human handshakes and hardware-anchored utility.</p>
                         <div class="status-badge active">CORE</div>
                     </div>
                 </div>
@@ -292,8 +277,8 @@
             <div id="tab-join" class="terminal-content">
                 <div class="terminal-body join-body" style="padding: 20px;">
                     <div class="spec-card active" style="border: 2px solid #0f0; padding: 20px; background: rgba(0,255,0,0.05);">
-                        <h3 style="color: #0f0; margin-top: 0;">> RUN ANYWHERE</h3>
-                        <p>The Simple-L1 fabric is universal. Run it on a Data Center, a Home Server, or your personal Laptop.</p>
+                        <h3 style="color: #0f0; margin-top: 0;" data-i18n="sect_join_title">> RUN ANYWHERE</h3>
+                        <p data-i18n="join_desc">The Simple-L1 fabric is universal. Run it on a Data Center, a Home Server, or your personal Laptop.</p>
                         
                         <div style="margin-top: 20px;">
                             <h4 style="color: #0f0; margin-bottom: 10px;">LINUX / MACOS / DOCKER</h4>
@@ -305,13 +290,13 @@
 
                         <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
-                                <h4 style="color: #0f0; margin-bottom: 5px;">SERVER / PC (Maintenance)</h4>
-                                <p style="font-size: 11px; opacity: 0.8;">Help the network. Sync when online. Your PC becomes a validator of truth.</p>
+                                <h4 style="color: #0f0; margin-bottom: 5px;" data-i18n="join_infra_title">SERVER / PC (Maintenance)</h4>
+                                <p style="font-size: 11px; opacity: 0.8;" data-i18n="join_infra_desc">Help the network. Sync when online. Your PC becomes a validator of truth.</p>
                                 <div style="font-size: 10px; color: #0f0; margin-top: 5px; font-weight: bold;">[ VOLUNTEER SYNC ACTIVE ]</div>
                             </div>
                             <div>
-                                <h4 style="color: #0f0; margin-bottom: 5px;">MOBILE (Sovereignty)</h4>
-                                <p style="font-size: 11px; opacity: 0.8;">Your phone is your Authority Key. Use FaceID/TouchID to sign intents instantly.</p>
+                                <h4 style="color: #0f0; margin-bottom: 5px;" data-i18n="join_mobile_title">MOBILE (Sovereignty)</h4>
+                                <p style="font-size: 11px; opacity: 0.8;" data-i18n="join_mobile_desc">Your phone is your Authority Key. Use FaceID/TouchID to sign intents instantly.</p>
                             </div>
                         </div>
                     </div>
