@@ -1,0 +1,30 @@
+# Dockerfile.test-script
+# Тестируем установку ноды через наш универсальный install.sh внутри контейнера
+
+FROM ubuntu:22.04
+
+# Отключаем интерактивные вопросы
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Устанавливаем базовые утилиты
+RUN apt-get update && apt-get install -y \
+    curl \
+    sudo \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создаем пользователя, так как скрипт может требовать sudo
+RUN useradd -m -s /bin/bash admin && echo "admin ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+USER admin
+WORKDIR /home/admin
+
+# ВНИМАНИЕ: Запускаем наш инсталлер прямо при сборке образа!
+# Мы используем локальную копию скрипта, если она есть, или качаем из гитхаба
+RUN curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/install.sh | bash
+
+# Рабочая директория ноды после установки (скрипт ставит в ~/simple-l1)
+WORKDIR /home/admin/simple-l1/node
+
+# Запуск
+EXPOSE 3000
+CMD ["node", "server.js"]
