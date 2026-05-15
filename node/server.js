@@ -115,6 +115,13 @@ async function start() {
 
     // 4. Start HTTP Server
     try {
+        // Serve Static Distribution Files (Sovereign Update Layer)
+        fastify.register(require('@fastify/static'), {
+            root: path.join(__dirname, 'dist'),
+            prefix: '/dist/',
+            decorateReply: false
+        });
+
         await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
         console.log(`[DAOS] ${NODE_NAME} is active on port ${process.env.PORT || 3000}`);
         

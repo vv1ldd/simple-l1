@@ -317,7 +317,7 @@
                         <div style="margin-top: 20px;">
                             <h4 style="color: #0f0; margin-bottom: 10px;">LINUX / MACOS / DOCKER</h4>
                             <div style="background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border: 1px solid #0f0; position: relative; font-size: 12px; word-break: break-all;">
-                                <code id="install-cmd">curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/install.sh | bash</code>
+                                <code id="install-cmd">curl -sSL https://l1.wildflow.dev/dist/install.sh | bash</code>
                                 <button onclick="copyInstallCmd()" style="position: absolute; right: 5px; top: 5px; background: #0f0; color: #000; border: none; padding: 4px 8px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; font-size: 11px;">COPY</button>
                             </div>
                         </div>
@@ -339,7 +339,8 @@
                             <h4 style="color: #0f0; margin-bottom: 10px;">ULTRA-CLEAN (UBUNTU DOCKER)</h4>
                             <p style="font-size: 11px; margin-bottom: 10px; opacity: 0.7;">Run the install script inside a fresh Ubuntu container. Pure isolation.</p>
                             <div style="background: #000; color: #aaa; padding: 10px; font-family: 'JetBrains Mono', monospace; border: 1px solid #333; font-size: 10px; line-height: 1.4; position: relative;">
-                                <code style="display: block; white-space: pre-wrap; color: #0f0;">docker build -t l1-clean -f Dockerfile.test-script .
+                                <code style="display: block; white-space: pre-wrap; color: #0f0;">curl -sSL https://l1.wildflow.dev/dist/Dockerfile.test-script -o Dockerfile.test-script
+docker build -t l1-clean .
 docker run -d -p 3000:3000 l1-clean</code>
                             </div>
                         </div>
