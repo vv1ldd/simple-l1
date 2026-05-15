@@ -307,6 +307,16 @@
                                 <p style="font-size: 11px; opacity: 0.8;" data-i18n="join_mobile_desc">Your phone is your Authority Key. Use FaceID/TouchID to sign intents instantly.</p>
                             </div>
                         </div>
+
+                        <!-- New: Ultra-Clean Docker Mode -->
+                        <div style="margin-top: 25px; border-top: 1px solid rgba(0,255,0,0.1); padding-top: 15px;">
+                            <h4 style="color: #0f0; margin-bottom: 10px;">ULTRA-CLEAN (UBUNTU DOCKER)</h4>
+                            <p style="font-size: 11px; margin-bottom: 10px; opacity: 0.7;">Run the install script inside a fresh Ubuntu container. Pure isolation.</p>
+                            <div style="background: #000; color: #aaa; padding: 10px; font-family: 'JetBrains Mono', monospace; border: 1px solid #333; font-size: 10px; line-height: 1.4; position: relative;">
+                                <code style="display: block; white-space: pre-wrap; color: #0f0;">docker build -t l1-clean -f Dockerfile.test-script .
+docker run -d -p 3000:3000 l1-clean</code>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
