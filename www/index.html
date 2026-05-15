@@ -286,11 +286,20 @@
             <div id="tab-join" class="terminal-content">
                 <div class="terminal-body join-body" style="padding: 20px;">
                     <div class="spec-card active" style="border: 2px solid #0f0; padding: 20px; background: rgba(0,255,0,0.05);">
-                        <h3 style="color: #0f0; margin-top: 0;">> BECOME THE AUTHORITY</h3>
-                        <p>Run your own sovereign node in 30 seconds. Plug & Play enabled.</p>
-                        <div style="background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border: 1px solid #0f0; margin-top: 15px; position: relative; font-size: 13px; word-break: break-all;">
-                            <code id="install-cmd">curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/install.sh | bash</code>
-                            <button onclick="copyInstallCmd()" style="position: absolute; right: 5px; top: 5px; background: #0f0; color: #000; border: none; padding: 4px 8px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; font-size: 11px; border-radius: 2px;">COPY</button>
+                        <h3 style="color: #0f0; margin-top: 0;">> RUN ANYWHERE</h3>
+                        <p>The Simple-L1 fabric is universal. Run it on a Data Center, a Home Server, or your personal Laptop.</p>
+                        
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: #0f0; margin-bottom: 10px;">LINUX / MACOS / DOCKER</h4>
+                            <div style="background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border: 1px solid #0f0; position: relative; font-size: 12px; word-break: break-all;">
+                                <code id="install-cmd">curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/install.sh | bash</code>
+                                <button onclick="copyInstallCmd()" style="position: absolute; right: 5px; top: 5px; background: #0f0; color: #000; border: none; padding: 4px 8px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; font-size: 11px;">COPY</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: #0f0; margin-bottom: 10px;">WINDOWS / MANUAL</h4>
+                            <p style="font-size: 12px; opacity: 0.8;">1. Install Node.js 20+<br>2. git clone https://github.com/vv1ldd/simple-l1.git<br>3. cd simple-l1/node && npm install<br>4. npm start</p>
                         </div>
                     </div>
                 </div>
