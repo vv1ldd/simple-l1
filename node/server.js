@@ -77,14 +77,14 @@ function applyEvent(event, isInitialReplay = false) {
 }
 
 function calculateStateRoot() {
-    // Canonical serialization of accounts (sorted by address to ensure determinism)
+    // Canonical serialization (MUST MATCH PHP MDK implementation)
     const sortedAddresses = Object.keys(ledger.accounts).sort();
-    const stateData = sortedAddresses.map(addr => ({
-        a: addr,
-        b: ledger.accounts[addr].balances,
-        n: ledger.accounts[addr].nonce
-    }));
-    return crypto.createHash('sha256').update(JSON.stringify(stateData)).digest('hex');
+    let stateString = "";
+    for (const addr of sortedAddresses) {
+        const acc = ledger.accounts[addr];
+        stateString += addr + ":" + (acc.balances.SL1 || 0) + ":" + (acc.nonce || 0) + "|";
+    }
+    return crypto.createHash('sha256').update(stateString).digest('hex');
 }
 
 async function start() {
