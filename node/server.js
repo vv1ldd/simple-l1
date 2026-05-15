@@ -129,13 +129,14 @@ const IDENTITY_FILE = path.join(__dirname, 'node_identity.json');
 let NODE_NAME = process.env.NODE_NAME;
 
 // 1. Load or Define Identity
-if (!NODE_NAME && fs.existsSync(IDENTITY_FILE)) {
+if (fs.existsSync(IDENTITY_FILE)) {
     try {
         const idData = JSON.parse(fs.readFileSync(IDENTITY_FILE, 'utf8'));
         NODE_NAME = idData.name;
+        NODE_ID = idData.id || NODE_ID;
     } catch (e) {}
 }
-if (!NODE_NAME) NODE_NAME = 'node-pending';
+if (!NODE_NAME) NODE_NAME = process.env.NODE_NAME || 'node-pending';
 
 const GREEK_ALPHABET = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
 const SEED_NODES = [
@@ -143,6 +144,11 @@ const SEED_NODES = [
     'https://l1-beta.wildflow.dev',
     'https://l1-gamma.wildflow.dev'
 ];
+
+// Node Metadata & Capabilities
+const NODE_VERSION = "0.2.0-alpha.1";
+const NODE_CAPABILITIES = ["REPLAY", "GOSSIP", "VALIDATOR", "GATEWAY"];
+let NODE_ID = crypto.randomBytes(16).toString('hex');
 
 let PEERS = [...new Set([...(process.env.PEERS || '').split(','), ...SEED_NODES])].filter(Boolean);
 
@@ -164,7 +170,7 @@ async function broadcast(path, payload) {
 
 // --- API ROUTES ---
 
-// Node Status
+// Node Status (Enhanced for Observability & Registry)
 fastify.get('/api/status', async (request, reply) => {
     const handles = Object.values(ledger.accounts).map(a => a.handle).filter(Boolean);
     const network_uptime = ledger.cluster_genesis 
@@ -173,13 +179,17 @@ fastify.get('/api/status', async (request, reply) => {
 
     return {
         network: "Simple-L1 Alpha",
+        node_id: NODE_ID,
         node_name: NODE_NAME,
-        version: "0.1.0",
-        peers: PEERS,
+        version: NODE_VERSION,
+        capabilities: NODE_CAPABILITIES,
+        peers_count: PEERS.length,
+        peers: PEERS, // In production, we might want to truncate this
         total_accounts: Object.keys(ledger.accounts).length,
         total_events: ledger.event_log.length,
         active_handles: handles,
-        uptime: network_uptime 
+        uptime: network_uptime,
+        status: "OPERATIONAL"
     };
 });
 
@@ -530,8 +540,8 @@ async function discoverPeers() {
     if (NODE_NAME === 'node-pending') {
         const nextLetter = GREEK_ALPHABET.find(letter => !discoveredNames.includes(`node-${letter}`));
         NODE_NAME = `node-${nextLetter || 'omega'}`;
-        console.log(`[IDENTITY] Adopted name: ${NODE_NAME}`);
-        fs.writeFileSync(IDENTITY_FILE, JSON.stringify({ name: NODE_NAME }));
+        console.log(`[IDENTITY] Adopted name: ${NODE_NAME} (ID: ${NODE_ID})`);
+        fs.writeFileSync(IDENTITY_FILE, JSON.stringify({ name: NODE_NAME, id: NODE_ID }));
     }
 }
 
