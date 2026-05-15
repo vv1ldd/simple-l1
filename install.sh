@@ -32,9 +32,14 @@ fi
 # --- DOCKER MODE ---
 if [ "$INSTALL_MODE" == "1" ]; then
     if ! [ -x "$(command -v docker)" ]; then
-      echo "Error: Docker is not installed." >&2
-      exit 1
+        echo "Docker not found. Installing Docker Engine..."
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sudo sh get-docker.sh
+        sudo usermod -aG docker $USER
+        echo "Docker installed successfully."
+        rm get-docker.sh
     fi
+    
     mkdir -p simple-l1-node && cd simple-l1-node
     curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/docker-compose.yml -o docker-compose.yml
     if [[ -z "$NODE_NAME" ]]; then
