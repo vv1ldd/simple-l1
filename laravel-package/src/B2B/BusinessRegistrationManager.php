@@ -14,6 +14,7 @@ class BusinessRegistrationManager
     public function searchAndAnchor(string $inn, string $sl1Address)
     {
         $token = config('services.dadata.token') ?? env('DADATA_TOKEN');
+        \Illuminate\Support\Facades\Log::info("DaData Token Used", ['token_exists' => !empty($token)]);
         
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Authorization' => "Token $token",
@@ -22,6 +23,8 @@ class BusinessRegistrationManager
         ])->post('https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party', [
             'query' => $inn
         ]);
+
+        \Illuminate\Support\Facades\Log::info("DaData API Response Status", ['status' => $response->status()]);
 
         if ($response->successful()) {
             $suggestions = $response->json('suggestions');
