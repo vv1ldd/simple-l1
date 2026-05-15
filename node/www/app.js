@@ -1,4 +1,11 @@
-console.log('🚀 SIMPLE-L1 APP v2.1.2 BOOTSTRAP...');
+window.copyInstallCmd = function() {
+    const cmd = document.getElementById('install-cmd').textContent;
+    navigator.clipboard.writeText(cmd).then(() => {
+        alert('Command copied to clipboard!');
+    });
+};
+
+console.log('🚀 SIMPLE-L1 APP v2.1.5 BOOTSTRAP...');
 
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('[CRITICAL ERROR]', msg, 'at', lineNo, ':', columnNo);
@@ -17,8 +24,6 @@ try {
 } catch (e) { console.warn('[BOOT] LocalStorage access failed'); }
 
 async function updateNetworkStatus() {
-    console.log('[QUORUM] Starting network check...');
-    
     const origin = window.location.origin.replace(/\/$/, '');
     const endpoints = [origin, ...window.known_peers].filter(Boolean);
     const uniqueEndpoints = [...new Set(endpoints.map(e => e.replace(/\/$/, '')))];
@@ -29,7 +34,6 @@ async function updateNetworkStatus() {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 3000);
         try {
-            // Use relative path for same-origin to avoid CORS complexity
             const fetchUrl = url === origin ? '/api/status' : `${url}/api/status`;
             const response = await fetch(fetchUrl, { 
                 mode: url === origin ? 'same-origin' : 'cors',
@@ -48,8 +52,6 @@ async function updateNetworkStatus() {
     const successful = results
         .filter(r => r.status === 'fulfilled')
         .map(r => r.value);
-
-    console.log(`[QUORUM] Success: ${successful.length} / ${uniqueEndpoints.length}`);
 
     const elNet = document.getElementById('stat-network');
     const elNodes = document.getElementById('stat-nodes');
@@ -83,19 +85,14 @@ async function updateNetworkStatus() {
     
     if (elUp) {
         let totalSecs = Math.floor(avgUptime);
-        
         const years = Math.floor(totalSecs / 31536000);
         totalSecs %= 31536000;
-        
         const months = Math.floor(totalSecs / 2592000);
         totalSecs %= 2592000;
-        
         const days = Math.floor(totalSecs / 86400);
         totalSecs %= 86400;
-        
         const hours = Math.floor(totalSecs / 3600);
         totalSecs %= 3600;
-        
         const minutes = Math.floor(totalSecs / 60);
         const seconds = totalSecs % 60;
         
@@ -105,7 +102,6 @@ async function updateNetworkStatus() {
         if (days > 0) uptimeStr += `${days}d `;
         if (hours > 0 || days > 0) uptimeStr += `${hours}h `;
         uptimeStr += `${minutes}m ${seconds}s`;
-        
         elUp.textContent = uptimeStr;
     }
 
@@ -161,55 +157,51 @@ function updateAccountUI(account) {
     }
 }
 
-setInterval(() => { updateNetworkStatus().catch(e => console.error('[POLL ERROR]', e)); }, 3000);
-document.addEventListener('DOMContentLoaded', updateNetworkStatus);
-
-/* -------------------------------------------------------------------------
-   UI LOGIC
--------------------------------------------------------------------------- */
 window.showTab = function(tabName) {
     document.querySelectorAll('.terminal-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
     const targetTab = document.getElementById(`tab-${tabName}`);
     if (targetTab) targetTab.classList.add('active');
+    
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        if (btn.textContent.toLowerCase() === tabName.toLowerCase()) btn.classList.add('active');
+        if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
+            btn.classList.add('active');
+        }
     });
 };
 
 window.showSendForm = () => { const f = document.getElementById('send-form'); if (f) f.style.display = 'flex'; };
 window.hideSendForm = () => { const f = document.getElementById('send-form'); if (f) f.style.display = 'none'; };
 
-/* -------------------------------------------------------------------------
-   IDENTITY ENGINE
--------------------------------------------------------------------------- */
-const consoleOutput = document.getElementById('console-output');
-const btnConsensus = document.getElementById('btn-trigger-consensus');
-const usernameInput = document.getElementById('username-input');
-
-function appendLine(text, className = '') {
-    if (!consoleOutput) return;
-    const line = document.createElement('div');
-    line.className = 'terminal-line ' + className;
-    line.innerHTML = text;
-    consoleOutput.appendChild(line);
-    consoleOutput.scrollTop = consoleOutput.scrollHeight;
-}
-
 async function runRealConsensus() {
+    const usernameInput = document.getElementById('username-input');
     let handle = (usernameInput ? usernameInput.value : '') || '@anonymous';
     if (!handle.startsWith('@')) handle = '@' + handle;
+    const consoleOutput = document.getElementById('console-output');
     if (consoleOutput) consoleOutput.innerHTML = '';
+    const btnConsensus = document.getElementById('btn-trigger-consensus');
     if (btnConsensus) btnConsensus.disabled = true;
+    
+    function appendLine(text, className = '') {
+        if (!consoleOutput) return;
+        const line = document.createElement('div');
+        line.className = 'terminal-line ' + className;
+        line.innerHTML = text;
+        consoleOutput.appendChild(line);
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
     appendLine(`[AUTHORITY] Инициализация канонического корня для ${handle}...`, 'text-highlight');
     try {
         const address = `sl1_${Math.random().toString(16).substring(2, 42)}`;
         window.currentAddress = address;
-        const endpoints = [window.location.origin, ...window.known_peers].filter(Boolean);
+        const origin = window.location.origin.replace(/\/$/, '');
+        const endpoints = [origin, ...window.known_peers].filter(Boolean);
         let successCount = 0;
         for (const url of endpoints) {
             try {
-                const fetchUrl = url.replace(/\/$/, '') === window.location.origin.replace(/\/$/, '') ? '/accounts' : `${url.replace(/\/$/, '')}/accounts`;
+                const fetchUrl = url === origin ? '/accounts' : `${url}/accounts`;
                 const res = await fetch(fetchUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -225,20 +217,10 @@ async function runRealConsensus() {
     } catch (err) { appendLine(`[!] ОШИБКА: ${err.message}`, 'text-red'); }
     if (btnConsensus) btnConsensus.disabled = false;
 }
-if (btnConsensus) btnConsensus.addEventListener('click', runRealConsensus);
 
-window.executeSend = async function() {
-    const to = document.getElementById('send-to').value;
-    const amt = parseFloat(document.getElementById('send-amount')?.value || '0');
-    if (!to || isNaN(amt)) return alert('Укажите получателя и сумму');
-    const btn = event.currentTarget; btn.disabled = true;
-    try {
-        const res = await fetch('/transactions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: window.currentAddress, to_handle: to, amount: amt, asset: 'SL1' })
-        });
-        if ((await res.json()).success) { window.hideSendForm(); updateNetworkStatus(); }
-    } catch (err) { alert(`Ошибка: ${err.message}`); }
-    btn.disabled = false;
-};
+document.addEventListener('DOMContentLoaded', () => {
+    updateNetworkStatus();
+    setInterval(updateNetworkStatus, 5000);
+    const btn = document.getElementById('btn-trigger-consensus');
+    if (btn) btn.addEventListener('click', runRealConsensus);
+});
