@@ -160,6 +160,7 @@
                     <button class="tab-btn" onclick="showTab('portfolio')">PORTFOLIO</button>
                     <button class="tab-btn" onclick="showTab('policies')">POLICIES</button>
                     <button class="tab-btn" onclick="showTab('provenance')">PROVENANCE</button>
+                    <button class="tab-btn" onclick="showTab('whitepaper')">WHITEPAPER</button>
                     <button class="tab-btn" onclick="showTab('join')">JOIN</button>
                 </div>
             </div>
@@ -304,6 +305,37 @@
                 <div class="terminal-body provenance-body">
                     <div class="log-container" id="provenance-log">
                         <div class="log-entry empty">Waiting for authority anchoring...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-whitepaper" class="terminal-content">
+                <div class="terminal-body whitepaper-body" style="padding: 30px; font-family: 'Inter', sans-serif; line-height: 1.6; color: #ccc;">
+                    <h2 style="color: #0f0; margin-top: 0;">SOVEREIGN CONNECTIVITY FABRIC (v0.1)</h2>
+                    <p style="font-size: 14px; margin-bottom: 25px;">Simple-L1 is not a coin. It is a cryptographic substrate for human and resource sovereignty.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h4 style="color: #fff; margin-bottom: 10px;">01. THE PROBLEM</h4>
+                            <p style="font-size: 12px; opacity: 0.8;">The modern web is built on silos. Your identity is a rental, your payments are permissions, and your data is a commodity for centralized engines.</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #fff; margin-bottom: 10px;">02. THE SOLUTION</h4>
+                            <p style="font-size: 12px; opacity: 0.8;">A deterministic, cross-platform fabric that anchors identity in hardware and settle value through a global, neutral gossip protocol.</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; border-top: 1px solid #222; padding-top: 20px;">
+                        <h4 style="color: #fff;">CORE PILLARS</h4>
+                        <ul style="font-size: 12px; opacity: 0.8; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;"><strong style="color: #0f0;">Hardware Identity:</strong> Keys are generated and stored in Secure Enclaves (Apple, TPM, Android).</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #0f0;">Universal Rails:</strong> Native bridges to PIX, IBAN, SPEI, FedNow, and NSPK.</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #0f0;">Hybrid Execution:</strong> Node.js speed with PHP (MDK-Kernel) deterministic verification.</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 30px; background: rgba(0,255,0,0.05); border: 1px solid #0f0; padding: 15px; text-align: center;">
+                        <span style="color: #0f0; font-weight: bold;">"VALUE WITHOUT PERMISSION. IDENTITY WITHOUT SURVEILLANCE."</span>
                     </div>
                 </div>
             </div>
