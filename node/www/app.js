@@ -88,7 +88,14 @@ async function updateNetworkStatus() {
     }
 
     if (elNet) elNet.textContent = first.network || 'Simple-L1 Alpha';
-    if (elNodes) elNodes.textContent = `${successful.length} / ${uniqueEndpoints.length} UP`;
+    if (elNodes) elNodes.textContent = `${successful.length} ACTIVE`;
+    
+    const elNodeList = document.getElementById('stat-node-list');
+    if (elNodeList) {
+        const names = successful.map(s => s.node_name).filter(Boolean);
+        elNodeList.textContent = names.join(' • ');
+    }
+    
     if (elAcc) elAcc.textContent = maxAccounts;
     
     if (elUp) {
