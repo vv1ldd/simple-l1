@@ -1236,23 +1236,19 @@ window.SL1_TRANSLATIONS = {
 // Региональные псевдонимы (маппинг диалектов)
 window.SL1_TRANSLATIONS['es-ar'] = window.SL1_TRANSLATIONS['es'];
 
-function setLanguage(lang) {
+window.setLanguage = function(lang) {
     console.log(`[i18n] Switching to: ${lang}`);
     const dict = window.SL1_TRANSLATIONS[lang] || window.SL1_TRANSLATIONS['en'];
-    
+    if (!dict) return;
+
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (dict[key]) {
-            // If it contains HTML tags (like <strong>), use innerHTML
-            if (dict[key].includes('<')) {
-                el.innerHTML = dict[key];
-            } else {
-                el.textContent = dict[key];
-            }
+            if (dict[key].includes('<')) el.innerHTML = dict[key];
+            else el.textContent = dict[key];
         }
     });
 
-    // Translate placeholders
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (dict[key]) el.placeholder = dict[key];
@@ -1265,12 +1261,7 @@ function setLanguage(lang) {
 document.addEventListener('DOMContentLoaded', () => {
     const selector = document.getElementById('lang-select');
     const savedLang = localStorage.getItem('sl1_lang') || 'ru';
-    
-    if (selector) {
-        selector.value = savedLang;
-        selector.addEventListener('change', (e) => setLanguage(e.target.value));
-    }
-    
-    setLanguage(savedLang);
+    if (selector) selector.value = savedLang;
+    window.setLanguage(savedLang);
 });
 
