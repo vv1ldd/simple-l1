@@ -25,7 +25,15 @@ try {
 
 async function updateNetworkStatus() {
     const origin = window.location.origin.replace(/\/$/, '');
-    const endpoints = [origin, ...window.known_peers].filter(Boolean);
+    
+    // ПУЛ СЕМЯН (SEEDS): Глобальные точки входа для обнаружения сети
+    const seeds = [
+        'https://l1.wildflow.dev',
+        'https://l1-beta.wildflow.dev',
+        'https://l1-gamma.wildflow.dev'
+    ];
+
+    const endpoints = [origin, ...seeds, ...window.known_peers].filter(Boolean);
     const uniqueEndpoints = [...new Set(endpoints.map(e => e.replace(/\/$/, '')))];
     
     let lastError = '';
