@@ -1260,8 +1260,24 @@ window.setLanguage = function(lang) {
 
 document.addEventListener('DOMContentLoaded', () => {
     const selector = document.getElementById('lang-select');
-    const savedLang = localStorage.getItem('sl1_lang') || 'ru';
-    if (selector) selector.value = savedLang;
-    window.setLanguage(savedLang);
+    
+    // 1. Порядок определения:
+    //    - Сохраненный выбор в localStorage
+    //    - Язык браузера (navigator.language)
+    //    - По умолчанию 'en'
+    
+    let targetLang = localStorage.getItem('sl1_lang');
+    
+    if (!targetLang) {
+        const browserLang = navigator.language || navigator.userLanguage || 'en';
+        const shortLang = browserLang.split('-')[0].toLowerCase();
+        
+        // Маппинг поддерживаемых языков
+        const supported = ['ru', 'en', 'es', 'tr'];
+        targetLang = supported.includes(shortLang) ? shortLang : 'en';
+    }
+    
+    if (selector) selector.value = targetLang;
+    window.setLanguage(targetLang);
 });
 
