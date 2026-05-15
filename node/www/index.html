@@ -362,7 +362,13 @@ docker run -d -p 3000:3000 l1-clean</code>
     <span class="json-key">"sl1"</span>: <span class="json-string">"full-sovereign"</span>,
     <span class="json-key">"btc"</span>: <span class="json-string">"delegated-mpc"</span>,
     <span class="json-key">"eth"</span>: <span class="json-string">"delegated-aa"</span>,
-    <span class="json-key">"iban"</span>: <span class="json-string">"sepa-bridge-v1"</span>
+    <span class="json-key">"projections"</span>: {
+      <span class="json-key">"sepa"</span>: <span class="json-string">"iban-active"</span>,
+      <span class="json-key">"pix"</span>: <span class="json-string">"brazil-mesh"</span>,
+      <span class="json-key">"upi"</span>: <span class="json-string">"india-mesh"</span>,
+      <span class="json-key">"fednow"</span>: <span class="json-string">"usa-sync"</span>,
+      <span class="json-key">"nspk"</span>: <span class="json-string">"mir-bridge"</span>
+    }
   }
 }
                 </pre>
