@@ -50,13 +50,26 @@ if [ "$INSTALL_MODE" == "1" ]; then
 
 # --- NATIVE MODE ---
 else
+    # Install Node.js if missing (Ubuntu/Debian)
     if ! [ -x "$(command -v node)" ]; then
-      echo "Error: Node.js is not installed. Please install Node.js 20+." >&2
-      exit 1
+        echo "Node.js not found. Installing Node.js 20 from NodeSource..."
+        sudo apt-get update && sudo apt-get install -y ca-certificates curl gnupg
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+        NODE_MAJOR=20
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+        sudo apt-get update && sudo apt-get install nodejs -y
+        echo "Node.js $(node -v) installed successfully."
     fi
+
     echo "Cloning repository..."
-    git clone https://github.com/vv1ldd/simple-l1.git
-    cd simple-l1/node
+    if [ -d "simple-l1" ]; then
+        echo "Repository already exists. Updating..."
+        cd simple-l1 && git pull && cd node
+    else
+        git clone https://github.com/vv1ldd/simple-l1.git
+        cd simple-l1/node
+    fi
     npm install
 
     if [[ -z "$USER_NODE_NAME" ]]; then
