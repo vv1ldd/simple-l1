@@ -36,6 +36,21 @@ class SovereignAuthenticator {
         
         return SecKeyCopyExternalRepresentation(SecKeyCopyPublicKey(privateKey)!, &error)! as Data
     }
+
+    /**
+     * Экспорт зашифрованного манифеста идентичности
+     */
+    func exportIdentityManifest() throws -> String {
+        let manifest = [
+            "version": "0.1.0",
+            "node_type": "identity_root",
+            "created_at": Date().timeIntervalSince1970,
+            "export_id": UUID().uuidString
+        ] as [String : Any]
+        
+        let jsonData = try JSONSerialization.data(withJSONObject: manifest, options: .prettyPrinted)
+        return String(data: jsonData, encoding: .utf8)!
+    }
 }
 
 /**
