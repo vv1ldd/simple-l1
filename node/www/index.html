@@ -140,6 +140,7 @@
                     <button class="tab-btn" onclick="showTab('portfolio')">PORTFOLIO</button>
                     <button class="tab-btn" onclick="showTab('policies')">POLICIES</button>
                     <button class="tab-btn" onclick="showTab('provenance')">PROVENANCE</button>
+                    <button class="tab-btn" onclick="showTab('join')">JOIN</button>
                 </div>
             </div>
 
@@ -277,6 +278,17 @@
                 <div class="terminal-body provenance-body">
                     <div class="log-container" id="provenance-log">
                         <div class="log-entry empty">Waiting for authority anchoring...</div>
+                    </div>
+                </div>
+            <div id="tab-join" class="terminal-content">
+                <div class="terminal-body join-body">
+                    <div class="spec-card active">
+                        <h3 style="color: #0f0;">> BECOME THE AUTHORITY</h3>
+                        <p>Run your own sovereign node in 30 seconds. Plug & Play enabled.</p>
+                        <div style="background: #000; color: #0f0; padding: 15px; font-family: 'JetBrains Mono', monospace; border: 2px solid #0f0; margin-top: 15px; position: relative; font-size: 12px;">
+                            <code id="install-cmd">curl -sSL https://raw.githubusercontent.com/vv1ldd/simple-l1/main/install.sh | bash</code>
+                            <button onclick="copyInstallCmd()" style="position: absolute; right: 5px; top: 5px; background: #0f0; color: #000; border: none; padding: 2px 5px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; font-size: 10px;">COPY</button>
+                        </div>
                     </div>
                 </div>
             </div>
