@@ -1,0 +1,105 @@
+{
+  "version": "cre-v1",
+  "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "proof_key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+  "capability": "settlement.deposit.accept",
+  "scope": "network:ethereum:asset:USDC",
+  "cases": [
+    {
+      "name": "no grant denies",
+      "grants": [],
+      "input_overrides": {},
+      "decision": "deny"
+    },
+    {
+      "name": "entity allow grant allows",
+      "grants": [
+        {
+          "id": "grant_allow_entity",
+          "policy": "allow",
+          "status": "active"
+        }
+      ],
+      "input_overrides": {},
+      "decision": "allow"
+    },
+    {
+      "name": "matching key-bound allow grant allows",
+      "grants": [
+        {
+          "id": "grant_allow_key",
+          "key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+          "policy": "allow",
+          "status": "active"
+        }
+      ],
+      "input_overrides": {},
+      "decision": "allow"
+    },
+    {
+      "name": "mismatched key-bound grant denies",
+      "grants": [
+        {
+          "id": "grant_wrong_key",
+          "key_l1_address": "sl1_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f",
+          "policy": "allow",
+          "status": "active"
+        }
+      ],
+      "input_overrides": {},
+      "decision": "deny"
+    },
+    {
+      "name": "deny dominates allow",
+      "grants": [
+        {
+          "id": "grant_allow_entity",
+          "policy": "allow",
+          "status": "active"
+        },
+        {
+          "id": "grant_deny_entity",
+          "policy": "deny",
+          "status": "active"
+        }
+      ],
+      "input_overrides": {},
+      "decision": "deny"
+    },
+    {
+      "name": "quorum dominates approval and allow",
+      "grants": [
+        {
+          "id": "grant_allow_entity",
+          "policy": "allow",
+          "status": "active"
+        },
+        {
+          "id": "grant_approval_entity",
+          "policy": "require_approval",
+          "status": "active"
+        },
+        {
+          "id": "grant_quorum_entity",
+          "policy": "require_quorum",
+          "status": "active"
+        }
+      ],
+      "input_overrides": {},
+      "decision": "quorum"
+    },
+    {
+      "name": "role and context cannot affect decision",
+      "grants": [],
+      "input_overrides": {
+        "role": "owner",
+        "context": {
+          "role": "owner",
+          "internal": true,
+          "trusted_adapter": true
+        }
+      },
+      "decision": "deny"
+    }
+  ]
+}

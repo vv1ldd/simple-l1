@@ -1,0 +1,92 @@
+{
+  "version": "settlement-transition-rules-v1",
+  "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "network": "ethereum",
+  "asset": "USDC",
+  "capability": "settlement.deposit.accept",
+  "scope": "network:ethereum:asset:USDC",
+  "external_event": {
+    "network": "ethereum",
+    "tx_hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "recipient": "0x2222222222222222222222222222222222222222",
+    "asset": "USDC",
+    "amount": "100.00",
+    "confirmations": 20
+  },
+  "proof": {
+    "proof_type": "EVM_TX_PROOF",
+    "proof_fingerprint": "proof_11111111111111111111111111111111"
+  },
+  "intent": {
+    "intent_id": "intent_deposit_eth_usdc_001",
+    "type": "CROSS_CHAIN_DEPOSIT",
+    "amount_rule": "exact",
+    "amount": "100.00",
+    "expires_at": "2999-01-01T00:00:00.000Z"
+  },
+  "candidate_cases": [
+    {
+      "name": "external event alone cannot mutate state",
+      "has_external_event": true,
+      "has_proof": false,
+      "has_intent": false,
+      "cre_decision": null,
+      "has_transition_rule": false,
+      "has_receipt": false,
+      "may_mutate_state": false
+    },
+    {
+      "name": "proof without intent cannot mutate state",
+      "has_external_event": true,
+      "has_proof": true,
+      "has_intent": false,
+      "cre_decision": null,
+      "has_transition_rule": false,
+      "has_receipt": false,
+      "may_mutate_state": false
+    },
+    {
+      "name": "valid proof and intent still require CRE allow",
+      "has_external_event": true,
+      "has_proof": true,
+      "has_intent": true,
+      "cre_decision": "deny",
+      "has_transition_rule": true,
+      "has_receipt": true,
+      "may_mutate_state": false
+    },
+    {
+      "name": "accepted settlement requires receipt",
+      "has_external_event": true,
+      "has_proof": true,
+      "has_intent": true,
+      "cre_decision": "allow",
+      "has_transition_rule": true,
+      "has_receipt": false,
+      "may_mutate_state": false
+    },
+    {
+      "name": "complete settlement preconditions may mutate state",
+      "has_external_event": true,
+      "has_proof": true,
+      "has_intent": true,
+      "cre_decision": "allow",
+      "has_transition_rule": true,
+      "has_receipt": true,
+      "idempotency_key": "intent_deposit_eth_usdc_001:proof_11111111111111111111111111111111",
+      "may_mutate_state": true
+    },
+    {
+      "name": "duplicate idempotency key cannot mutate state again",
+      "has_external_event": true,
+      "has_proof": true,
+      "has_intent": true,
+      "cre_decision": "allow",
+      "has_transition_rule": true,
+      "has_receipt": true,
+      "idempotency_key": "intent_deposit_eth_usdc_001:proof_11111111111111111111111111111111",
+      "already_applied": true,
+      "may_mutate_state": false
+    }
+  ]
+}

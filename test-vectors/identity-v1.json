@@ -1,0 +1,38 @@
+{
+  "version": "identity-kernel-v1",
+  "entity": {
+    "valid": [
+      "sl1e_f690252733b20004bda7916074403f4259206a4"
+    ],
+    "invalid": [
+      "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+      "0x2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f",
+      "sample-public-key",
+      "",
+      null
+    ]
+  },
+  "key": {
+    "public_key_cases": [
+      {
+        "public_key": "abc",
+        "key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3"
+      },
+      {
+        "public_key": "sample-public-key",
+        "key_l1_address": "sl1_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f"
+      }
+    ],
+    "invalid_as_entity": [
+      "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+      "sl1_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f"
+    ]
+  },
+  "forbidden_transitions": [
+    "key_l1_address -> entity_l1_address",
+    "public_key -> entity_l1_address",
+    "external_chain_address -> entity_l1_address",
+    "role -> entity_l1_address",
+    "adapter_output -> entity_l1_address"
+  ]
+}

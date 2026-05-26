@@ -8,7 +8,7 @@
 
 ## 1. Определение в одной строке
 
-> **SIMPLE-L1** = deterministic intent execution ledger with passkey-bound identities and replayable state
+> **SIMPLE-L1** = deterministic intent execution ledger with passkey-backed entity identities and replayable state
 
 То есть:
 * Не «chain транзакций».
@@ -18,11 +18,12 @@
 
 ## 2. Базовые принципы (жёсткие инварианты)
 
-### 🔑 1. Identity is hardware-bound
-* **Passkey (P-256)** = root identity.
+### 🔑 1. Identity is passkey-backed, not passkey-derived
+* **Entity address (`sl1e_`)** = stable account identity.
+* **Passkey key address (`sl1_`)** = proof of control for one registered key.
 * Приватный ключ никогда не покидает Secure Enclave устройства.
 * Никаких seed‑фраз.
-* **`identity = public key hash`**
+* **`identity != public key hash`**. Key material authenticates an entity; it never becomes the entity.
 
 ### 🧬 2. Intent is the primitive
 Вместо «transaction» используется явный примитив намерения:
@@ -61,7 +62,9 @@ Intent {
 ### Layer 1: Identity Layer
 * **WebAuthn / Passkey**
 * Кривая NIST P-256.
-* Детерминированный адрес: `sl1 = BLAKE3(pubkey)[..20]` (с Bech32m-кодированием).
+* `sl1e_` entity address — стабильная личность/account.
+* `sl1_` key address — passkey-derived proof material.
+* Authorization не выводится из roles или key type; оно вычисляется CRE v1 по explicit grants.
 
 ### Layer 2: Intent Layer
 Каноническая Borsh-структура.
@@ -100,6 +103,8 @@ Intent {
 ## 6. Документация репозитория
 
 ### 🧭 Ценности и Манифест
+* [PROTOCOL.v1.md](./PROTOCOL.v1.md) — Формальная спецификация Simple L1 Protocol v1 и источник истины для реализации.
+* [PROTOCOL-VERSIONING.md](./PROTOCOL-VERSIONING.md) — Правила изменения протокола, conformance compatibility и SDK binding.
 * [MANIFESTO.md](./MANIFESTO.md) — Неприкосновенные принципы.
 * [WHITEPAPER.md](./WHITEPAPER.md) — Концептуальный обзор целей и проблем.
 
@@ -114,8 +119,9 @@ Intent {
 * [RFC-0008: Network Knowledge & View Divergence Model](./rfc/0008-network-knowledge-and-view-divergence-model.md)
 * [RFC-0009: Propagation Control & Information Flow Constraints](./rfc/0009-propagation-control-and-information-flow.md)
 * [RFC-0010: Adversarial Topology & Network Geometry Invariance](./rfc/0010-adversarial-topology-and-geometry.md)
+* [RFC-0011: Identity Kernel & Capability Resolution](./rfc/0011-identity-kernel-and-capability-resolution.md)
 
 ---
 
 ## 7. Идеальная форма
-> **A cryptographic state machine where human intent is the only input and hardware keys are the only authority.**
+> **A cryptographic state machine where human intent is the only input, entity identity is stable, and hardware keys are proofs rather than accounts.**

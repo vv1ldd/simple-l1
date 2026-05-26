@@ -1,0 +1,278 @@
+{
+  "version": "1.0.2",
+  "name": "Simple L1 Constitutional Policies",
+  "description": "Declarative rules of legitimacy governing all intent types. Evaluated before any ledger mutation.",
+  "enacted": "2026-05-19",
+  "policies": [
+    {
+      "intent_type": "CROSS_CHAIN_DEPOSIT",
+      "description": "Inbound value from external settlement networks",
+      "rules": [
+        {
+          "id": "deposit:network-whitelist",
+          "description": "Only approved external networks may source deposits",
+          "condition": {
+            "field": "network",
+            "op": "not_in",
+            "value": [
+              "ethereum",
+              "base",
+              "arbitrum",
+              "polygon",
+              "bsc",
+              "optimism",
+              "bitcoin",
+              "ton",
+              "solana"
+            ]
+          },
+          "action": "deny",
+          "reason": "Deposit network is not constitutionally whitelisted"
+        },
+        {
+          "id": "deposit:asset-whitelist",
+          "description": "Only approved assets are accepted",
+          "condition": {
+            "field": "asset",
+            "op": "not_in",
+            "value": [
+              "ETH",
+              "USDT",
+              "USDC",
+              "WBTC",
+              "BTC",
+              "MATIC",
+              "BNB",
+              "TON",
+              "SOL"
+            ]
+          },
+          "action": "deny",
+          "reason": "Asset is not approved for deposit"
+        },
+        {
+          "id": "deposit:amount-ceiling",
+          "description": "Single deposit ceiling: 1,000,000 USD equivalent",
+          "condition": {
+            "field": "amount",
+            "op": "gt",
+            "value": 1000000
+          },
+          "action": "deny",
+          "reason": "Single deposit exceeds constitutional ceiling (1M)"
+        },
+        {
+          "id": "deposit:bitcoin-confirmations",
+          "description": "Bitcoin deposits require 6 block confirmations",
+          "condition": {
+            "and": [
+              {
+                "field": "network",
+                "op": "eq",
+                "value": "bitcoin"
+              },
+              {
+                "field": "confirmations",
+                "op": "lt",
+                "value": 6
+              }
+            ]
+          },
+          "action": "deny",
+          "reason": "Bitcoin deposit requires 6 confirmations"
+        },
+        {
+          "id": "deposit:evm-confirmations",
+          "description": "EVM deposits require network-specific confirmation depth",
+          "condition": {
+            "and": [
+              {
+                "field": "network",
+                "op": "in",
+                "value": [
+                  "polygon"
+                ]
+              },
+              {
+                "field": "confirmations",
+                "op": "lt",
+                "value": 30
+              }
+            ]
+          },
+          "action": "deny",
+          "reason": "Polygon deposit requires 30 confirmations"
+        }
+      ]
+    },
+    {
+      "intent_type": "CROSS_CHAIN_WITHDRAWAL",
+      "description": "Outbound value to external settlement networks — higher constitutional scrutiny",
+      "rules": [
+        {
+          "id": "withdrawal:network-whitelist",
+          "description": "Only approved external networks may receive withdrawals",
+          "condition": {
+            "field": "network",
+            "op": "not_in",
+            "value": [
+              "ethereum",
+              "base",
+              "arbitrum",
+              "polygon",
+              "bsc",
+              "optimism",
+              "bitcoin",
+              "ton",
+              "solana"
+            ]
+          },
+          "action": "deny",
+          "reason": "Withdrawal network is not constitutionally whitelisted"
+        },
+        {
+          "id": "withdrawal:asset-whitelist",
+          "description": "Only approved assets may be withdrawn",
+          "condition": {
+            "field": "asset",
+            "op": "not_in",
+            "value": [
+              "ETH",
+              "USDT",
+              "USDC",
+              "WBTC",
+              "BTC",
+              "MATIC",
+              "BNB",
+              "TON",
+              "SOL"
+            ]
+          },
+          "action": "deny",
+          "reason": "Asset is not approved for withdrawal"
+        },
+        {
+          "id": "withdrawal:amount-ceiling",
+          "description": "Single withdrawal ceiling: 500,000 USD equivalent",
+          "condition": {
+            "field": "amount",
+            "op": "gt",
+            "value": 500000
+          },
+          "action": "deny",
+          "reason": "Single withdrawal exceeds constitutional ceiling (500K)",
+          "value": 250000
+        },
+        {
+          "id": "withdrawal:large-multisig",
+          "description": "Withdrawals above 10,000 require treasury co-signature",
+          "condition": {
+            "and": [
+              {
+                "field": "amount",
+                "op": "gte",
+                "value": 10000
+              },
+              {
+                "field": "treasury_signature",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          },
+          "action": "require",
+          "reason": "Withdrawal above 10,000 requires treasury multisig co-signature",
+          "requirements": {
+            "treasury_multisig": true,
+            "description": "Treasury multisig required for this withdrawal"
+          }
+        },
+        {
+          "id": "withdrawal:large-delay",
+          "description": "Large withdrawals (>50K) require 24h constitutional delay",
+          "condition": {
+            "and": [
+              {
+                "field": "amount",
+                "op": "gte",
+                "value": 50000
+              },
+              {
+                "field": "delay_elapsed_ms",
+                "op": "lt",
+                "value": 86400000
+              }
+            ]
+          },
+          "action": "deny",
+          "reason": "Withdrawal above 50,000 requires 24h constitutional delay"
+        },
+        {
+          "id": "withdrawal:bitcoin-min",
+          "description": "Bitcoin withdrawal minimum: 0.001 BTC (dust protection)",
+          "condition": {
+            "and": [
+              {
+                "field": "network",
+                "op": "eq",
+                "value": "bitcoin"
+              },
+              {
+                "field": "amount",
+                "op": "lt",
+                "value": 0.001
+              }
+            ]
+          },
+          "action": "deny",
+          "reason": "Bitcoin withdrawal below dust threshold (0.001 BTC)"
+        }
+      ]
+    },
+    {
+      "intent_type": "TRANSFER",
+      "description": "Native SL1 internal transfers",
+      "rules": [
+        {
+          "id": "transfer:amount-ceiling",
+          "description": "Single transfer ceiling: 10,000,000 SL1",
+          "condition": {
+            "field": "amount",
+            "op": "gt",
+            "value": 10000000
+          },
+          "action": "deny",
+          "reason": "Transfer exceeds constitutional ceiling (10M SL1)"
+        },
+        {
+          "id": "transfer:self-transfer",
+          "description": "Self-transfers are constitutionally meaningless and prohibited",
+          "condition": {
+            "field": "self_transfer",
+            "op": "eq",
+            "value": true
+          },
+          "action": "deny",
+          "reason": "Self-transfer is not constitutionally admissible"
+        }
+      ]
+    }
+  ],
+  "last_amended": "2026-05-19T05:47:09.887Z",
+  "amendment_log": [
+    {
+      "proposal_id": "gov_15e15b781557abf8d6f2",
+      "amendment_type": "PARAMETER_CHANGE",
+      "title": "Raise withdrawal ceiling",
+      "enacted_at": "2026-05-19T05:46:36.789Z",
+      "epoch": 1
+    },
+    {
+      "proposal_id": "gov_bc4c4c3fff2900a13415",
+      "amendment_type": "PARAMETER_CHANGE",
+      "title": "Raise BTC withdrawal ceiling to 250K",
+      "enacted_at": "2026-05-19T05:47:09.887Z",
+      "epoch": 1
+    }
+  ]
+}
