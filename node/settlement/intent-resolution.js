@@ -180,7 +180,8 @@ class IntentResolutionEngine {
      * Fulfill an intent — the constitutional commitment.
      * Called after verifyDeposit() returns ok: true.
      *
-     * This is the ONLY place where ledger state is mutated for cross-chain deposits.
+     * Deprecated: fulfillment no longer mutates economic state directly.
+     * Settlement must be applied through the lineage-complete runtime path.
      *
      * @param {string} intent_id
      * @param {object} proof          - Result from registry.verifyDeposit()
@@ -211,25 +212,6 @@ class IntentResolutionEngine {
             explorer_url:   proof.explorerUrl,
             proof_summary:  this._digestProof(proof),
         };
-
-        // ── Ledger mutation ──────────────────────────────────────────────────
-        if (intent.type === 'CROSS_CHAIN_DEPOSIT') {
-            const account = this.ledger.accounts[intent.sl1_address];
-            if (!account) throw new Error(`SL1 account ${intent.sl1_address} not found`);
-
-            if (!account.balances[intent.asset]) account.balances[intent.asset] = 0;
-            account.balances[intent.asset] += parseFloat(proof.amount);
-
-            account.provenance_log.push({
-                type:       'CROSS_CHAIN_DEPOSIT_FULFILLED',
-                intent_id,
-                detail:     `Intent ${intent_id.slice(0, 8)}… fulfilled: +${proof.amount} ${intent.asset} via ${proof.network}`,
-                tx_hash:    proof.txHash,
-                network:    proof.network,
-                timestamp:  new Date().toISOString(),
-            });
-        }
-        // ────────────────────────────────────────────────────────────────────
 
         this._emit('INTENT_FULFILLED', intent, { proof });
         return intent;

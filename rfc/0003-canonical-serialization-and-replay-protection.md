@@ -8,7 +8,7 @@
 
 ## 1. Аннотация (Abstract)
 
-Этот RFC формализует **Phase 1: Transaction Formalization** архитектуры Simple-L1. Мы утверждаем перенос фокуса с сырых текстовых подписей на **детерминированное бинарное кодирование намерения (Canonical Intent)**. Документ определяет строгий бинарный формат транзакции на базе спецификации **Borsh**, вводит систему сквозных `nonce` для аккаунтов, механизм **Domain Separation** для защиты от атак межсетевого воспроизведения (replay), и структуру хэшируемого транзакционного конверта, готового к включению в Merkle Tree.
+Этот RFC формализует **Phase 1: Intent Formalization** архитектуры Simple-L1. Мы утверждаем перенос фокуса с сырых текстовых подписей на **детерминированное бинарное кодирование намерения (Canonical Intent)**. Документ определяет строгий бинарный формат Intent на базе спецификации **Borsh**, вводит систему сквозных `nonce` для replay protection, механизм **Domain Separation** для защиты от атак межсетевого воспроизведения (replay), и структуру хэшируемого `IntentApprovalEnvelope`, готового к проверке authority lineage.
 
 ---
 
@@ -42,8 +42,10 @@
 | :--- | :--- | :--- |
 | `domain_prefix` | `[u8; 32]` | Фиксированная строка домена (см. Раздел 5). |
 | `chain_id` | `[u8; 32]` | Уникальный хэш идентификатора конкретной сети L1. |
-| `account_nonce` | `u64` | Сквозной счетчик отправителя, защищающий от replay. |
-| `expires_at` | `u64` | Абсолютный Timestamp (или номер блока), после которого TX сгорает. |
+| `entity_l1_address` | `string` | Стабильный субъект (`sl1e_`), от имени которого создаётся Intent. |
+| `proof_key_l1_address` | `string` | Controller/passkey (`sl1_`), который подписывает Intent. |
+| `intent_nonce` | `u64` | Сквозной счетчик Intent для replay protection. |
+| `expires_at` | `u64` | Абсолютный Timestamp (или номер блока), после которого Intent сгорает. |
 | `fee_limit` | `u128` | Максимально допустимая комиссия в базовых единицах. |
 | `action_enum` | `u8` | Идентификатор действия: `0 = Transfer`, `1 = Call`, `2 = Admin`. |
 | `action_data` | `Vec<u8>` | Сериализованные аргументы конкретного действия. |
@@ -56,7 +58,7 @@
 
 ### 5.1 Domain Prefix
 Строка длиной 32 байта, дополненная нулями:
-`"SIMPLE_L1::TX::V1"`
+`"SIMPLE_L1::INTENT::V1"`
 
 ### 5.2 Chain ID
 Результирующий байтовый поток неразрывно связан с `chain_id` сети.
@@ -67,36 +69,40 @@
 
 ## 6. Защита от Replay: Система Nonce
 
-Каждый аккаунт в глобальном состоянии (Persistent State) Simple-L1 хранит поле `current_nonce: u64` (по умолчанию `0`).
+Каждая replay-защищённая lane в глобальном состоянии Simple-L1 хранит поле `current_nonce: u64` (по умолчанию `0`).
 
-1.  При формировании Intent клиент устанавливает: `account_nonce = state.current_nonce + 1`.
+Nonce lane должна быть привязана к `entity_l1_address` и может дополнительно скоупиться по `proof_key_l1_address` или account/resource scope.
+
+1.  При формировании Intent клиент устанавливает: `intent_nonce = state.current_nonce + 1`.
 2.  При валидации на Ноде:
-    *   Нода извлекает транзакционный `account_nonce` из расшифрованного Intent.
-    *   **Условие валидности:** `account_nonce == state.current_nonce + 1`.
+    *   Нода извлекает `intent_nonce` из расшифрованного Intent.
+    *   **Условие валидности:** `intent_nonce == state.current_nonce + 1`.
     *   В случае успеха: `state.current_nonce` инкрементируется.
-    *   В случае расхождения: транзакция мгновенно отбрасывается как невалидная.
+    *   В случае расхождения: IntentApproval мгновенно отбрасывается как невалидный.
 
 ---
 
-## 7. Хэшируемый Конверт Транзакции (Transaction Envelope)
+## 7. Хэшируемый Конверт Подтверждения (IntentApproval Envelope)
 
-Для построения дерева Merkle и генерации Inclusion Proofs, транзакция упаковывается в канонический объект «Конверта», от которого вычисляется глобальный `tx_hash`.
+Для построения дерева Merkle и генерации Inclusion Proofs, `Intent + IntentApproval` упаковывается в канонический объект «Конверта», от которого вычисляется глобальный `approval_hash`.
 
 ### 7.1 Схема Конверта (Borsh)
 ```rust
-struct TransactionEnvelope {
+struct IntentApprovalEnvelope {
     intent_bytes: Vec<u8>,           // Оригинальный бинарный Borsh Intent
+    entity_l1_address: String,       // Stable Entity, not derived from key material
+    proof_key_l1_address: String,    // Controller/passkey proof material
     authenticator_data: Vec<u8>,     // WebAuthn authenticatorData от чипа
     client_data_json: String,        // Исходный JSON от браузера
     signature: [u8; 64],             // ECDSA подпись (r, s)
 }
 ```
 
-### 7.2 Вычисление Tx Hash
-Глобальный уникальный идентификатор транзакции в реестре:
-$$\text{TxHash} = \text{BLAKE3}(\text{Borsh}(\text{TransactionEnvelope}))$$
+### 7.2 Вычисление Approval Hash
+Глобальный уникальный идентификатор cryptographic approval:
+$$\text{ApprovalHash} = \text{BLAKE3}(\text{Borsh}(\text{IntentApprovalEnvelope}))$$
 
-Этот хэш используется как лист (Leaf) в дереве **Merkle Tree** блока. Любой Light Client сможет доказать факт включения транзакции, имея только `TxHash` и Merkle Path к корню блока, что открывает путь к ультра-лёгким кошелькам и сверхбезопасным мостам.
+Этот хэш может использоваться как leaf в Merkle Tree. Он доказывает включение approval envelope, но не доказывает authority, execution или settlement.
 
 ---
 
@@ -107,5 +113,12 @@ $$\text{TxHash} = \text{BLAKE3}(\text{Borsh}(\text{TransactionEnvelope}))$$
 3.  Вычислить хэш: `H_intent = BLAKE3(intent_bytes)`.
 4.  Передать `H_intent` как `challenge` в WebAuthn.
 5.  Получить `authenticator_data`, `client_data_json` и `signature`.
-6.  Упаковать все 4 элемента в `TransactionEnvelope`.
-7.  Сериализовать конверт и отправить его в L1 Mempool.
+6.  Упаковать элементы в `IntentApprovalEnvelope`.
+7.  Сериализовать конверт и отправить его в L1 Mempool или authorization pipeline.
+8.  Проверить authority lineage отдельно:
+    ```text
+    IntentApproval
+      -> Authorization
+      -> Execution
+      -> Settlement
+    ```

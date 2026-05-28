@@ -1,3 +1,14 @@
 .DS_Store
 .env
 *.local
+
+# Dependencies
+node_modules/
+node/node_modules/
+
+# Runtime state
+node/node_identity.json
+node/ledger_db.json
+
+# Logs
+*.log

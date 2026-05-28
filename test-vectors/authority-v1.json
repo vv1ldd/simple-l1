@@ -1,0 +1,124 @@
+{
+  "version": "authority-runtime-v1",
+  "now": "2026-05-27T13:00:00.000Z",
+  "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "proof_key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+  "capability": "marketplace.order.fulfill",
+  "scope": "marketplace:meanly",
+  "cases": [
+    {
+      "name": "active grant creates executable authorization",
+      "grant": {
+        "id": "grant_marketplace_fulfill_active",
+        "policy": "allow",
+        "status": "active"
+      },
+      "authorization": {
+        "intent_approval_id": "iap_active",
+        "policy_decision": {
+          "input": {
+            "intent_type": "MARKETPLACE_FULFILLMENT",
+            "intent": { "intent_id": "intent_active" },
+            "facts": { "payment_status": "paid" }
+          },
+          "result": {
+            "ok": true,
+            "policies_evaluated": 1
+          }
+        }
+      },
+      "can_execute": true,
+      "verify_ok": true
+    },
+    {
+      "name": "missing policy decision denies authorization",
+      "grant": {
+        "id": "grant_marketplace_fulfill_no_policy",
+        "policy": "allow",
+        "status": "active"
+      },
+      "authorization": {
+        "intent_approval_id": "iap_no_policy",
+        "policy_decision_id": null
+      },
+      "can_execute": false,
+      "verify_ok": false
+    },
+    {
+      "name": "revoked grant denies authorization",
+      "grant": {
+        "id": "grant_marketplace_fulfill_revoked",
+        "policy": "allow",
+        "status": "active"
+      },
+      "revoke": true,
+      "authorization": {
+        "intent_approval_id": "iap_revoked",
+        "policy_decision": {
+          "input": {
+            "intent_type": "MARKETPLACE_FULFILLMENT",
+            "intent": { "intent_id": "intent_revoked" },
+            "facts": { "payment_status": "paid" }
+          },
+          "result": {
+            "ok": true,
+            "policies_evaluated": 1
+          }
+        }
+      },
+      "can_execute": false,
+      "verify_ok": false
+    },
+    {
+      "name": "expired grant denies authorization",
+      "grant": {
+        "id": "grant_marketplace_fulfill_expired",
+        "policy": "allow",
+        "status": "active",
+        "expires_at": "2026-05-27T12:59:59.000Z"
+      },
+      "authorization": {
+        "intent_approval_id": "iap_expired",
+        "policy_decision": {
+          "input": {
+            "intent_type": "MARKETPLACE_FULFILLMENT",
+            "intent": { "intent_id": "intent_expired" },
+            "facts": { "payment_status": "paid" }
+          },
+          "result": {
+            "ok": true,
+            "policies_evaluated": 1
+          }
+        }
+      },
+      "can_execute": false,
+      "verify_ok": false
+    },
+    {
+      "name": "wrong proof key denies authorization",
+      "grant": {
+        "id": "grant_marketplace_fulfill_key_bound",
+        "key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+        "policy": "allow",
+        "status": "active"
+      },
+      "authorization": {
+        "intent_approval_id": "iap_wrong_key",
+        "proof_key_l1_address": "sl1_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f",
+        "policy_decision": {
+          "input": {
+            "intent_type": "MARKETPLACE_FULFILLMENT",
+            "intent": { "intent_id": "intent_wrong_key" },
+            "facts": { "payment_status": "paid" }
+          },
+          "result": {
+            "ok": true,
+            "policies_evaluated": 1
+          }
+        }
+      },
+      "can_execute": false,
+      "verify_ok": false
+    }
+  ]
+}

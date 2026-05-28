@@ -1,0 +1,25 @@
+{
+  "version": "external-proof-runtime-v1",
+  "now": "2026-05-27T13:00:00.000Z",
+  "proof": {
+    "source_domain": "psp:meanly-sandbox",
+    "proof_type": "psp.payment.succeeded",
+    "external_reference": {
+      "id": "psp_evt_001",
+      "provider": "meanly-psp"
+    },
+    "fact_type": "payment.received",
+    "payload": {
+      "order_id": "order_001",
+      "amount": "100.00",
+      "currency": "USDC"
+    },
+    "verification_steps": [
+      "signature_checked",
+      "provider_event_id_checked"
+    ],
+    "finality": "accepted",
+    "confirmations": 1
+  },
+  "duplicate_error": "ExternalProof replay detected"
+}

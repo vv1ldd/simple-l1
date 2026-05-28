@@ -1,259 +1,211 @@
-window.copyInstallCmd = function() {
-    const cmd = document.getElementById('install-cmd').textContent;
-    navigator.clipboard.writeText(cmd).then(() => {
-        alert('Command copied to clipboard!');
-    });
+const statusEls = {
+    health: document.getElementById('node-health'),
+    network: document.getElementById('stat-network'),
+    accounts: document.getElementById('stat-accounts'),
+    peers: document.getElementById('stat-peers'),
+    root: document.getElementById('stat-root'),
+    note: document.getElementById('status-note'),
 };
 
-console.log('🚀 SIMPLE-L1 APP v2.1.5 BOOTSTRAP...');
-
-window.NETWORK_NAME = 'Simple-L1';
-
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.error('[CRITICAL ERROR]', msg, 'at', lineNo, ':', columnNo);
-    const el = document.getElementById('stat-network');
-    if (el) el.textContent = 'JS ERR: ' + msg.substring(0, 10);
-    return false;
+const walletEls = {
+    state: document.getElementById('wallet-state'),
+    handle: document.getElementById('wallet-handle'),
+    address: document.getElementById('wallet-address'),
+    native: document.getElementById('wallet-native-balance'),
+    assets: document.getElementById('wallet-assets'),
+    operations: document.getElementById('wallet-operations'),
+    receiptsCount: document.getElementById('wallet-receipts-count'),
+    keys: document.getElementById('wallet-keys'),
 };
 
-/* -------------------------------------------------------------------------
-   HA NETWORK STATUS POLLING (Quorum & Parallel Discovery)
--------------------------------------------------------------------------- */
-window.known_peers = [];
-try {
-    const saved = localStorage.getItem('sl1_peers');
-    if (saved) window.known_peers = JSON.parse(saved);
-} catch (e) { console.warn('[BOOT] LocalStorage access failed'); }
+const NATIVE_ASSET = 'SL';
 
-async function updateNetworkStatus() {
-    const origin = window.location.origin.replace(/\/$/, '');
-    
-    // ПУЛ СЕМЯН (SEEDS): Глобальные точки входа для обнаружения сети
-    const seeds = [
-        'https://l1.wildflow.dev',
-        'https://l1-beta.wildflow.dev',
-        'https://l1-gamma.wildflow.dev'
-    ];
+function shortHash(value) {
+    if (!value) return 'genesis';
+    const text = String(value);
+    if (text.length <= 18) return text;
+    return `${text.slice(0, 10)}...${text.slice(-6)}`;
+}
 
-    const endpoints = [origin, ...seeds, ...window.known_peers].filter(Boolean);
-    const uniqueEndpoints = [...new Set(endpoints.map(e => e.replace(/\/$/, '')))];
-    
-    let lastError = '';
+function setHealth(state, text) {
+    if (!statusEls.health) return;
+    statusEls.health.classList.remove('online', 'offline');
+    statusEls.health.classList.add(state);
+    statusEls.health.textContent = text;
+}
 
-    const results = await Promise.allSettled(uniqueEndpoints.map(async (url) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 3000);
-        try {
-            const fetchUrl = url === origin ? '/api/status' : `${url}/api/status`;
-            const response = await fetch(fetchUrl, { 
-                mode: url === origin ? 'same-origin' : 'cors',
-                signal: controller.signal 
-            });
-            clearTimeout(id);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
-        } catch (e) {
-            clearTimeout(id);
-            lastError = e.message;
-            throw e;
+async function loadStatus() {
+    try {
+        const response = await fetch('/api/status', {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-    }));
 
-    const successful = results
-        .filter(r => r.status === 'fulfilled')
-        .map(r => r.value);
+        const status = await response.json();
+        setHealth('online', 'online');
 
-    const elNet = document.getElementById('stat-network');
-    const elNodes = document.getElementById('stat-nodes');
-    const elAcc = document.getElementById('stat-accounts');
-    const elUp = document.getElementById('stat-uptime');
-    const elCon = document.getElementById('stat-consensus');
+        if (statusEls.network) {
+            statusEls.network.textContent = status.network || 'Simple Layer One';
+        }
+        if (statusEls.accounts) {
+            statusEls.accounts.textContent = status.total_accounts ?? '0';
+        }
+        if (statusEls.peers) {
+            statusEls.peers.textContent = status.peers_count ?? (status.peers || []).length ?? '0';
+        }
+        if (statusEls.root) {
+            statusEls.root.textContent = shortHash(status.state_root);
+            statusEls.root.title = status.state_root || 'genesis';
+        }
+        if (statusEls.note) {
+            const caps = Array.isArray(status.capabilities) ? status.capabilities.length : 0;
+            statusEls.note.textContent = `Node operational. ${caps} advertised capabilities.`;
+        }
+    } catch (error) {
+        setHealth('offline', 'offline');
+        if (statusEls.note) {
+            statusEls.note.textContent = `Could not read /api/status: ${error.message}`;
+        }
+    }
+}
 
-    if (successful.length === 0) {
-        if (elNet) elNet.textContent = `OFFLINE (${lastError || 'ERR'})`;
-        if (elCon) elCon.textContent = '0%';
+function formatAmount(value, asset) {
+    const amount = Number(value || 0);
+    const maximumFractionDigits = asset === NATIVE_ASSET ? 4 : 6;
+
+    return `${amount.toLocaleString('en-US', {
+        minimumFractionDigits: asset === NATIVE_ASSET ? 2 : 0,
+        maximumFractionDigits,
+    })} ${asset}`;
+}
+
+function renderWalletEmpty(message) {
+    if (walletEls.state) walletEls.state.textContent = 'empty';
+    if (walletEls.handle) walletEls.handle.textContent = 'No wallet yet';
+    if (walletEls.address) walletEls.address.textContent = message || 'Create an SL1 identity to initialize a wallet.';
+    if (walletEls.native) walletEls.native.textContent = `0.00 ${NATIVE_ASSET}`;
+    if (walletEls.assets) {
+        walletEls.assets.innerHTML = `<div class="asset-row"><span>No assets yet</span><strong>0.00 ${NATIVE_ASSET}</strong></div>`;
+    }
+    if (walletEls.operations) {
+        walletEls.operations.innerHTML = '<div class="operation-row"><span>Wallet history will appear after the first identity proof.</span><strong>waiting</strong></div>';
+    }
+}
+
+function renderWallet(summary) {
+    if (!summary || summary.status === 'empty') {
+        renderWalletEmpty(summary?.message);
         return;
     }
 
-    const first = successful[0];
-    const maxAccounts = Math.max(...successful.map(s => s.total_accounts || 0));
-    const avgUptime = successful.reduce((acc, s) => acc + (s.uptime || 0), 0) / successful.length;
-    
-    const discovered = successful.flatMap(s => s.peers || []);
-    if (discovered.length > 0) {
-        const newPeers = [...new Set([...window.known_peers, ...discovered])]
-            .filter(p => p && p.replace(/\/$/, '') !== origin);
-        if (newPeers.length !== window.known_peers.length) {
-            window.known_peers = newPeers;
-            localStorage.setItem('sl1_peers', JSON.stringify(newPeers));
-        }
+    const account = summary.account || {};
+    const balances = Array.isArray(summary.balances) ? summary.balances : [];
+    const operations = Array.isArray(summary.operations) ? summary.operations : [];
+    const receipts = Array.isArray(summary.receipts) ? summary.receipts : [];
+    const nativeBalance = balances.find((balance) => balance.asset === NATIVE_ASSET) || { amount: 0, asset: NATIVE_ASSET };
+
+    if (walletEls.state) walletEls.state.textContent = summary.status || 'active';
+    if (walletEls.handle) walletEls.handle.textContent = account.handle || 'SL1 Wallet';
+    if (walletEls.address) {
+        walletEls.address.textContent = account.entity_l1_address || 'sl1e_pending';
+        walletEls.address.title = account.entity_l1_address || '';
+    }
+    if (walletEls.native) walletEls.native.textContent = formatAmount(nativeBalance.available ?? nativeBalance.amount, NATIVE_ASSET);
+    if (walletEls.keys) walletEls.keys.textContent = `${account.active_keys || 0} active`;
+    if (walletEls.receiptsCount) walletEls.receiptsCount.textContent = `${receipts.length} receipts`;
+
+    if (walletEls.assets) {
+        walletEls.assets.innerHTML = balances.length
+            ? balances.map((balance) => `
+                <div class="asset-row">
+                    <span>${balance.asset}<small>${balance.kind || 'asset projection'}</small></span>
+                    <strong>${formatAmount(balance.available ?? balance.amount, balance.asset)}</strong>
+                </div>
+            `).join('')
+            : `<div class="asset-row"><span>No assets yet</span><strong>0.00 ${NATIVE_ASSET}</strong></div>`;
     }
 
-    if (elNet) {
-        elNet.textContent = first.network || 'Simple-L1 Alpha';
-        document.title = first.network || 'Simple-L1';
-        // Обновляем брендинг в хедере
-        const brand = document.querySelector('.header-brand');
-        if (brand) brand.textContent = (first.network || 'SIMPLE-L1').toUpperCase();
+    if (walletEls.operations) {
+        const operationRows = operations.length
+            ? operations.map((operation) => `
+                <div class="operation-row">
+                    <span>
+                        ${operation.description || operation.type || 'Wallet operation'}
+                        <small>${operation.timestamp ? new Date(operation.timestamp).toLocaleString() : 'ledger event'}</small>
+                    </span>
+                    <strong>${operation.amount ? formatAmount(operation.amount, operation.asset || NATIVE_ASSET) : operation.status || 'settled'}</strong>
+                </div>
+            `).join('')
+            : '<div class="operation-row"><span>No wallet operations yet<small>Receipts and rewards will appear here.</small></span><strong>empty</strong></div>';
+
+        walletEls.operations.innerHTML = operationRows;
     }
-    if (elNodes) elNodes.textContent = `${successful.length} ACTIVE`;
-    
-    const elNodeList = document.getElementById('stat-node-list');
-    if (elNodeList) {
-        const uniqueNodes = {};
-        successful.forEach(node => {
-            const id = node.node_id || node.url;
-            if (!uniqueNodes[id]) uniqueNodes[id] = node;
+}
+
+async function loadWallet() {
+    if (!walletEls.state) return;
+
+    try {
+        const response = await fetch('/api/wallet/summary', {
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
         });
 
-        const nodesHtml = Object.values(uniqueNodes).map(node => {
-            const name = node.node_name || 'unknown';
-            return `<span class="node-tag">${name}</span>`;
-        }).join(' • ');
-        
-        elNodeList.innerHTML = nodesHtml;
-    }
-    
-    if (elAcc) elAcc.textContent = maxAccounts;
-    
-    if (elUp) {
-        let totalSecs = Math.floor(avgUptime);
-        const years = Math.floor(totalSecs / 31536000);
-        totalSecs %= 31536000;
-        const months = Math.floor(totalSecs / 2592000);
-        totalSecs %= 2592000;
-        const days = Math.floor(totalSecs / 86400);
-        totalSecs %= 86400;
-        const hours = Math.floor(totalSecs / 3600);
-        totalSecs %= 3600;
-        const minutes = Math.floor(totalSecs / 60);
-        const seconds = totalSecs % 60;
-        
-        let uptimeStr = '';
-        if (years > 0) uptimeStr += `${years}y `;
-        if (months > 0) uptimeStr += `${months}mo `;
-        if (days > 0) uptimeStr += `${days}d `;
-        if (hours > 0 || days > 0) uptimeStr += `${hours}h `;
-        uptimeStr += `${minutes}m ${seconds}s`;
-        elUp.textContent = uptimeStr;
-    }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    if (elCon) {
-        const pct = Math.round((successful.length / uniqueEndpoints.length) * 100);
-        elCon.textContent = `${pct}%`;
-        elCon.style.color = pct >= 100 ? '#00ff00' : '#ffcc00';
-    }
-
-    if (window.currentAddress) refreshAccountData(uniqueEndpoints);
-}
-
-async function refreshAccountData(endpoints) {
-    if (!window.currentAddress) return;
-    for (const url of endpoints) {
-        try {
-            const fetchUrl = url.replace(/\/$/, '') === window.location.origin.replace(/\/$/, '') 
-                ? `/accounts/${window.currentAddress}` 
-                : `${url}/accounts/${window.currentAddress}`;
-            const res = await fetch(fetchUrl);
-            if (res.ok) {
-                const account = await res.json();
-                window.currentAccount = account;
-                updateAccountUI(account);
-                return;
-            }
-        } catch (e) {}
+        renderWallet(await response.json());
+    } catch (error) {
+        if (walletEls.state) walletEls.state.textContent = 'sync pending';
+        renderWalletEmpty('Wallet projection is not live on this node yet. Restart SL1 node to enable /api/wallet/summary.');
     }
 }
 
-function updateAccountUI(account) {
-    const ids = {
-        'balance-sl1': (account.balances.SL1 || 0).toLocaleString(),
-        'balance-btc': (account.balances.BTC || 0).toFixed(8),
-        'balance-eth': (account.balances.ETH || 0).toFixed(4),
-        'addr-btc': (account.external_addresses || {}).BTC || 'REVOKED',
-        'addr-eth': (account.external_addresses || {}).ETH || 'REVOKED'
-    };
-    for (const [id, val] of Object.entries(ids)) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-    }
-    if (account.provenance_log) {
-        const logContainer = document.getElementById('provenance-log');
-        if (logContainer) {
-            logContainer.innerHTML = account.provenance_log.map(entry => `
-                <div class="log-entry">
-                    <div class="log-time">${new Date(entry.timestamp).toLocaleTimeString()}</div>
-                    <div><span class="log-type">${entry.type}</span> <span class="log-detail">${entry.detail}</span></div>
-                </div>
-            `).reverse().join('');
-        }
-    }
-}
+function markActiveSection() {
+    const anchors = [...document.querySelectorAll('.nav-links a')];
+    const sections = anchors
+        .map((anchor) => document.querySelector(anchor.getAttribute('href')))
+        .filter(Boolean);
 
-window.showTab = function(tabName) {
-    document.querySelectorAll('.terminal-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
-    const targetTab = document.getElementById(`tab-${tabName}`);
-    if (targetTab) targetTab.classList.add('active');
-    
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
-            btn.classList.add('active');
-        }
+    let activeId = '';
+    for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top < 160) activeId = section.id;
+    }
+
+    anchors.forEach((anchor) => {
+        const isActive = anchor.getAttribute('href') === `#${activeId}`;
+        anchor.style.color = isActive ? 'var(--text)' : '';
     });
-};
+}
 
-window.showSendForm = () => { const f = document.getElementById('send-form'); if (f) f.style.display = 'flex'; };
-window.hideSendForm = () => { const f = document.getElementById('send-form'); if (f) f.style.display = 'none'; };
+function configureWalletConnectLink() {
+    const link = document.getElementById('wallet-open-passkey');
+    if (!link) return;
 
-async function runRealConsensus() {
-    const usernameInput = document.getElementById('username-input');
-    let handle = (usernameInput ? usernameInput.value : '') || '@anonymous';
-    if (!handle.startsWith('@')) handle = '@' + handle;
-    const consoleOutput = document.getElementById('console-output');
-    if (consoleOutput) consoleOutput.innerHTML = '';
-    const btnConsensus = document.getElementById('btn-trigger-consensus');
-    if (btnConsensus) btnConsensus.disabled = true;
-    
-    function appendLine(text, className = '') {
-        if (!consoleOutput) return;
-        const line = document.createElement('div');
-        line.className = 'terminal-line ' + className;
-        line.innerHTML = text;
-        consoleOutput.appendChild(line);
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
-    }
+    const origin = window.location.origin;
+    const params = new URLSearchParams({
+        client_id: window.location.hostname || 'simplel1.online',
+        client_name: 'SL1 Wallet',
+        redirect_uri: `${origin}/#wallet`,
+        state: 'wallet-demo',
+        nonce: 'wallet-demo',
+        mode: 'connect',
+        flow: 'connect',
+    });
 
-    appendLine(`[AUTHORITY] Инициализация канонического корня для ${handle}...`, 'text-highlight');
-    try {
-        const address = `sl1_${Math.random().toString(16).substring(2, 42)}`;
-        window.currentAddress = address;
-        const origin = window.location.origin.replace(/\/$/, '');
-        const endpoints = [origin, ...window.known_peers].filter(Boolean);
-        let successCount = 0;
-        for (const url of endpoints) {
-            try {
-                const fetchUrl = url === origin ? '/accounts' : `${url}/accounts`;
-                const res = await fetch(fetchUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ address, publicKey: '0x...', credentialId: '...', handle })
-                });
-                if (res.ok) successCount++;
-            } catch (e) {}
-        }
-        if (successCount > 0) {
-            appendLine(`[SUCCESS] Суверенный манифест опубликован на ${successCount} узлах.`, 'text-green');
-            setTimeout(() => { updateNetworkStatus(); window.showTab('portfolio'); }, 1500);
-        } else { throw new Error('Could not reach any node'); }
-    } catch (err) { appendLine(`[!] ОШИБКА: ${err.message}`, 'text-red'); }
-    if (btnConsensus) btnConsensus.disabled = false;
+    link.href = `/authorize?${params.toString()}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    updateNetworkStatus();
-    setInterval(updateNetworkStatus, 5000);
-    const btn = document.getElementById('btn-trigger-consensus');
-    if (btn) btn.addEventListener('click', runRealConsensus);
+    configureWalletConnectLink();
+    loadStatus();
+    loadWallet();
+    setInterval(loadStatus, 10000);
+    setInterval(loadWallet, 15000);
+    markActiveSection();
+    window.addEventListener('scroll', markActiveSection, { passive: true });
 });

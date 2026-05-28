@@ -33,10 +33,14 @@ Intent {
   action: String,
   payload: Vec<u8>,
   nonce: u64,
-  signer: Address
+  entity: EntityAddress,
+  controller: KeyAddress,
+  capability: String,
+  scope: String
 }
 ```
-* Подписывается аппаратно через Passkey.
+* Подтверждается аппаратно через passkey Controller как `IntentApproval`.
+* Подпись доказывает approval, но не ownership, authority или execution.
 * Сериализуется детерминированно (канонический Borsh).
 
 ### 🛡 3. Deterministic execution
@@ -68,7 +72,8 @@ Intent {
 
 ### Layer 2: Intent Layer
 Каноническая Borsh-структура.
-* Подпись: `signature = Sign(passkey_private, canonical_bytes)`
+* `IntentApproval = WebAuthn signature over canonical Intent`.
+* `Authorization = IntentApproval + Capability/ControlGrant lineage`.
 
 ### Layer 3: Execution Layer
 Детерминированный рантайм переходов: `apply(state, intent) -> new_state`
@@ -109,6 +114,7 @@ Intent {
 * [WHITEPAPER.md](./WHITEPAPER.md) — Концептуальный обзор целей и проблем.
 
 ### ⚙️ Технические спецификации (RFC)
+* [RFC-0000: Constitutional Summary](./rfc/0000-constitutional-summary.md)
 * [RFC-0001: Core Cryptography & Addressing Scheme](./rfc/0001-core-cryptography-and-addressing.md)
 * [RFC-0002: Intent & WebAuthn Serialization Schema](./rfc/0002-intent-and-webauthn-schema.md)
 * [RFC-0003: Canonical Serialization & Replay Protection](./rfc/0003-canonical-serialization-and-replay-protection.md)
@@ -120,6 +126,20 @@ Intent {
 * [RFC-0009: Propagation Control & Information Flow Constraints](./rfc/0009-propagation-control-and-information-flow.md)
 * [RFC-0010: Adversarial Topology & Network Geometry Invariance](./rfc/0010-adversarial-topology-and-geometry.md)
 * [RFC-0011: Identity Kernel & Capability Resolution](./rfc/0011-identity-kernel-and-capability-resolution.md)
+* [RFC-0012: Ontology Core v0.1](./rfc/0012-ontology-core-v0.1.md)
+* [RFC-0013: Interoperability Principle](./rfc/0013-interoperability-principle.md)
+* [RFC-0014: Policy Layer v0.2](./rfc/0014-policy-layer-v0.2.md)
+* [RFC-0015: Trust & Attestation Lifecycle](./rfc/0015-trust-and-attestation-lifecycle.md)
+* [RFC-0016: Capability & Delegation Model](./rfc/0016-capability-and-delegation-model.md)
+* [RFC-0017: External Proof Model](./rfc/0017-external-proof-model.md)
+* [RFC-0018: SL1 Connect & Identity Proof](./rfc/0018-sl1-connect-and-identity-proof.md)
+* [RFC-0020: Execution Consistency & Temporal Safety](./rfc/0020-execution-consistency-and-temporal-safety.md)
+* [RFC-0021: Workflow & Compensation Semantics](./rfc/0021-workflow-and-compensation-semantics.md)
+* [RFC-0022: Economic State & Settlement Graph Kernel](./rfc/0022-economic-state-and-settlement-graph-kernel.md)
+* [RFC-0023: Cross-System Settlement & Interoperability Execution](./rfc/0023-cross-system-settlement-and-interoperability-execution.md)
+* [RFC-0024: Semantic Isolation & Domain Integrity](./rfc/0024-semantic-isolation-and-domain-integrity.md)
+* [RFC-0025: Runtime Architecture & Responsibility Boundaries](./rfc/0025-runtime-architecture-and-responsibility-boundaries.md)
+* [RFC-0026: Marketplace Reference Flow](./rfc/0026-marketplace-reference-flow.md)
 
 ---
 

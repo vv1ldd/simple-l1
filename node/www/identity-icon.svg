@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Simple Layer Identity</title>
+  <desc id="desc">Neobrutalist SL1 Identity app icon.</desc>
+  <rect width="512" height="512" rx="92" fill="#f6f6f1"/>
+  <rect x="72" y="72" width="328" height="328" fill="#ffffff" stroke="#090909" stroke-width="18"/>
+  <rect x="104" y="104" width="328" height="328" fill="#090909"/>
+  <rect x="72" y="72" width="328" height="328" fill="#ffffff" stroke="#090909" stroke-width="18"/>
+  <rect x="142" y="142" width="54" height="54" fill="#8b3dff" stroke="#090909" stroke-width="12"/>
+  <path d="M150 250h212v44H150zM150 318h152v44H150z" fill="#090909"/>
+  <path d="M330 306l58 58 84-104" fill="none" stroke="#8b3dff" stroke-width="34" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

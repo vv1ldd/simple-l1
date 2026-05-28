@@ -14,6 +14,10 @@ This document defines how Simple L1 Protocol semantics may change without destro
 
 Code is only a permitted instance of that reality.
 
+`RFC-0000`, `RFC-0012`, and `RFC-0013` define the constitutional layer: constitutional summary, ontology core, and interoperability principle.
+
+Later RFCs may depend on them, but MUST NOT redefine them.
+
 ---
 
 ## 1. Versioning Rule
@@ -66,7 +70,164 @@ Compatible extensions MUST NOT introduce implicit authority, implicit identity, 
 
 ---
 
-## 4. Conformance Compatibility
+## 4. RFC Dependency Rule
+
+RFCs are layered.
+
+An RFC MAY:
+
+* depend on terms defined by earlier RFCs
+* extend earlier concepts
+* constrain earlier concepts
+* compose earlier concepts
+
+An RFC MUST NOT:
+
+* redefine earlier concepts
+* collapse distinct ontology primitives
+* make mechanism-layer behavior override constitutional-layer invariants
+
+If a concept appears to require redefinition, then either:
+
+* the ontology is wrong and requires a major protocol revision, or
+* a new primitive or relationship is required.
+
+The following documents form the constitutional layer:
+
+* `RFC-0000: Constitutional Summary`
+* `RFC-0012: Ontology Core v0.1`
+* `RFC-0013: Interoperability Principle`
+
+The following families are mechanism-layer RFCs and must preserve the constitutional layer:
+
+* policy
+* risk
+* trust and attestation
+* capability and delegation
+* external proof adapters
+* identity proof and connect
+* agent authorization
+* governance
+* temporal execution
+* workflow and compensation
+* settlement
+* economic graphs
+* cross-system settlement
+* semantic isolation
+* runtime architecture
+* reference flows
+* application integrations
+
+Mechanism-layer RFCs MUST NOT reintroduce the collapsed model:
+
+```text
+address = wallet = identity = authority
+```
+
+They MUST preserve:
+
+```text
+Entity != Controller
+Controller != Ownership
+Ownership != Authority
+Wallet != Primitive
+```
+
+---
+
+## 5. Protocol Design Rule
+
+Protocol evolution SHOULD prefer introducing new relationships over overloading existing objects.
+
+When a new semantic connection is needed, the default design response is:
+
+```text
+new relationship primitive
+```
+
+not:
+
+```text
+add hidden meaning to an existing object
+```
+
+Examples:
+
+```text
+OwnershipClaim
+  instead of Account.owner_id
+
+ControlGrant
+  instead of Controller.permissions
+
+Authorization
+  instead of Signature means everything
+
+Credential
+  instead of Attestation proves itself
+```
+
+This rule preserves:
+
+```text
+Relationships are first-class objects.
+Objects define state.
+Relationships define meaning.
+```
+
+Overloading an existing object is allowed only when the new field is purely descriptive and non-decisional, or when a major constitutional revision explicitly changes the ontology.
+
+### Object Overload Test
+
+If a proposal requires adding many unrelated fields to an object, consider introducing a new relationship primitive instead.
+
+Bad direction:
+
+```text
+Account
+  owner
+  permissions
+  trust_level
+  delegation_rules
+  policy_exceptions
+  approvals
+```
+
+Better direction:
+
+```text
+Account
+OwnershipClaim
+ControlGrant
+Attestation
+Authorization
+PolicyBinding
+```
+
+Objects should not become catch-all containers for ownership, authority, trust, policy, and approvals.
+
+### Relationship Test
+
+If a concept can be revoked, delegated, constrained, time-limited, or audited, it is likely a relationship rather than an intrinsic object property.
+
+Mutable meaning belongs in relationships, not in objects.
+
+Examples:
+
+```text
+Ownership can change, split, expire, or be audited.
+Use OwnershipClaim instead of Account.owner.
+
+Permission can be delegated, scoped, revoked, or time-limited.
+Use ControlGrant instead of Controller.permissions.
+
+Approval can expire, be audited, and refer to a specific intent.
+Use Authorization instead of Intent.approved_by.
+```
+
+---
+
+## 6. Conformance Compatibility
 
 Conformance vectors are part of the protocol surface.
 
@@ -86,7 +247,7 @@ When a vector fails, the implementation is non-conforming unless the protocol ve
 
 ---
 
-## 5. SDK Binding Rules
+## 7. SDK Binding Rules
 
 SDKs are constrained projections of the protocol.
 
@@ -115,7 +276,7 @@ An SDK API is valid only if it can be traced to `PROTOCOL.v1.md` and a conforman
 
 ---
 
-## 6. Implementation Binding Rules
+## 8. Implementation Binding Rules
 
 Runtime implementations MUST treat protocol conformance as a release gate.
 
@@ -137,7 +298,7 @@ An implementation MUST NOT:
 
 ---
 
-## 7. Adapter Compatibility
+## 9. Adapter Compatibility
 
 Adapters are external-world mapping layers only.
 
@@ -154,7 +315,7 @@ If an external network requires semantics not expressible in the current transit
 
 ---
 
-## 8. Release Gate
+## 10. Release Gate
 
 A Simple L1 release is protocol-valid only if:
 

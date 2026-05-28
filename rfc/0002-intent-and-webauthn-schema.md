@@ -8,7 +8,7 @@
 
 ## 1. Аннотация (Abstract)
 
-Этот RFC определяет стандарт сериализации намерений (Intents) и протокол их аппаратной подписи через **WebAuthn (FIDO2)**. Мы описываем, как структура намерения превращается в криптографический `challenge`, как клиентское устройство подписывает его и как валидатор сети Simple-L1 детерминированно проверяет эту сложную подпись.
+Этот RFC определяет стандарт сериализации намерений (Intents) и протокол их аппаратного подтверждения через **WebAuthn (FIDO2)**. Мы описываем, как структура намерения превращается в криптографический `challenge`, как Controller подписывает его зарегистрированным passkey, и как валидатор сети Simple-L1 детерминированно проверяет `IntentApproval`.
 
 ---
 
@@ -21,7 +21,23 @@
 Подпись вычисляется над конкатенацией:
 $$\text{Signature} = \text{ECDSA}_{SK}(\text{authenticatorData} \ || \ \text{SHA-256}(\text{clientDataJSON}))$$
 
-**Задача:** Спроектировать транзакцию так, чтобы исходное намерение (Intent) лежало внутри `challenge` в `clientDataJSON`, обеспечивая криптографическую неразрывность.
+**Задача:** Спроектировать `IntentApproval` так, чтобы исходное намерение (Intent) лежало внутри `challenge` в `clientDataJSON`, обеспечивая криптографическую неразрывность между Controller, Intent и подписью.
+
+Подпись не является authority.
+
+Подпись доказывает только:
+
+```text
+this controller approved this canonical intent
+```
+
+Authority определяется отдельно через:
+
+```text
+Capability
+  -> ControlGrant
+  -> Authorization
+```
 
 ---
 
@@ -35,10 +51,14 @@ $$\text{Signature} = \text{ECDSA}_{SK}(\text{authenticatorData} \ || \ \text{SHA
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `chain_id` | `u32` | Идентификатор сети Simple-L1 для защиты от replay между тестнетом/мейннетом. |
-| `nonce` | `u64` | Порядковый номер транзакции для этого аккаунта. |
+| `entity_l1_address` | `string` | Стабильный субъект (`sl1e_`), от имени которого запрашивается действие. |
+| `proof_key_l1_address` | `string` | Controller/passkey (`sl1_`), которым подтверждается намерение. |
+| `nonce` | `u64` | Порядковый номер намерения для replay protection. |
 | `valid_until` | `u64` | Номер слота/блока, после которого транзакция недействительна. |
 | `fee` | `u64` | Максимальная комиссия в базовых единицах (сатоши-эквивалент). |
 | `action_type` | `u8` | Код действия: `1` = Transfer, `2` = RegisterKey, и т.д. |
+| `capability` | `string` | Запрашиваемая capability, например `asset.transfer`. |
+| `scope` | `string` | Область действия capability, например `account:sl1a_...:asset:USDC`. |
 | `payload` | `bytes` | Аргументы действия (например, адрес получателя + сумма). |
 
 ---
@@ -61,8 +81,10 @@ $$\text{Signature} = \text{ECDSA}_{SK}(\text{authenticatorData} \ || \ \text{SHA
       }
     });
     ```
-4.  **Упаковка Транзакции**: После того как пользователь приложил FaceID/TouchID, на L1-ноду отправляется пакет, содержащий:
+4.  **Упаковка IntentApproval**: После того как пользователь приложил FaceID/TouchID, на L1-ноду отправляется пакет, содержащий:
     *   Исходное намерение ($I_{bytes}$)
+    *   `entity_l1_address`
+    *   `proof_key_l1_address`
     *   `authenticatorData` (байты от чипа)
     *   `clientDataJSON` (текст JSON)
     *   Подпись `(r, s)` (ASN.1 DER или сырые 64 байта)
@@ -71,7 +93,7 @@ $$\text{Signature} = \text{ECDSA}_{SK}(\text{authenticatorData} \ || \ \text{SHA
 
 ## 5. Алгоритм Верификации на Ноде (Validator Consensus Loop)
 
-Валидатор получает транзакцию и выполняет следующие строгие шаги проверки:
+Валидатор получает `Intent + IntentApproval` и выполняет следующие строгие шаги проверки:
 
 ### 5.1 Валидация привязки Intent
 1.  Парсит `clientDataJSON` (текстовый JSON).
@@ -89,16 +111,35 @@ $$\text{Signature} = \text{ECDSA}_{SK}(\text{authenticatorData} \ || \ \text{SHA
     $$H_{json} = \text{SHA-256}(clientDataJSON)$$
 2.  Собирает итоговое подписанное сообщение:
     $$M_{signed} = \text{authenticatorData} \ || \ H_{json}$$
-3.  Извлекает публичный ключ $PK$ аккаунта отправителя из состояния сети.
+3.  Извлекает публичный ключ $PK$ зарегистрированного Controller/passkey (`proof_key_l1_address`) из состояния сети.
 4.  Выполняет ECDSA верификацию подписи `(r, s)` на эллиптической кривой **secp256r1 (P-256)** над хэшем SHA-256 от сообщения $M_{signed}$:
     $$\text{Verify}_{PK}(\text{SHA-256}(M_{signed}), \ (r, s)) == \text{Valid}$$
+
+### 5.4 Проверка authority lineage
+
+Валидная WebAuthn-подпись создаёт только `IntentApproval`.
+
+Перед исполнением валидатор обязан отдельно проверить:
+
+```text
+Controller is registered for proof_key_l1_address
+IntentApproval binds to the canonical Intent
+OwnershipClaim permits the Entity to use the source Account
+Capability matches the requested action
+ControlGrant is active at execution time
+Policy allows current context
+Authorization binds IntentApproval to authority lineage
+Intent is fresh and not replayed
+```
+
+Только после этих проверок Intent может стать Transaction.
 
 ---
 
 ## 6. Анализ Безопасности и Атак
 
 ### 6.1 Replay Атаки
-Благодаря жесткой проверке `nonce` внутри `Intent`, одна и та же подпись не может быть исполнена дважды.
+Благодаря жесткой проверке `nonce` внутри `Intent`, один и тот же `IntentApproval` не может быть исполнен дважды.
 Защита от replay между сетями обеспечивается полем `chain_id`.
 
 ### 6.2 Модификация JSON (JSON Canonicalization)

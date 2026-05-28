@@ -9,7 +9,7 @@ services:
       - NODE_ENV=production
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.sl1-node.rule=Host(`l1.wildflow.dev`)"
+      - "traefik.http.routers.sl1-node.rule=Host(`l1.wildflow.dev`) || Host(`simplel1.online`) || Host(`connect.simplel1.online`)"
       - "traefik.http.routers.sl1-node.entrypoints=https"
       - "traefik.http.routers.sl1-node.tls=true"
       - "traefik.http.services.sl1-node.loadbalancer.server.port=3000"

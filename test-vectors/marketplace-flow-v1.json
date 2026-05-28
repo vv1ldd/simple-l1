@@ -1,0 +1,21 @@
+{
+  "version": "marketplace-reference-flow-v1",
+  "now": "2026-05-27T13:00:00.000Z",
+  "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "proof_key_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+  "capability": "marketplace.order.fulfill",
+  "scope": "marketplace:meanly",
+  "purchase_intent_id": "purchase_intent_001",
+  "idempotency_key": "purchase_intent_001:psp_evt_001",
+  "payload": {
+    "order_id": "order_001",
+    "sku": "digital-product-001"
+  },
+  "negative_cases": [
+    "duplicate webhook",
+    "revoked grant",
+    "expired authorization",
+    "late proof",
+    "payment receipt without authorization"
+  ]
+}

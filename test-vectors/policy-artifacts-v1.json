@@ -1,0 +1,47 @@
+{
+  "version": "policy-artifacts-v1",
+  "now": "2026-05-27T13:00:00.000Z",
+  "cases": [
+    {
+      "name": "policy pass becomes allow decision",
+      "input": {
+        "intent_type": "MARKETPLACE_FULFILLMENT",
+        "intent": { "intent_id": "intent_marketplace_001" },
+        "facts": { "payment_status": "paid", "amount": "100.00" }
+      },
+      "result": {
+        "ok": true,
+        "policies_evaluated": 2
+      },
+      "decision": "allow"
+    },
+    {
+      "name": "policy violation becomes deny decision",
+      "input": {
+        "intent_type": "MARKETPLACE_FULFILLMENT",
+        "intent": { "intent_id": "intent_marketplace_002" },
+        "facts": { "payment_status": "missing" }
+      },
+      "result": {
+        "ok": false,
+        "rule": "PAYMENT_REQUIRED",
+        "reason": "Payment proof missing"
+      },
+      "decision": "deny"
+    },
+    {
+      "name": "policy can require more evidence",
+      "input": {
+        "intent_type": "MARKETPLACE_FULFILLMENT",
+        "intent": { "intent_id": "intent_marketplace_003" },
+        "facts": { "payment_status": "pending" }
+      },
+      "result": {
+        "ok": false,
+        "requires_more_evidence": true,
+        "reason_codes": ["PAYMENT_NOT_FINAL"]
+      },
+      "decision": "require_more_evidence"
+    }
+  ]
+}

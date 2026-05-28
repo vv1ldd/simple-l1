@@ -1,0 +1,27 @@
+{
+  "name": "Simple Layer Identity",
+  "short_name": "SL1 Identity",
+  "description": "Standalone SL1 Connect app for audience-bound IdentityProof issuance.",
+  "start_url": "/connect",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#f6f6f1",
+  "background_color": "#f6f6f1",
+  "icons": [
+    {
+      "src": "/identity-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open SL1 Connect",
+      "short_name": "Connect",
+      "url": "/connect",
+      "description": "Open the Simple Layer Identity app."
+    }
+  ]
+}

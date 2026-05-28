@@ -1,0 +1,25 @@
+{
+  "version": "intent-approval-runtime-v1",
+  "now": "2026-05-27T13:00:00.000Z",
+  "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "other_entity_l1_address": "sl1e_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3",
+  "controller_l1_address": "sl1_ba7816bf8f01cfea414140de5dae2223b00361a3",
+  "other_controller_l1_address": "sl1_2255d4a39f5fe8fab62ecd5aeea158a6e8c1ba3f",
+  "credential_id": "cred_meanly_controller_001",
+  "other_credential_id": "cred_meanly_controller_002",
+  "rp_id": "connect.simplelayer.one",
+  "audience": "marketplace.one",
+  "other_audience": "exchange.one",
+  "intent": {
+    "intent_type": "marketplace.purchase",
+    "capability": "marketplace.order.purchase",
+    "scope": "marketplace:meanly",
+    "nonce": "nonce_purchase_001",
+    "expires_at": "2026-05-27T13:10:00.000Z",
+    "payload": {
+      "order_id": "order_001",
+      "amount": "100.00",
+      "asset": "RUBT"
+    }
+  }
+}
