@@ -853,6 +853,16 @@ const accountVisibleAlias = (account) => {
     return name ? `@${name}` : null;
 };
 
+const passkeyAccountLabel = ({ alias, displayAlias, handle, fallback }) => {
+    const name = normalizeDisplayAlias(displayAlias)
+        || aliasDisplayName(alias)
+        || aliasDisplayName(handle)
+        || aliasDisplayName(fallback)
+        || String(fallback || handle || 'sl1-identity');
+
+    return name.startsWith('@') ? name : `@${name}`;
+};
+
 const releaseAliasReservation = (alias, ownerId) => {
     if (!alias || !ownerId) return;
     const reservation = sl1eRuntimeStore.get('aliasReservations', alias);
@@ -1625,7 +1635,6 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     handoffQuery.set('display_alias', alias);
                     const storedReservation = readAliasReservation();
                     const priorReservationOwner = activeAliasReservationOwner
-                        || pendingRegistrationRequestId
                         || (storedReservation?.alias === alias ? storedReservation.owner_id : null);
                     if (priorReservationOwner) {
                         handoffQuery.set('prior_alias_reservation_owner', priorReservationOwner);
@@ -1822,9 +1831,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 throw new Error(optionsPayload.message || optionsPayload.error || 'Could not prepare passkey registration.');
             }
             pendingRegistrationRequestId = optionsPayload.registration_request_id;
+            activeAliasReservationOwner = optionsPayload.alias_reservation_owner || null;
             rememberAliasReservation(
                 aliasLabelFromInput(),
-                optionsPayload.alias_reservation_owner || optionsPayload.registration_request_id,
+                activeAliasReservationOwner || optionsPayload.registration_request_id,
                 optionsPayload.alias_reservation_expires_at,
             );
 
@@ -2574,12 +2584,18 @@ fastify.get('/api/sl1e/identity/:entityAddress/passkeys/registration/options', a
     const registrationRequestId = `sl1pk_${crypto.randomBytes(18).toString('hex')}`;
     const rpId = rpIdForHost(request.hostname);
     const activeCredentials = accountCredentials(account);
+    const userLabel = passkeyAccountLabel({
+        alias: account.alias,
+        displayAlias: account.display_alias || account.displayAlias,
+        handle: account.handle,
+        fallback: entityAddress,
+    });
     const publicKey = await generateRegistrationOptions({
         rpName: 'Simple Layer Identity',
         rpID: rpId,
         userID: crypto.randomBytes(16),
-        userName: account.alias || account.handle || entityAddress,
-        userDisplayName: accountDisplayName(account) || account.handle || entityAddress,
+        userName: userLabel,
+        userDisplayName: userLabel,
         timeout: 60000,
         attestationType: 'none',
         authenticatorSelection: {
@@ -2942,13 +2958,18 @@ fastify.get('/api/sl1e/registration/options', async (request, reply) => {
         return reply.code(409).send({ error: 'alias_unavailable', alias: requestedAlias });
     }
     const userHandle = requestedAlias || `sl1e-${crypto.randomBytes(5).toString('hex')}`;
-    const userDisplayName = requestedDisplayAlias || aliasDisplayName(requestedAlias) || userHandle;
+    const userLabel = passkeyAccountLabel({
+        alias: requestedAlias,
+        displayAlias: requestedDisplayAlias,
+        handle: userHandle,
+        fallback: userHandle,
+    });
     const publicKey = await generateRegistrationOptions({
         rpName: 'Simple Layer Identity',
         rpID: rpId,
         userID: crypto.randomBytes(16),
-        userName: userHandle,
-        userDisplayName,
+        userName: userLabel,
+        userDisplayName: userLabel,
         timeout: 60000,
         attestationType: 'none',
         authenticatorSelection: {
