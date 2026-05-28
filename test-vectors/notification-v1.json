@@ -1,0 +1,56 @@
+{
+  "version": "sl1.notification.v1",
+  "now": "2026-05-28T13:00:00.000Z",
+  "issuer_entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "recipient_entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+  "envelope": {
+    "notification_type": "team.invitation",
+    "recipient_hint": {
+      "type": "entity",
+      "value": "sl1e_f690252733b20004bda7916074403f4259206a4"
+    },
+    "artifact_ref": {
+      "object_type": "TeamInvitationArtifact",
+      "id": "tinv_001",
+      "version": "team.invitation.v1",
+      "hash": "artifact_hash_001"
+    },
+    "issuer_entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+    "subject": "Team invitation available",
+    "body": "A team invitation artifact is available. Use SL1 Identity to evaluate and consume it.",
+    "delivery_channels": ["sl1.inbox"],
+    "expires_at": "2026-05-28T13:30:00.000Z",
+    "idempotency_key": "team-invite:tinv_001:recipient_001"
+  },
+  "expected": {
+    "object_type": "NotificationEnvelope",
+    "authority_effect": "none",
+    "non_authoritative": true,
+    "consumes_artifact": false,
+    "mutates_authority": false,
+    "capabilities_granted": []
+  },
+  "forbidden_inputs": [
+    {
+      "name": "authority effect cannot be carried by notification",
+      "override": {
+        "authority_effect": "grant"
+      },
+      "error": "NotificationEnvelope cannot carry authority effects"
+    },
+    {
+      "name": "artifact consumption cannot be carried by notification",
+      "override": {
+        "consumes_artifact": true
+      },
+      "error": "NotificationEnvelope cannot consume artifacts or mutate authority"
+    },
+    {
+      "name": "capability grants cannot be carried by notification",
+      "override": {
+        "capabilities_granted": ["team.member.join"]
+      },
+      "error": "NotificationEnvelope cannot grant capabilities"
+    }
+  ]
+}

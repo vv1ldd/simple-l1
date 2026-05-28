@@ -26,6 +26,12 @@ const { createExternalProof, verifyExternalProof } = require('../node/external-p
 const { MemoryConnectRuntimeStore } = require('../node/connect-runtime-store');
 const { createIdentityProof, verifyIdentityProof } = require('../node/identity-proof-runtime');
 const {
+    createNotificationEnvelope,
+    dismissNotification,
+    markNotificationRead,
+    verifyNotificationEnvelope,
+} = require('../node/notification-runtime');
+const {
     executeMarketplaceSettlement,
     explainSettlement,
 } = require('../node/marketplace-flow-runtime');
@@ -552,6 +558,64 @@ function runExternalProofConformance() {
     assert.throws(() => createExternalProof(ledger, vector.proof, now), new RegExp(vector.duplicate_error));
 }
 
+function runNotificationEnvelopeConformance() {
+    const vector = readVector('notification-v1.json');
+    const now = new Date(vector.now);
+    const ledger = {};
+    const envelope = createNotificationEnvelope(ledger, vector.envelope, now);
+
+    assert.equal(envelope.object_type, vector.expected.object_type, 'NotificationEnvelope object type must be explicit');
+    assert.equal(envelope.authority_effect, vector.expected.authority_effect, 'NotificationEnvelope must carry no authority effect');
+    assert.equal(envelope.non_authoritative, vector.expected.non_authoritative, 'NotificationEnvelope must be non-authoritative');
+    assert.equal(envelope.consumes_artifact, vector.expected.consumes_artifact, 'NotificationEnvelope must not consume artifacts');
+    assert.equal(envelope.mutates_authority, vector.expected.mutates_authority, 'NotificationEnvelope must not mutate authority');
+    assert.deepEqual(envelope.capabilities_granted, vector.expected.capabilities_granted, 'NotificationEnvelope must not grant capabilities');
+    assert.equal(verifyNotificationEnvelope(ledger, envelope.id, now).ok, true, 'NotificationEnvelope verifies as non-authoritative');
+
+    assert.equal(ledger.control_grants?.length || 0, 0, 'NotificationEnvelope must not create ControlGrant');
+    assert.equal(ledger.capability_grants?.length || 0, 0, 'NotificationEnvelope must not create capability grant projection');
+    assert.equal(ledger.authorizations?.length || 0, 0, 'NotificationEnvelope must not create Authorization');
+    assert.equal(ledger.intent_approvals?.length || 0, 0, 'NotificationEnvelope must not create IntentApproval');
+    assert.equal(ledger.transactions?.length || 0, 0, 'NotificationEnvelope must not create Transaction');
+    assert.equal(ledger.settlement_operations?.length || 0, 0, 'NotificationEnvelope must not create SettlementOperation');
+
+    const read = markNotificationRead(ledger, envelope.id, now);
+    assert.equal(read.ok, true, 'NotificationEnvelope can be marked read');
+    assert.equal(read.envelope.status, 'read', 'Read status is notification metadata only');
+    assert.equal(read.envelope.consumes_artifact, false, 'Read status must not consume artifact');
+    assert.equal(ledger.authorizations?.length || 0, 0, 'Reading notification must not create Authorization');
+
+    const dismissed = dismissNotification(ledger, envelope.id, now);
+    assert.equal(dismissed.ok, true, 'NotificationEnvelope can be dismissed');
+    assert.equal(dismissed.envelope.status, 'dismissed', 'Dismiss status is notification metadata only');
+    assert.equal(dismissed.envelope.mutates_authority, false, 'Dismiss status must not mutate authority');
+
+    assert.throws(
+        () => createNotificationEnvelope(ledger, vector.envelope, now),
+        /NotificationEnvelope replay detected/,
+        'NotificationEnvelope publication must be replay-safe'
+    );
+
+    for (const forbidden of vector.forbidden_inputs) {
+        assert.throws(
+            () => createNotificationEnvelope({}, { ...vector.envelope, ...forbidden.override }, now),
+            new RegExp(forbidden.error),
+            forbidden.name
+        );
+    }
+
+    const expired = createNotificationEnvelope({}, {
+        ...vector.envelope,
+        idempotency_key: 'expired-notification',
+        expires_at: '2026-05-28T12:59:59.000Z',
+    }, now);
+    assert.equal(
+        verifyNotificationEnvelope({ notification_envelopes: [expired] }, expired.id, now).ok,
+        false,
+        'Expired NotificationEnvelope must not verify as active discovery'
+    );
+}
+
 function buildMarketplaceLedger(vector, overrides = {}) {
     const now = new Date(vector.now);
     const ledger = {};
@@ -740,6 +804,7 @@ function runStateMutationScannerConformance() {
         'intent-approval-runtime.js',
         'policy-artifacts.js',
         'external-proof-runtime.js',
+        'notification-runtime.js',
         'marketplace-flow-runtime.js',
         'settlement/federation.js',
         'settlement/governance.js',
@@ -878,6 +943,16 @@ function runStateMutationScannerConformance() {
             file: 'external-proof-runtime.js',
             snippet: 'ledger.external_proof_replay_keys.push',
             reason: 'replay_guard_store: remember consumed external proof replay key',
+        },
+        {
+            file: 'notification-runtime.js',
+            snippet: 'upsertById(ledger.notification_envelopes',
+            reason: 'lineage_artifact_store: persist non-authoritative NotificationEnvelope discovery pointer',
+        },
+        {
+            file: 'notification-runtime.js',
+            snippet: 'ledger.notification_replay_keys.push',
+            reason: 'replay_guard_store: remember published notification replay key',
         },
         {
             file: 'marketplace-flow-runtime.js',
@@ -1203,6 +1278,7 @@ test('Authority Runtime v1 conformance', runAuthorityRuntimeConformance);
 test('IntentApproval Runtime v1 conformance', runIntentApprovalRuntimeConformance);
 test('Policy Artifact v1 conformance', runPolicyArtifactConformance);
 test('External Proof Runtime v1 conformance', runExternalProofConformance);
+test('NotificationEnvelope v1 conformance', runNotificationEnvelopeConformance);
 test('Marketplace Reference Flow v1 conformance', runMarketplaceConformance);
 test('Lineage Audit v1 conformance', runLineageAuditConformance);
 test('State Mutation Scanner v1 conformance', runStateMutationScannerConformance);
