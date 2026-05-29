@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "conformance": "node ../conformance/run.js"
+    "conformance": "node ../conformance/run.js",
+    "contracts:validate": "node scripts/validate-contracts.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",
@@ -16,5 +17,9 @@
     "fastify": "^5.0.0",
     "pino-pretty": "^11.0.0",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
   }
 }
