@@ -14,7 +14,15 @@
     "requested_fqdn": "alice.simplel1.online",
     "server_ip": "1.2.3.4",
     "record_id": "example-record-id",
-    "proxied": false
+    "proxied": false,
+    "allocation_policy": {
+      "mode": "auto",
+      "reason": "SL1_NAMESPACE_AUTO_ALLOCATE=true",
+      "namespace_zone": "simplel1.online",
+      "request_status": "pending_dns",
+      "trigger_source": "join_request_observed",
+      "bridge_node_id": "simple-l1-bridge"
+    }
   },
   "recorded_at": "2026-05-29T18:35:00Z"
 }

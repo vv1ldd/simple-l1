@@ -93,6 +93,36 @@
               },
               "proxied": {
                 "type": "boolean"
+              },
+              "allocation_policy": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "auto",
+                      "manual"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "namespace_zone": {
+                    "type": "string"
+                  },
+                  "request_status": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "trigger_source": {
+                    "type": "string"
+                  },
+                  "bridge_node_id": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }

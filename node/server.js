@@ -854,44 +854,15 @@ const normalizeNamespaceArtifact = (joinRequest, input = {}) => {
     };
 };
 
-const namespaceOperatorToken = () => String(process.env.SL1_NAMESPACE_OPERATOR_TOKEN || '').trim();
+const truthyEnv = (value) => ['true', '1', 'yes', 'on'].includes(String(value || '').toLowerCase());
 
-const requireNamespaceOperator = (request, reply) => {
-    const expectedToken = namespaceOperatorToken();
-    if (!expectedToken) {
-        reply.code(503).send({
-            protocol: 'simple-l1',
-            error: 'namespace_operator_not_configured',
-            required_env: 'SL1_NAMESPACE_OPERATOR_TOKEN',
-            invariant: 'dns_allocation != peer_admission',
-        });
-        return false;
-    }
-
-    const authorization = String(request.headers.authorization || '');
-    const bearer = authorization.toLowerCase().startsWith('bearer ')
-        ? authorization.slice(7).trim()
-        : '';
-    const headerToken = String(request.headers['x-sl1-operator-token'] || '').trim();
-    const receivedToken = bearer || headerToken;
-
-    if (!receivedToken || receivedToken !== expectedToken) {
-        reply.code(401).send({
-            protocol: 'simple-l1',
-            error: 'namespace_operator_unauthorized',
-            invariant: 'dns_allocation_requires_explicit_operator_capability',
-        });
-        return false;
-    }
-
-    return true;
-};
+const namespaceAutoAllocateEnabled = () => truthyEnv(process.env.SL1_NAMESPACE_AUTO_ALLOCATE);
 
 const cloudflareConfig = () => ({
     apiToken: String(process.env.CLOUDFLARE_API_TOKEN || '').trim(),
     zoneId: String(process.env.CLOUDFLARE_ZONE_ID || '').trim(),
     zoneName: String(process.env.CLOUDFLARE_ZONE_NAME || process.env.SL1_NAMESPACE_ZONE || 'simplel1.online').trim().toLowerCase(),
-    proxied: ['true', '1', 'yes', 'on'].includes(String(process.env.CLOUDFLARE_PROXIED || 'false').toLowerCase()),
+    proxied: truthyEnv(process.env.CLOUDFLARE_PROXIED),
 });
 
 const cloudflareRequest = async (method, apiPath, body = null) => {
@@ -1019,6 +990,82 @@ const recordNamespaceArtifact = (store, joinRequest, artifactInput) => {
             status: 'observed',
             bridge_role: 'discovery_inbox_only',
             namespace_artifact: storedArtifact,
+        },
+    };
+};
+
+const allocateNamespaceDns = async (store, joinRequest, input = {}) => {
+    const provider = String(input.provider || 'cloudflare').trim().toLowerCase();
+    if (provider !== 'cloudflare') {
+        const error = new Error('unsupported_dns_provider');
+        error.statusCode = 422;
+        error.provider = provider;
+        throw error;
+    }
+
+    const config = cloudflareConfig();
+    const zone = String(input.zone || config.zoneName).trim().toLowerCase();
+    const requestedFqdn = String(joinRequest.requested_fqdn || joinRequest.host_domain || '').trim().toLowerCase();
+    const serverIp = String(input.ip || input.server_ip || joinRequest.server_ip || '').trim();
+    const proxied = input.proxied === undefined ? config.proxied : truthyEnv(input.proxied);
+
+    if (!requestedFqdn || !(requestedFqdn === zone || requestedFqdn.endsWith(`.${zone}`))) {
+        const error = new Error('requested_fqdn_outside_namespace_zone');
+        error.statusCode = 422;
+        error.requested_fqdn = requestedFqdn;
+        error.zone = zone;
+        throw error;
+    }
+
+    if (!serverIp) {
+        const error = new Error('server_ip_required');
+        error.statusCode = 422;
+        throw error;
+    }
+
+    const zoneId = await resolveCloudflareZoneId(zone);
+    const recordId = await upsertCloudflareARecord({
+        zoneId,
+        fqdn: requestedFqdn,
+        ip: serverIp,
+        proxied,
+    });
+    const allocationPolicy = {
+        mode: namespaceAutoAllocateEnabled() ? 'auto' : 'manual',
+        reason: namespaceAutoAllocateEnabled()
+            ? 'SL1_NAMESPACE_AUTO_ALLOCATE=true'
+            : 'manual allocation path',
+        namespace_zone: zone,
+        request_status: joinRequest.status || null,
+        trigger_source: namespaceAutoAllocateEnabled() ? 'join_request_observed' : 'operator_replay',
+        bridge_node_id: NODE_ID,
+    };
+
+    const recorded = recordNamespaceArtifact(store, joinRequest, {
+        artifact_type: 'dns_allocated',
+        requested_fqdn: requestedFqdn,
+        evidence: {
+            provider: 'cloudflare',
+            zone,
+            zone_id: zoneId,
+            requested_fqdn: requestedFqdn,
+            server_ip: serverIp,
+            record_id: recordId,
+            proxied,
+            allocation_policy: allocationPolicy,
+        },
+    });
+
+    return {
+        ...recorded,
+        allocation: {
+            provider: 'cloudflare',
+            zone,
+            requested_fqdn: requestedFqdn,
+            server_ip: serverIp,
+            record_id: recordId,
+            proxied,
+            allocation_policy: allocationPolicy,
         },
     };
 };
@@ -3699,12 +3746,37 @@ fastify.post('/api/sl1/network/join-requests', async (request, reply) => {
     const store = loadNetworkJoinStore();
     const existingByHash = store.join_requests.find((candidate) => candidate.request_hash === normalized.request_hash);
     if (existingByHash) {
+        let namespaceAllocation = {
+            status: namespaceAutoAllocateEnabled() ? 'pending' : 'skipped',
+            reason: namespaceAutoAllocateEnabled() ? 'auto_allocate_enabled' : 'auto_allocate_disabled',
+        };
+        if (namespaceAutoAllocateEnabled() && existingByHash.status === 'pending_dns') {
+            try {
+                const allocationResult = await allocateNamespaceDns(store, existingByHash);
+                namespaceAllocation = {
+                    status: allocationResult.response.status,
+                    dns_allocation: allocationResult.allocation,
+                    namespace_artifact: allocationResult.response.namespace_artifact,
+                };
+                if (allocationResult.statusCode === 201) saveNetworkJoinStore(store);
+            } catch (error) {
+                namespaceAllocation = {
+                    status: 'failed',
+                    error: error.message || 'namespace_auto_allocation_failed',
+                    required_env: error.required_env || undefined,
+                    invariant: error.message === 'namespace_allocation_conflict'
+                        ? 'requested_fqdn must resolve to one active namespace allocation'
+                        : 'dns_allocation != peer_admission',
+                };
+            }
+        }
         return reply.code(200).send({
             protocol: 'simple-l1',
             status: 'duplicate_observed',
             bridge_role: 'discovery_inbox_only',
             invariant: 'bridge_request_visibility != peer_trust',
             join_request: existingByHash,
+            namespace_allocation: namespaceAllocation,
         });
     }
 
@@ -3718,6 +3790,24 @@ fastify.post('/api/sl1/network/join-requests', async (request, reply) => {
             received_request_hash: normalized.request_hash,
             invariant: 'join_requests_are_immutable',
         });
+    }
+
+    if (normalized.requested_fqdn) {
+        const namespaceConflict = store.join_requests.find((candidate) => (
+            candidate.network_id === normalized.network_id &&
+            candidate.requested_fqdn === normalized.requested_fqdn &&
+            candidate.request_id !== normalized.request_id
+        ));
+        if (namespaceConflict) {
+            return reply.code(409).send({
+                protocol: 'simple-l1',
+                error: 'namespace_request_conflict',
+                requested_fqdn: normalized.requested_fqdn,
+                existing_request_id: namespaceConflict.request_id,
+                received_request_id: normalized.request_id,
+                invariant: 'requested_fqdn must map to one pending namespace request',
+            });
+        }
     }
 
     const stored = {
@@ -3735,6 +3825,32 @@ fastify.post('/api/sl1/network/join-requests', async (request, reply) => {
     };
 
     store.join_requests.push(stored);
+
+    let namespaceAllocation = {
+        status: namespaceAutoAllocateEnabled() ? 'pending' : 'skipped',
+        reason: namespaceAutoAllocateEnabled() ? 'auto_allocate_enabled' : 'auto_allocate_disabled',
+    };
+
+    if (namespaceAutoAllocateEnabled() && stored.status === 'pending_dns') {
+        try {
+            const allocationResult = await allocateNamespaceDns(store, stored);
+            namespaceAllocation = {
+                status: allocationResult.response.status,
+                dns_allocation: allocationResult.allocation,
+                namespace_artifact: allocationResult.response.namespace_artifact,
+            };
+        } catch (error) {
+            namespaceAllocation = {
+                status: 'failed',
+                error: error.message || 'namespace_auto_allocation_failed',
+                required_env: error.required_env || undefined,
+                invariant: error.message === 'namespace_allocation_conflict'
+                    ? 'requested_fqdn must resolve to one active namespace allocation'
+                    : 'dns_allocation != peer_admission',
+            };
+        }
+    }
+
     saveNetworkJoinStore(store);
 
     return reply.code(201).send({
@@ -3742,6 +3858,7 @@ fastify.post('/api/sl1/network/join-requests', async (request, reply) => {
         status: 'observed',
         bridge_role: 'discovery_inbox_only',
         join_request: stored,
+        namespace_allocation: namespaceAllocation,
     });
 });
 
@@ -3790,128 +3907,11 @@ fastify.post('/api/sl1/network/join-requests/:requestId/artifacts', async (reque
 });
 
 fastify.post('/api/sl1/network/join-requests/:requestId/allocate-dns', async (request, reply) => {
-    if (!requireNamespaceOperator(request, reply)) return;
-
-    const requestId = String(request.params.requestId || '');
-    const store = loadNetworkJoinStore();
-    const joinRequest = store.join_requests.find((candidate) => (
-        candidate.request_id === requestId || candidate.request_hash === requestId
-    ));
-
-    if (!joinRequest) {
-        return reply.code(404).send({
-            protocol: 'simple-l1',
-            error: 'join_request_not_found',
-            request_id: requestId,
-        });
-    }
-
-    const body = request.body && typeof request.body === 'object' ? request.body : {};
-    const provider = String(body.provider || 'cloudflare').trim().toLowerCase();
-    if (provider !== 'cloudflare') {
-        return reply.code(422).send({
-            protocol: 'simple-l1',
-            error: 'unsupported_dns_provider',
-            provider,
-            supported: ['cloudflare'],
-            invariant: 'dns_provider != federation_authority',
-        });
-    }
-
-    const config = cloudflareConfig();
-    const zone = String(body.zone || config.zoneName).trim().toLowerCase();
-    const requestedFqdn = String(joinRequest.requested_fqdn || joinRequest.host_domain || '').trim().toLowerCase();
-    const serverIp = String(body.ip || body.server_ip || joinRequest.server_ip || '').trim();
-    const proxied = body.proxied === undefined
-        ? config.proxied
-        : ['true', '1', 'yes', 'on'].includes(String(body.proxied).toLowerCase());
-
-    if (!requestedFqdn || !(requestedFqdn === zone || requestedFqdn.endsWith(`.${zone}`))) {
-        return reply.code(422).send({
-            protocol: 'simple-l1',
-            error: 'requested_fqdn_outside_namespace_zone',
-            requested_fqdn: requestedFqdn,
-            zone,
-            invariant: 'namespace allocation is limited to the configured zone',
-        });
-    }
-
-    if (!serverIp) {
-        return reply.code(422).send({
-            protocol: 'simple-l1',
-            error: 'server_ip_required',
-            request_id: joinRequest.request_id,
-            invariant: 'dns allocation requires explicit target IP evidence',
-        });
-    }
-
-    let zoneId;
-    let recordId;
-    try {
-        zoneId = await resolveCloudflareZoneId(zone);
-        recordId = await upsertCloudflareARecord({
-            zoneId,
-            fqdn: requestedFqdn,
-            ip: serverIp,
-            proxied,
-        });
-    } catch (error) {
-        return reply.code(error.statusCode || 502).send({
-            protocol: 'simple-l1',
-            error: error.message || 'cloudflare_allocation_failed',
-            required_env: error.required_env || undefined,
-            zone: error.zone || zone,
-            cloudflare_status: error.cloudflare_status || undefined,
-            cloudflare_errors: error.cloudflare_errors || undefined,
-            invariant: 'cloudflare_api != federation_authority',
-        });
-    }
-
-    let recorded;
-    try {
-        recorded = recordNamespaceArtifact(store, joinRequest, {
-            artifact_type: 'dns_allocated',
-            requested_fqdn: requestedFqdn,
-            evidence: {
-                provider: 'cloudflare',
-                zone,
-                zone_id: zoneId,
-                requested_fqdn: requestedFqdn,
-                server_ip: serverIp,
-                record_id: recordId,
-                proxied,
-            },
-        });
-    } catch (error) {
-        return reply.code(error.statusCode || 422).send({
-            protocol: 'simple-l1',
-            error: error.message || 'invalid_namespace_artifact',
-            requested_fqdn: error.requested_fqdn || requestedFqdn,
-            existing_request_id: error.existing_request_id || undefined,
-            received_request_id: error.received_request_id || joinRequest.request_id,
-            invariant: error.message === 'namespace_allocation_conflict'
-                ? 'requested_fqdn must resolve to one active namespace allocation'
-                : 'namespace_artifacts_are_immutable',
-        });
-    }
-
-    if (recorded.statusCode === 201) saveNetworkJoinStore(store);
-    return reply.code(recorded.statusCode).send({
-        ...recorded.response,
-        dns_allocation: {
-            provider: 'cloudflare',
-            zone,
-            requested_fqdn: requestedFqdn,
-            server_ip: serverIp,
-            record_id: recordId,
-            proxied,
-        },
-        invariants: [
-            'dns_allocation != peer_admission',
-            'cloudflare_api != federation_authority',
-            'dns_provider != federation_authority',
-            'bridge_dns_allocation != local_trust',
-        ],
+    return reply.code(410).send({
+        protocol: 'simple-l1',
+        error: 'manual_allocate_dns_removed',
+        message: 'DNS allocation is bridge-internal and is triggered by accepted join requests when SL1_NAMESPACE_AUTO_ALLOCATE=true.',
+        invariant: 'operator_cli != namespace_authority',
     });
 });
 

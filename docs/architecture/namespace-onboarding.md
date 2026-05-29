@@ -63,28 +63,33 @@ Cloudflare is the first backend. A future `sovereign_dns` backend must preserve 
 
 The bridge may act as the namespace operator for its own zone.
 
-For `simplel1.online`, the bridge-side allocation endpoint is:
+For `simplel1.online`, bridge-side allocation is triggered by an accepted join request when runtime policy enables it:
 
 ```text
-POST /api/sl1/network/join-requests/:requestId/allocate-dns
-```
-
-It requires an explicit operator capability:
-
-```text
-Authorization: Bearer <SL1_NAMESPACE_OPERATOR_TOKEN>
+SL1_NAMESPACE_AUTO_ALLOCATE=true
 ```
 
 Runtime secrets are read from environment only:
 
 ```text
-SL1_NAMESPACE_OPERATOR_TOKEN
 CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ZONE_NAME=simplel1.online
 CLOUDFLARE_ZONE_ID optional
 ```
 
-The endpoint may create or update the DNS `A` record and then append a normal `dns_allocated` namespace artifact.
+The bridge may create or update the DNS `A` record and then append a normal `dns_allocated` namespace artifact.
+
+Each `dns_allocated` artifact should include allocation policy provenance:
+
+```text
+allocation_policy.mode
+allocation_policy.reason
+allocation_policy.namespace_zone
+allocation_policy.request_status
+allocation_policy.trigger_source
+```
+
+This explains why allocation happened. It does not create trust or admission.
 
 It must not:
 
