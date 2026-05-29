@@ -2,7 +2,7 @@
   "schema_version": "simple-l1.network.join_request.v1",
   "request_id": "sl1join_6d5e2cf7e6cc42f8a54a8a9c",
   "request_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-  "network_id": "wildcloud",
+  "network_id": "simplel1",
   "issuer_url": null,
   "host_domain": "alice.simplel1.online",
   "node_id": "node-alice-001",

@@ -59,6 +59,41 @@ The minimum provider contract is:
 
 Cloudflare is the first backend. A future `sovereign_dns` backend must preserve the same semantics.
 
+## Bridge-Side Allocation
+
+The bridge may act as the namespace operator for its own zone.
+
+For `simplel1.online`, the bridge-side allocation endpoint is:
+
+```text
+POST /api/sl1/network/join-requests/:requestId/allocate-dns
+```
+
+It requires an explicit operator capability:
+
+```text
+Authorization: Bearer <SL1_NAMESPACE_OPERATOR_TOKEN>
+```
+
+Runtime secrets are read from environment only:
+
+```text
+SL1_NAMESPACE_OPERATOR_TOKEN
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ZONE_NAME=simplel1.online
+CLOUDFLARE_ZONE_ID optional
+```
+
+The endpoint may create or update the DNS `A` record and then append a normal `dns_allocated` namespace artifact.
+
+It must not:
+
+- Admit peers automatically.
+- Register peers.
+- Mutate authority projection.
+- Persist Cloudflare API tokens.
+- Treat DNS allocation as trust.
+
 ## Non-Goals
 
 Namespace onboarding does not:

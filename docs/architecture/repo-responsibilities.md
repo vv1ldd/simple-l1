@@ -17,9 +17,11 @@ It owns:
 It must not own:
 
 - Host installation lifecycle.
-- Cloudflare credentials or provider-specific operational state.
+- Cloudflare credentials in source control or persisted semantic state.
 - Coolify runtime peer registry mutations.
 - Local deployment-specific runtime data.
+
+It may read provider credentials from runtime environment when the bridge is explicitly operating its own namespace zone, such as `simplel1.online`.
 
 ## sovereign-host
 
