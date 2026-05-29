@@ -1208,15 +1208,17 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
     const initialAction = isConnectMode && !lockToExistingIdentity
         ? 'register'
         : (query.mode === 'register' ? 'register' : 'login');
+    const hasIntent = Boolean(String(query.intent_type || '').trim());
     const initialStatus = initialAction === 'register'
         ? 'Create a passkey to get your SL1 identity.'
-        : 'Use your passkey here, or continue on your phone.';
+        : (hasIntent
+            ? 'Review the intent hash and resource, then approve with your passkey.'
+            : 'Use your passkey here, or continue on your phone.');
     const mode = isConnectMode
         ? (query.intent_type ? 'Approve Intent' : 'Connect Identity')
         : (query.mode === 'register'
         ? 'Create IdentityProof'
             : 'Issue IdentityProof');
-    const hasIntent = Boolean(String(query.intent_type || '').trim());
     const lead = isConnectMode && !lockToExistingIdentity
         ? 'One passkey creates your SL1 identity. Your private key stays in iCloud Keychain / Secure Enclave.'
         : (isConnectMode && hasIntent
@@ -1230,7 +1232,9 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
     const intentNonce = htmlEscape(query.intent_nonce ? `${String(query.intent_nonce).slice(0, 22)}...` : 'session nonce');
     const intentResource = htmlEscape(query.intent_resource ? `${String(query.intent_resource).slice(0, 44)}...` : 'identity proof');
     const intentCta = String(query.intent_cta || '').trim();
-    const approveWithPasskeyLabel = intentCta || 'Approve with Passkey';
+    const approveWithPasskeyLabel = hasIntent
+        ? `Approve and sign: ${intentCta || 'this intent'}`
+        : 'Approve with Passkey';
     const requestedIdentityHint = normalizeIdentityHint(query.identity_hint || query.login_hint || query.entity_l1_address);
     const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : ''}` : '';
     const hiddenFields = Object.entries(query)
@@ -1295,6 +1299,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         .proof b { text-align:right; word-break:break-word; }
         .intent-description { display:none; margin-top:10px; font-size:11px; }
         .has-intent .intent-description { display:block; }
+        .intent-confirmation { display:none; margin:12px 0 8px; padding:10px 11px; border:1px solid rgba(245,158,11,.36); border-radius:11px; background:rgba(245,158,11,.08); color:#f5d48f; font-size:11px; line-height:1.4; font-weight:760; text-align:left; }
+        .has-intent .intent-confirmation { display:block; }
         button { width:100%; margin-top:5px; padding:14px 18px; border:1px solid #f2f2f4; border-radius:12px; background:#f4f4f5; color:#09090a; font-weight:780; cursor:pointer; transition:background 140ms ease,border-color 140ms ease,opacity 140ms ease; }
         button:hover:not(:disabled) { background:#ffffff; border-color:#ffffff; }
         .connect-mode form { display:none; }
@@ -1332,8 +1338,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         ${isConnectMode && lockToExistingIdentity ? `
         <div class="choice-grid" aria-label="SL1 Identity options">
             <button class="choice-card${initialAction === 'login' ? ' selected' : ''}" type="button" data-sl1e-choice="login">
-                <strong>${hasIntent ? 'Review and sign intent' : 'Continue with passkey'}</strong>
-                <span>${hasIntent ? `Confirm the queued operation and return to ${clientName}.` : `Confirm it is you and return to ${clientName}.`}</span>
+                <strong>${hasIntent ? 'Intent ready for review' : 'Continue with passkey'}</strong>
+                <span>${hasIntent ? `Read the canonical hash below, then use the approval button to sign.` : `Confirm it is you and return to ${clientName}.`}</span>
             </button>
         </div>
         <div class="axioms"><span>No private key stored</span><span>Passkey -> SL1 address</span><span>Proof only</span></div>
@@ -1352,6 +1358,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 <div><span>Rule</span><b>Passkey signs this intent only</b></div>
             </div>
             <p class="${isConnectMode ? 'intent-description' : ''}">${intentDescription}</p>
+            <p class="intent-confirmation">Your passkey will approve only the exact intent hash and resource shown above. It will not grant general access to ${clientName}.</p>
             <form id="sl1e-form" method="POST" action="/api/sl1e/authorize/complete">
                 ${hiddenFields}
                 <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create Passkey Identity' : approveWithPasskeyLabel)}</button>
@@ -1402,6 +1409,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const setStatus = (message) => { statusNode.textContent = message; };
         const approvalStep = document.getElementById('approval-step');
         const isConnectMode = ${isConnectMode ? 'true' : 'false'};
+        const hasIntent = ${hasIntent ? 'true' : 'false'};
         let selectedAction = '${initialAction}';
         let handoffPollTimer = null;
         let pendingRegistrationRequestId = null;
@@ -1989,8 +1997,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             choice.addEventListener('click', () => {
                 selectAction(choice.dataset.sl1eChoice);
                 if (selectedAction === 'login') {
-                    if (lockToExistingIdentity) {
+                    if (lockToExistingIdentity && !hasIntent) {
                         runSelectedAction();
+                    } else if (lockToExistingIdentity && hasIntent) {
+                        setStatus('Review the intent details, then press the approval button to sign.');
                     }
                 } else {
                     aliasInput?.focus();
