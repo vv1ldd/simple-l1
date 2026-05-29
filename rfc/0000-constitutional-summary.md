@@ -344,6 +344,19 @@ RFC-0020: Execution Consistency
 RFC-0021: Workflow & Compensation
 RFC-0022: Economic State & Settlement Graph
 RFC-0024: Semantic Isolation & Domain Integrity
+RFC-0034: Authority Lattice Model
+RFC-0035: Delegation Algebra
+RFC-0036: Temporal Authority Model
+RFC-0037: Attack Surface Theorem
+RFC-0038: Cross-System Composition Theorem
+RFC-0039: SL1 Node Role Model
+RFC-0040: SL1 Delegation Transport Protocol
+RFC-0041: SL1 Distributed Failure Model
+RFC-0042: SL1 Proof Envelope Semantics
+RFC-0043: SL1 Constitutional Security Model
+RFC-0048: Federated Identity Event Replication
+RFC-0049: Constitutional Recovery Model
+RFC-0050: Authority Fork Resolution Model
 ```
 
 Mechanism RFCs may extend, constrain, or compose constitutional concepts.
@@ -356,7 +369,119 @@ If a mechanism RFC requires redefining a constitutional term, it is not an updat
 
 ---
 
-## 9. Manifesto Boundary
+## 10. Authority Kernel Stack
+
+RFC-0034 through RFC-0038 define the authority kernel stack:
+
+```text
+RFC-0034: Authority Lattice Model
+  execution kernel, single authority gate, epistemic projection boundary
+
+RFC-0035: Delegation Algebra
+  ledger constitution of authority, no pre-authority, edge lifecycle
+
+RFC-0036: Temporal Authority Model
+  ledger time as causal order, validity over causally closed state
+
+RFC-0037: Attack Surface Theorem
+  invalid projection leakage and authority reconstruction states
+
+RFC-0038: Cross-System Composition Theorem
+  inter-ledger composition without implicit authority import
+```
+
+Compressed kernel:
+
+```text
+Authority = f(Ledger[t], ProofEvaluator)
+t = causal order of authority transitions
+UI / ASR / tags / notifications = epistemic projection layer only
+```
+
+ProofEvaluator is not an authority source.
+
+ProofEvaluator is a deterministic function over committed ledger state.
+
+Global invariants:
+
+```text
+Ledger is sole constructor of authority
+No pre-authority exists
+No cached validity exists
+No projection may influence evaluation
+```
+
+---
+
+## 11. Distributed Constitutional Runtime Stack
+
+RFC-0039 through RFC-0050 define the distributed constitutional runtime stack:
+
+```text
+RFC-0039: SL1 Node Role Model
+  nodes as role compositions, not authority-bearing actors
+
+RFC-0040: SL1 Delegation Transport Protocol
+  signed intent, proof, and execution result packets without packet authority
+
+RFC-0041: SL1 Distributed Failure Model
+  split-brain, stale reads, invalid execution, and shadow authority injection
+
+RFC-0042: SL1 Proof Envelope Semantics
+  proof envelopes as evidence, deterministic evaluation over Ledger[t]
+
+RFC-0043: SL1 Constitutional Security Model
+  compromise as authority graph corruption, not merely infrastructure breach
+
+RFC-0048: Federated Identity Event Replication
+  public authority continuity as federated causal replication
+
+RFC-0049: Constitutional Recovery Model
+  recovery as causal restoration of ledger-valid authority
+
+RFC-0050: Authority Fork Resolution Model
+  admissible authority continuity under divergent histories
+```
+
+Normalized constitutional kernel:
+
+```text
+Authority = f(Ledger[t], ProofEvaluator)
+
+ProofEvaluator is not an authority source.
+ProofEvaluator is a deterministic function over committed ledger state.
+
+Authority does not exist in nodes, roles, packets, or proofs.
+Authority exists only as evaluation result over Ledger[t].
+```
+
+Hard invariants:
+
+```text
+No node is authoritative by role alone.
+No proof is authoritative before ledger binding.
+No packet is authoritative before LedgerCommit.
+No execution is valid without ledger-height-bound proof evaluation.
+```
+
+System decomposition:
+
+```text
+Coolify = Execution substrate
+SL1 = Authority substrate
+Ledger = Causal truth substrate
+```
+
+Minimal form:
+
+```text
+SL1 is a mathematically defined system for deriving permissible action
+in a distributed causal environment with a single authority history.
+```
+
+---
+
+## 12. Manifesto Boundary
 
 A manifesto may explain the philosophy of SL1.
 
@@ -370,7 +495,7 @@ Normative constraints belong in RFCs and conformance artifacts.
 
 ---
 
-## 10. Summary
+## 13. Summary
 
 Simple Layer One is a formal prevention system against unintended transformation of representation into power or state change.
 
