@@ -59,6 +59,7 @@ const DATA_DIR = process.env.SL1_DATA_DIR || __dirname;
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const LEDGER_FILE = path.join(DATA_DIR, 'ledger_db.json');
+const NETWORK_JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'network_join_requests.json');
 const GENESIS_FILE = path.join(__dirname, 'genesis.json');
 let ledger = {
     accounts: {},              // Derived state (View)
@@ -669,6 +670,189 @@ const rpIdForHost = (host) => {
 };
 
 const originForHost = (host) => `https://${String(host || '').split(':')[0].toLowerCase()}`;
+
+const stableStringify = (value) => {
+    if (Array.isArray(value)) {
+        return `[${value.map(stableStringify).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+};
+
+const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
+
+const loadNetworkJoinStore = () => {
+    if (!fs.existsSync(NETWORK_JOIN_REQUESTS_FILE)) {
+        return {
+            schema_version: 'simple-l1.network.join_requests.store.v1',
+            bridge_role: 'discovery_inbox_only',
+            join_requests: [],
+            namespace_artifacts: [],
+        };
+    }
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(NETWORK_JOIN_REQUESTS_FILE, 'utf8'));
+        return {
+            schema_version: parsed.schema_version || 'simple-l1.network.join_requests.store.v1',
+            bridge_role: parsed.bridge_role || 'discovery_inbox_only',
+            join_requests: Array.isArray(parsed.join_requests) ? parsed.join_requests : [],
+            namespace_artifacts: Array.isArray(parsed.namespace_artifacts) ? parsed.namespace_artifacts : [],
+        };
+    } catch (error) {
+        console.warn(`[NETWORK JOIN] Failed to read join request store: ${error.message}`);
+        return {
+            schema_version: 'simple-l1.network.join_requests.store.v1',
+            bridge_role: 'discovery_inbox_only',
+            join_requests: [],
+            namespace_artifacts: [],
+        };
+    }
+};
+
+const saveNetworkJoinStore = (store) => {
+    fs.writeFileSync(NETWORK_JOIN_REQUESTS_FILE, JSON.stringify(store, null, 2));
+};
+
+const requestHostFromIssuer = (issuerUrl) => {
+    if (!issuerUrl) return '';
+    try {
+        return new URL(issuerUrl).hostname.toLowerCase();
+    } catch (error) {
+        return '';
+    }
+};
+
+const normalizeNetworkJoinRequest = (input = {}) => {
+    const hostDomain = String(input.host_domain || input.requested_fqdn || requestHostFromIssuer(input.issuer_url) || '')
+        .trim()
+        .toLowerCase();
+    const issuerUrl = input.issuer_url ? String(input.issuer_url).trim().replace(/\/+$/, '') : null;
+    const requestedFqdn = input.requested_fqdn ? String(input.requested_fqdn).trim().toLowerCase() : null;
+    const requestedSubdomain = input.requested_subdomain ? String(input.requested_subdomain).trim().toLowerCase() : null;
+
+    const missing = ['request_id', 'node_id', 'requested_at']
+        .filter((key) => !String(input[key] || '').trim());
+    if (!issuerUrl && !requestedFqdn) {
+        missing.push('issuer_url_or_requested_fqdn');
+    }
+    if (!hostDomain) {
+        missing.push('host_domain');
+    }
+    if (missing.length > 0) {
+        const error = new Error('invalid_join_request');
+        error.statusCode = 422;
+        error.missing = missing;
+        throw error;
+    }
+
+    const declaration = {
+        schema_version: String(input.schema_version || 'simple-l1.network.join_request.v1'),
+        request_id: String(input.request_id).trim(),
+        network_id: String(input.network_id || 'wildcloud').trim(),
+        issuer_url: issuerUrl,
+        host_domain: hostDomain,
+        node_id: String(input.node_id).trim(),
+        public_key: input.public_key ? String(input.public_key).trim() : null,
+        capabilities: Array.isArray(input.capabilities)
+            ? input.capabilities.map((capability) => String(capability).trim()).filter(Boolean).sort()
+            : [],
+        requested_at: String(input.requested_at).trim(),
+    };
+    if (requestedSubdomain) declaration.requested_subdomain = requestedSubdomain;
+    if (requestedFqdn) declaration.requested_fqdn = requestedFqdn;
+    if (input.server_ip) declaration.server_ip = String(input.server_ip).trim();
+    if (input.status) declaration.status = String(input.status).trim();
+
+    const requestHash = `sha256:${sha256Hex(stableStringify(declaration))}`;
+    if (input.request_hash && String(input.request_hash) !== requestHash) {
+        const error = new Error('request_hash_mismatch');
+        error.statusCode = 422;
+        error.expected = requestHash;
+        error.received = String(input.request_hash);
+        throw error;
+    }
+
+    return {
+        ...declaration,
+        request_hash: requestHash,
+        signature: input.signature || null,
+        signature_pending: input.signature ? false : input.signature_pending !== false,
+    };
+};
+
+const normalizeNamespaceArtifact = (joinRequest, input = {}) => {
+    const artifactType = String(input.artifact_type || input.type || '').trim();
+    if (!['dns_allocated', 'issuer_reachable', 'issuer_unreachable'].includes(artifactType)) {
+        const error = new Error('invalid_namespace_artifact_type');
+        error.statusCode = 422;
+        throw error;
+    }
+
+    const evidence = input.evidence && typeof input.evidence === 'object' && !Array.isArray(input.evidence)
+        ? input.evidence
+        : {};
+    const recordedAt = String(input.recorded_at || new Date().toISOString());
+    const requestedFqdn = String(input.requested_fqdn || evidence.requested_fqdn || joinRequest.requested_fqdn || joinRequest.host_domain || '')
+        .trim()
+        .toLowerCase();
+
+    if (artifactType === 'issuer_reachable') {
+        const issuerMetadata = evidence.issuer_metadata && typeof evidence.issuer_metadata === 'object'
+            ? evidence.issuer_metadata
+            : {};
+        const issuerNodeId = issuerMetadata.node_id || evidence.node_id;
+        if (issuerNodeId && String(issuerNodeId) !== String(joinRequest.node_id)) {
+            const error = new Error('issuer_node_id_mismatch');
+            error.statusCode = 409;
+            error.expected = joinRequest.node_id;
+            error.received = String(issuerNodeId);
+            throw error;
+        }
+    }
+
+    const artifactIdBasis = stableStringify({
+        request_id: joinRequest.request_id,
+        artifact_type: artifactType,
+        requested_fqdn: requestedFqdn,
+        evidence,
+    });
+    const artifactId = input.artifact_id || `sl1ns_${sha256Hex(artifactIdBasis).slice(0, 24)}`;
+    const declaration = {
+        schema_version: String(input.schema_version || 'simple-l1.network.namespace_artifact.v1'),
+        artifact_id: String(artifactId),
+        request_id: joinRequest.request_id,
+        request_hash: joinRequest.request_hash,
+        network_id: joinRequest.network_id,
+        artifact_type: artifactType,
+        requested_fqdn: requestedFqdn,
+        evidence,
+        recorded_at: recordedAt,
+    };
+
+    const artifactHash = `sha256:${sha256Hex(stableStringify(declaration))}`;
+    if (input.artifact_hash && String(input.artifact_hash) !== artifactHash) {
+        const error = new Error('artifact_hash_mismatch');
+        error.statusCode = 422;
+        error.expected = artifactHash;
+        error.received = String(input.artifact_hash);
+        throw error;
+    }
+
+    return {
+        ...declaration,
+        artifact_hash: artifactHash,
+        bridge_role: 'discovery_inbox_only',
+        invariants: [
+            'dns_allocation != peer_admission',
+            'cloudflare_api != federation_authority',
+            'dns_provider != federation_authority',
+            'issuer_reachable != local_trust',
+        ],
+    };
+};
 
 const accountCredentials = (account) => {
     const seen = new Set();
@@ -3325,6 +3509,213 @@ fastify.get('/api/status', async (request, reply) => {
         active_handles: handles,
         uptime: network_uptime,
         status: "OPERATIONAL"
+    };
+});
+
+fastify.post('/api/sl1/network/join-requests', async (request, reply) => {
+    let normalized;
+    try {
+        normalized = normalizeNetworkJoinRequest(request.body || {});
+    } catch (error) {
+        return reply.code(error.statusCode || 422).send({
+            protocol: 'simple-l1',
+            error: error.message || 'invalid_join_request',
+            missing: error.missing || undefined,
+            expected: error.expected || undefined,
+            received: error.received || undefined,
+            invariant: 'join_request != peer_admission',
+        });
+    }
+
+    const store = loadNetworkJoinStore();
+    const existingByHash = store.join_requests.find((candidate) => candidate.request_hash === normalized.request_hash);
+    if (existingByHash) {
+        return reply.code(200).send({
+            protocol: 'simple-l1',
+            status: 'duplicate_observed',
+            bridge_role: 'discovery_inbox_only',
+            invariant: 'bridge_request_visibility != peer_trust',
+            join_request: existingByHash,
+        });
+    }
+
+    const existingById = store.join_requests.find((candidate) => candidate.request_id === normalized.request_id);
+    if (existingById) {
+        return reply.code(409).send({
+            protocol: 'simple-l1',
+            error: 'join_request_id_conflict',
+            request_id: normalized.request_id,
+            existing_request_hash: existingById.request_hash,
+            received_request_hash: normalized.request_hash,
+            invariant: 'join_requests_are_immutable',
+        });
+    }
+
+    const stored = {
+        ...normalized,
+        observed_at: new Date().toISOString(),
+        bridge_node_id: NODE_ID,
+        bridge_role: 'discovery_inbox_only',
+        admission_state: 'not_admitted_by_bridge',
+        invariants: [
+            'join_request != peer_admission',
+            'identity_bridge != network_authority',
+            'observed_request != local_trust',
+            'bridge_request_visibility != peer_trust',
+        ],
+    };
+
+    store.join_requests.push(stored);
+    saveNetworkJoinStore(store);
+
+    return reply.code(201).send({
+        protocol: 'simple-l1',
+        status: 'observed',
+        bridge_role: 'discovery_inbox_only',
+        join_request: stored,
+    });
+});
+
+fastify.post('/api/sl1/network/join-requests/:requestId/artifacts', async (request, reply) => {
+    const requestId = String(request.params.requestId || '');
+    const store = loadNetworkJoinStore();
+    const joinRequest = store.join_requests.find((candidate) => (
+        candidate.request_id === requestId || candidate.request_hash === requestId
+    ));
+
+    if (!joinRequest) {
+        return reply.code(404).send({
+            protocol: 'simple-l1',
+            error: 'join_request_not_found',
+            request_id: requestId,
+        });
+    }
+
+    let artifact;
+    try {
+        artifact = normalizeNamespaceArtifact(joinRequest, request.body || {});
+    } catch (error) {
+        return reply.code(error.statusCode || 422).send({
+            protocol: 'simple-l1',
+            error: error.message || 'invalid_namespace_artifact',
+            expected: error.expected || undefined,
+            received: error.received || undefined,
+            invariant: error.message === 'issuer_node_id_mismatch'
+                ? 'issuer_metadata.node_id must match join_request.node_id'
+                : 'namespace_artifacts_are_immutable',
+        });
+    }
+
+    const existingByHash = store.namespace_artifacts.find((candidate) => candidate.artifact_hash === artifact.artifact_hash);
+    if (existingByHash) {
+        return reply.code(200).send({
+            protocol: 'simple-l1',
+            status: 'duplicate_observed',
+            bridge_role: 'discovery_inbox_only',
+            namespace_artifact: existingByHash,
+        });
+    }
+
+    const existingById = store.namespace_artifacts.find((candidate) => candidate.artifact_id === artifact.artifact_id);
+    if (existingById) {
+        return reply.code(200).send({
+            protocol: 'simple-l1',
+            status: 'duplicate_observed',
+            bridge_role: 'discovery_inbox_only',
+            namespace_artifact: existingById,
+        });
+    }
+
+    if (artifact.artifact_type === 'dns_allocated') {
+        const conflictingAllocation = store.namespace_artifacts.find((candidate) => (
+            candidate.artifact_type === 'dns_allocated' &&
+            candidate.network_id === artifact.network_id &&
+            candidate.requested_fqdn === artifact.requested_fqdn &&
+            candidate.request_id !== artifact.request_id
+        ));
+        if (conflictingAllocation) {
+            return reply.code(409).send({
+                protocol: 'simple-l1',
+                error: 'namespace_allocation_conflict',
+                requested_fqdn: artifact.requested_fqdn,
+                existing_request_id: conflictingAllocation.request_id,
+                received_request_id: artifact.request_id,
+                invariant: 'requested_fqdn must resolve to one active namespace allocation',
+            });
+        }
+    }
+
+    const storedArtifact = {
+        ...artifact,
+        observed_at: new Date().toISOString(),
+        bridge_node_id: NODE_ID,
+    };
+
+    store.namespace_artifacts.push(storedArtifact);
+    saveNetworkJoinStore(store);
+
+    return reply.code(201).send({
+        protocol: 'simple-l1',
+        status: 'observed',
+        bridge_role: 'discovery_inbox_only',
+        namespace_artifact: storedArtifact,
+    });
+});
+
+fastify.get('/api/sl1/network/join-requests', async (request) => {
+    const networkId = request.query.network_id ? String(request.query.network_id) : null;
+    const store = loadNetworkJoinStore();
+    const joinRequests = store.join_requests
+        .filter((candidate) => !networkId || candidate.network_id === networkId)
+        .slice()
+        .sort((a, b) => String(b.observed_at || '').localeCompare(String(a.observed_at || '')));
+
+    return {
+        protocol: 'simple-l1',
+        schema_version: 'simple-l1.network.join_requests.v1',
+        generated_at: new Date().toISOString(),
+        bridge_role: 'discovery_inbox_only',
+        network_id: networkId,
+        count: joinRequests.length,
+        join_requests: joinRequests,
+        namespace_artifacts: store.namespace_artifacts
+            .filter((candidate) => !networkId || candidate.network_id === networkId)
+            .slice()
+            .sort((a, b) => String(b.observed_at || '').localeCompare(String(a.observed_at || ''))),
+        invariants: [
+            'join_request != peer_admission',
+            'identity_bridge != network_authority',
+            'observed_request != local_trust',
+            'bridge_request_visibility != peer_trust',
+            'dns_allocation != peer_admission',
+            'dns_provider != federation_authority',
+        ],
+    };
+});
+
+fastify.get('/api/sl1/network/join-requests/:requestId', async (request, reply) => {
+    const requestId = String(request.params.requestId || '');
+    const store = loadNetworkJoinStore();
+    const joinRequest = store.join_requests.find((candidate) => (
+        candidate.request_id === requestId || candidate.request_hash === requestId
+    ));
+
+    if (!joinRequest) {
+        return reply.code(404).send({
+            protocol: 'simple-l1',
+            error: 'join_request_not_found',
+            request_id: requestId,
+        });
+    }
+
+    return {
+        protocol: 'simple-l1',
+        bridge_role: 'discovery_inbox_only',
+        join_request: joinRequest,
+        namespace_artifacts: store.namespace_artifacts
+            .filter((candidate) => candidate.request_id === joinRequest.request_id)
+            .slice()
+            .sort((a, b) => String(b.observed_at || '').localeCompare(String(a.observed_at || ''))),
     };
 });
 
