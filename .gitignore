@@ -1,6 +1,7 @@
 .DS_Store
 .env
 *.local
+.vscode/
 
 # Dependencies
 node_modules/
@@ -9,6 +10,16 @@ node/node_modules/
 # Runtime state
 node/node_identity.json
 node/ledger_db.json
+node/data/
+node/runtime/
+data/
+runtime/
+
+# Local certs
+node/www/*.pem
+node/www/*.key
+www/*.pem
+www/*.key
 
 # Logs
 *.log
