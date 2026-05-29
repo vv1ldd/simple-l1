@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/namespace-artifact.schema.json",
+  "title": "SL1 Namespace Artifact",
+  "description": "Append-only namespace evidence linked to a join request. Artifacts are operational evidence, not peer trust.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "artifact_hash",
+    "request_id",
+    "request_hash",
+    "network_id",
+    "artifact_type",
+    "requested_fqdn",
+    "evidence",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.network.namespace_artifact.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^sl1ns_[a-zA-Z0-9_-]+$"
+    },
+    "artifact_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^sl1join_[a-zA-Z0-9_-]+$"
+    },
+    "request_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "network_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_type": {
+      "enum": [
+        "dns_allocated",
+        "issuer_reachable",
+        "issuer_unreachable"
+      ]
+    },
+    "requested_fqdn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "artifact_type": {
+            "const": "dns_allocated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "required": [
+              "provider",
+              "requested_fqdn",
+              "server_ip"
+            ],
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "requested_fqdn": {
+                "type": "string"
+              },
+              "server_ip": {
+                "type": "string"
+              },
+              "record_id": {
+                "type": "string"
+              },
+              "proxied": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "artifact_type": {
+            "enum": [
+              "issuer_reachable",
+              "issuer_unreachable"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "required": [
+              "requested_fqdn",
+              "dns_resolves",
+              "tls_reachable",
+              "sl1_status_reachable",
+              "issuer_reachable"
+            ],
+            "properties": {
+              "requested_fqdn": {
+                "type": "string"
+              },
+              "dns_resolves": {
+                "type": "boolean"
+              },
+              "tls_reachable": {
+                "type": "boolean"
+              },
+              "sl1_status_reachable": {
+                "type": "boolean"
+              },
+              "issuer_reachable": {
+                "type": "boolean"
+              },
+              "issuer_metadata": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": "simple-l1.network.namespace_artifact.v1",
+  "artifact_id": "sl1ns_47e25ef76c9345b2a943b8d1",
+  "artifact_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "request_id": "sl1join_6d5e2cf7e6cc42f8a54a8a9c",
+  "request_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "network_id": "wildcloud",
+  "artifact_type": "issuer_reachable",
+  "requested_fqdn": "alice.simplel1.online",
+  "evidence": {
+    "requested_fqdn": "alice.simplel1.online",
+    "expected_ip": "1.2.3.4",
+    "dns_resolves": true,
+    "tls_reachable": true,
+    "sl1_status_reachable": true,
+    "issuer_reachable": true,
+    "status_payload": {
+      "status": "ok",
+      "service": "sovereign-coolify",
+      "node_id": "node-alice-001"
+    },
+    "issuer_metadata": {
+      "issuer": "https://alice.simplel1.online/sl1",
+      "node_id": "node-alice-001",
+      "public_key": "example-node-public-key"
+    }
+  },
+  "recorded_at": "2026-05-29T18:40:00Z"
+}

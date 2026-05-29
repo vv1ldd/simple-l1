@@ -1,0 +1,22 @@
+{
+  "schema_version": "simple-l1.network.join_request.v1",
+  "request_id": "sl1join_6d5e2cf7e6cc42f8a54a8a9c",
+  "request_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "network_id": "wildcloud",
+  "issuer_url": null,
+  "host_domain": "alice.simplel1.online",
+  "node_id": "node-alice-001",
+  "public_key": null,
+  "capabilities": [
+    "observe_only_federation",
+    "sl1_peer",
+    "sovereign_host"
+  ],
+  "requested_at": "2026-05-29T18:30:00Z",
+  "requested_subdomain": "alice",
+  "requested_fqdn": "alice.simplel1.online",
+  "server_ip": "1.2.3.4",
+  "status": "pending_dns",
+  "signature": null,
+  "signature_pending": true
+}

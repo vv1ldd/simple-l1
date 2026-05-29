@@ -1,0 +1,21 @@
+{
+  "schema_version": "simple-l1.network.namespace_artifact.v1",
+  "artifact_id": "sl1ns_5b5ce2e5129f49efa8d3fbd9",
+  "artifact_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "request_id": "sl1join_6d5e2cf7e6cc42f8a54a8a9c",
+  "request_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "network_id": "wildcloud",
+  "artifact_type": "issuer_unreachable",
+  "requested_fqdn": "alice.simplel1.online",
+  "evidence": {
+    "requested_fqdn": "alice.simplel1.online",
+    "expected_ip": "1.2.3.4",
+    "dns_resolves": true,
+    "tls_reachable": false,
+    "sl1_status_reachable": false,
+    "issuer_reachable": false,
+    "status_payload": null,
+    "issuer_metadata": null
+  },
+  "recorded_at": "2026-05-29T18:40:00Z"
+}

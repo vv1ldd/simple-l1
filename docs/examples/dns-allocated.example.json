@@ -1,0 +1,20 @@
+{
+  "schema_version": "simple-l1.network.namespace_artifact.v1",
+  "artifact_id": "sl1ns_0a3db8b5f6e44c22b1b0f88a",
+  "artifact_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "request_id": "sl1join_6d5e2cf7e6cc42f8a54a8a9c",
+  "request_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "network_id": "wildcloud",
+  "artifact_type": "dns_allocated",
+  "requested_fqdn": "alice.simplel1.online",
+  "evidence": {
+    "provider": "cloudflare",
+    "zone": "simplel1.online",
+    "zone_id": "example-zone-id",
+    "requested_fqdn": "alice.simplel1.online",
+    "server_ip": "1.2.3.4",
+    "record_id": "example-record-id",
+    "proxied": false
+  },
+  "recorded_at": "2026-05-29T18:35:00Z"
+}

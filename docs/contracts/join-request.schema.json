@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/join-request.schema.json",
+  "title": "SL1 Network Join Request",
+  "description": "Canonical discovery evidence for a host requesting visibility in an SL1 network namespace. This is not peer admission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "request_hash",
+    "network_id",
+    "host_domain",
+    "node_id",
+    "capabilities",
+    "requested_at",
+    "signature_pending"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.network.join_request.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^sl1join_[a-zA-Z0-9_-]+$"
+    },
+    "request_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "network_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issuer_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "host_domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "node_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "public_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requested_subdomain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_fqdn": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server_ip": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "pending_dns"
+      ]
+    },
+    "signature": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "signature_pending": {
+      "type": "boolean"
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "issuer_url"
+      ],
+      "properties": {
+        "issuer_url": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "required": [
+        "requested_fqdn"
+      ]
+    }
+  ]
+}
