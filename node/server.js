@@ -1791,7 +1791,14 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             });
             const optionsPayload = await optionsResponse.json();
             if (!optionsResponse.ok) {
-                throw new Error(optionsPayload.error || 'Could not prepare passkey challenge.');
+                const optionsError = new Error(optionsPayload.error || 'Could not prepare passkey challenge.');
+                if ([
+                    'no_verifiable_passkey_registered_for_identity',
+                    'no_identity_account_registered',
+                ].includes(optionsPayload.error)) {
+                    optionsError.passkeyUnavailable = true;
+                }
+                throw optionsError;
             }
 
             setStatus('Confirm with Face ID, Touch ID, or your security key...');
