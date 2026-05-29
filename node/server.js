@@ -1236,7 +1236,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         ? `Approve and sign: ${intentCta || 'this intent'}`
         : 'Approve with Passkey';
     const requestedIdentityHint = normalizeIdentityHint(query.identity_hint || query.login_hint || query.entity_l1_address);
-    const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : ''}` : '';
+    const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : (hasIntent && lockToExistingIdentity ? ' login-ready' : '')}` : '';
     const hiddenFields = Object.entries(query)
         .map(([key, value]) => `<input type="hidden" name="${htmlEscape(key)}" value="${htmlEscape(value)}">`)
         .join('\n');
@@ -1363,7 +1363,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 ${hiddenFields}
                 <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create Passkey Identity' : approveWithPasskeyLabel)}</button>
             </form>
-            ${isConnectMode ? `<a id="sl1e-secondary-action" class="text-action visible" href="#">${lockToExistingIdentity ? 'Create new SL1 identity' : 'I already have SL1 identity'}</a>` : ''}
+            ${isConnectMode && !hasIntent ? `<a id="sl1e-secondary-action" class="text-action visible" href="#">${lockToExistingIdentity ? 'Create new SL1 identity' : 'I already have SL1 identity'}</a>` : ''}
             <div id="sl1e-status" class="status">${htmlEscape(initialStatus)}</div>
             ${isConnectMode ? `<button id="sl1e-handoff-link" class="handoff-link" type="button">Continue on another device</button>
             <div id="sl1e-handoff-panel" class="handoff-panel" aria-live="polite">
