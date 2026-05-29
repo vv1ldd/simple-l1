@@ -1483,6 +1483,26 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             }
         };
 
+        const releasePendingRegistrationReservation = async () => {
+            const requestId = pendingRegistrationRequestId;
+            if (!requestId) return true;
+
+            try {
+                const response = await fetch('/api/sl1e/registration/' + encodeURIComponent(requestId) + '/release', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!response.ok) return false;
+
+                pendingRegistrationRequestId = null;
+                activeAliasReservationOwner = null;
+                clearAliasReservation();
+                return true;
+            } catch (error) {
+                return false;
+            }
+        };
+
         const forgetActiveIdentity = () => {
             try {
                 window.localStorage?.removeItem('sl1e.identity_hint');
@@ -1845,7 +1865,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     optionsJSON: optionsPayload.publicKey,
                 });
             } catch (error) {
-                const unavailableError = new Error('Passkey creation is not allowed on this device.');
+                await releasePendingRegistrationReservation();
+                const unavailableError = new Error('Passkey creation was cancelled or is not available on this device.');
                 unavailableError.passkeyUnavailable = true;
                 throw unavailableError;
             }
@@ -1917,7 +1938,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 }
 
                 if (selectedAction === 'register' && error.passkeyUnavailable) {
-                    selectAction('register', 'Passkey creation is not allowed on this device. Continue on another device with this alias.');
+                    selectAction('register', 'Passkey creation was cancelled here. Continue on another device with this alias.');
                     setBusy(false);
                     await startDeviceHandoff();
                     return;
