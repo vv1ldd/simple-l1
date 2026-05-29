@@ -1212,21 +1212,27 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         ? 'Create a passkey to get your SL1 identity.'
         : 'Use your passkey here, or continue on your phone.';
     const mode = isConnectMode
-        ? 'Connect Identity'
+        ? (query.intent_type ? 'Approve Intent' : 'Connect Identity')
         : (query.mode === 'register'
         ? 'Create IdentityProof'
             : 'Issue IdentityProof');
+    const hasIntent = Boolean(String(query.intent_type || '').trim());
     const lead = isConnectMode && !lockToExistingIdentity
         ? 'One passkey creates your SL1 identity. Your private key stays in iCloud Keychain / Secure Enclave.'
-        : (isConnectMode
+        : (isConnectMode && hasIntent
+            ? `${clientName} asks you to approve a concrete execution intent. Review the intent details before signing with your passkey.`
+            : (isConnectMode
             ? `${clientName} is asking for an identity proof. Your passkey approves only this request.`
-            : `${clientName} requests an audience-bound identity proof. This does not create authority or permissions.`);
+            : `${clientName} requests an audience-bound identity proof. This does not create authority or permissions.`));
     const intentTitle = htmlEscape(query.intent_title || 'Authenticate with SL1E');
     const intentDescription = htmlEscape(query.intent_description || 'The application receives a verifiable identity fact, not authority.');
+    const intentType = htmlEscape(query.intent_type || 'identity.proof');
+    const intentNonce = htmlEscape(query.intent_nonce ? `${String(query.intent_nonce).slice(0, 22)}...` : 'session nonce');
+    const intentResource = htmlEscape(query.intent_resource ? `${String(query.intent_resource).slice(0, 44)}...` : 'identity proof');
     const intentCta = String(query.intent_cta || '').trim();
     const approveWithPasskeyLabel = intentCta || 'Approve with Passkey';
     const requestedIdentityHint = normalizeIdentityHint(query.identity_hint || query.login_hint || query.entity_l1_address);
-    const connectClass = isConnectMode ? ` connect-mode${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : ''}` : '';
+    const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : ''}` : '';
     const hiddenFields = Object.entries(query)
         .map(([key, value]) => `<input type="hidden" name="${htmlEscape(key)}" value="${htmlEscape(value)}">`)
         .join('\n');
@@ -1283,9 +1289,12 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         .approval-step { display:${isConnectMode ? 'block' : 'block'}; margin-top:${isConnectMode ? '10px' : '20px'}; }
         .approval-step.active { display:block; }
         .proof { margin:18px 0; padding:13px; border:1px solid var(--border); border-radius:12px; background:#121213; text-align:left; font-size:13px; font-weight:720; }
-        .connect-mode .proof { display:none; }
+        .connect-mode:not(.has-intent) .proof { display:none; }
         .proof div { display:flex; justify-content:space-between; gap:10px; margin:5px 0; }
         .proof span { color:var(--muted); }
+        .proof b { text-align:right; word-break:break-word; }
+        .intent-description { display:none; margin-top:10px; font-size:11px; }
+        .has-intent .intent-description { display:block; }
         button { width:100%; margin-top:5px; padding:14px 18px; border:1px solid #f2f2f4; border-radius:12px; background:#f4f4f5; color:#09090a; font-weight:780; cursor:pointer; transition:background 140ms ease,border-color 140ms ease,opacity 140ms ease; }
         button:hover:not(:disabled) { background:#ffffff; border-color:#ffffff; }
         .connect-mode form { display:none; }
@@ -1323,8 +1332,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         ${isConnectMode && lockToExistingIdentity ? `
         <div class="choice-grid" aria-label="SL1 Identity options">
             <button class="choice-card${initialAction === 'login' ? ' selected' : ''}" type="button" data-sl1e-choice="login">
-                <strong>Continue with passkey</strong>
-                <span>Confirm it is you and return to ${clientName}.</span>
+                <strong>${hasIntent ? 'Review and sign intent' : 'Continue with passkey'}</strong>
+                <span>${hasIntent ? `Confirm the queued operation and return to ${clientName}.` : `Confirm it is you and return to ${clientName}.`}</span>
             </button>
         </div>
         <div class="axioms"><span>No private key stored</span><span>Passkey -> SL1 address</span><span>Proof only</span></div>
@@ -1336,10 +1345,13 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             </div>
             <div class="proof">
                 <div><span>Intent</span><b>${intentTitle}</b></div>
+                <div><span>Type</span><b>${intentType}</b></div>
                 <div><span>Client</span><b>${clientName}</b></div>
-                <div><span>Rule</span><b>Identity != Authority</b></div>
+                <div><span>Hash</span><b>${intentNonce}</b></div>
+                <div><span>Resource</span><b>${intentResource}</b></div>
+                <div><span>Rule</span><b>Passkey signs this intent only</b></div>
             </div>
-            <p>${isConnectMode ? '' : intentDescription}</p>
+            <p class="${isConnectMode ? 'intent-description' : ''}">${intentDescription}</p>
             <form id="sl1e-form" method="POST" action="/api/sl1e/authorize/complete">
                 ${hiddenFields}
                 <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create Passkey Identity' : approveWithPasskeyLabel)}</button>
