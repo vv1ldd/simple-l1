@@ -60,6 +60,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const LEDGER_FILE = path.join(DATA_DIR, 'ledger_db.json');
 const NETWORK_JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'network_join_requests.json');
+const INSTALL_REPORTS_FILE = path.join(DATA_DIR, 'install_reports.json');
 const GENESIS_FILE = path.join(__dirname, 'genesis.json');
 let ledger = {
     accounts: {},              // Derived state (View)
@@ -714,6 +715,77 @@ const loadNetworkJoinStore = () => {
 
 const saveNetworkJoinStore = (store) => {
     fs.writeFileSync(NETWORK_JOIN_REQUESTS_FILE, JSON.stringify(store, null, 2));
+};
+
+const loadInstallReportStore = () => {
+    if (!fs.existsSync(INSTALL_REPORTS_FILE)) {
+        return {
+            schema_version: 'simple-l1.install_reports.store.v1',
+            reports: [],
+        };
+    }
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(INSTALL_REPORTS_FILE, 'utf8'));
+        return {
+            schema_version: parsed.schema_version || 'simple-l1.install_reports.store.v1',
+            reports: Array.isArray(parsed.reports) ? parsed.reports : [],
+        };
+    } catch (error) {
+        console.warn(`[INSTALL REPORTS] Failed to read install report store: ${error.message}`);
+        return {
+            schema_version: 'simple-l1.install_reports.store.v1',
+            reports: [],
+        };
+    }
+};
+
+const saveInstallReportStore = (store) => {
+    fs.writeFileSync(INSTALL_REPORTS_FILE, JSON.stringify(store, null, 2));
+};
+
+const normalizeInstallReport = (input = {}) => {
+    const status = String(input.status || '').trim().toLowerCase();
+    if (!['success', 'failed'].includes(status)) {
+        const error = new Error('invalid_install_report_status');
+        error.statusCode = 422;
+        error.expected = ['success', 'failed'];
+        error.received = status;
+        throw error;
+    }
+
+    const reportedAt = input.reported_at ? String(input.reported_at) : new Date().toISOString();
+    const reportIdSeed = stableStringify({
+        reported_at: reportedAt,
+        intent_hash: input.intent_hash || null,
+        domain_hash: input.domain_hash || null,
+        status,
+        error_class: input.error_class || null,
+    });
+
+    return {
+        schema_version: 'simple-l1.install_report.v1',
+        report_id: input.report_id || `sl1install_${sha256Hex(reportIdSeed).slice(0, 24)}`,
+        reported_at: reportedAt,
+        status,
+        mode: input.mode ? String(input.mode) : null,
+        network_id: input.network_id ? String(input.network_id) : null,
+        intent_hash: input.intent_hash ? String(input.intent_hash) : null,
+        domain_hash: input.domain_hash ? String(input.domain_hash) : null,
+        runtime: {
+            repository: input.runtime?.repository ? String(input.runtime.repository) : null,
+            branch: input.runtime?.branch ? String(input.runtime.branch) : null,
+            channel: input.runtime?.channel ? String(input.runtime.channel) : null,
+        },
+        error_class: input.error_class ? String(input.error_class) : null,
+        install_duration_seconds: Number.isFinite(Number(input.install_duration_seconds))
+            ? Number(input.install_duration_seconds)
+            : null,
+        client: {
+            installer: input.client?.installer ? String(input.client.installer) : 'sovereign-host',
+            version: input.client?.version ? String(input.client.version) : null,
+        },
+    };
 };
 
 const requestHostFromIssuer = (issuerUrl) => {
@@ -3998,6 +4070,51 @@ fastify.get('/api/sl1/network/join-requests/:requestId', async (request, reply) 
             .slice()
             .sort((a, b) => String(b.observed_at || '').localeCompare(String(a.observed_at || ''))),
     };
+});
+
+fastify.post('/api/sl1/install-reports', async (request, reply) => {
+    if (!checkRateLimit(request, reply, 'install-reports:create', 60, 60 * 1000)) return reply;
+
+    let report;
+    try {
+        report = normalizeInstallReport(request.body || {});
+    } catch (error) {
+        return reply.code(error.statusCode || 422).send({
+            protocol: 'simple-l1',
+            error: error.message || 'invalid_install_report',
+            expected: error.expected || undefined,
+            received: error.received || undefined,
+            invariant: 'install_report_must_be_anonymized',
+        });
+    }
+
+    const store = loadInstallReportStore();
+    const existing = store.reports.find((candidate) => candidate.report_id === report.report_id);
+    if (existing) {
+        return {
+            protocol: 'simple-l1',
+            status: 'duplicate_observed',
+            install_report: existing,
+        };
+    }
+
+    store.reports.push({
+        ...report,
+        observed_at: new Date().toISOString(),
+        bridge_node_id: NODE_ID,
+        invariants: [
+            'install_report_is_observability_only',
+            'install_report_must_not_contain_raw_domain_or_ip',
+            'install_report_does_not_grant_authority',
+        ],
+    });
+    saveInstallReportStore(store);
+
+    return reply.code(201).send({
+        protocol: 'simple-l1',
+        status: 'observed',
+        install_report: report,
+    });
 });
 
 fastify.get('/api/wallet/summary', async (request, reply) => {
