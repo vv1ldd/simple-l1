@@ -994,6 +994,15 @@ const recordNamespaceArtifact = (store, joinRequest, artifactInput) => {
     };
 };
 
+const findExistingDnsAllocationArtifact = (store, joinRequest, requestedFqdn) => (
+    store.namespace_artifacts.find((candidate) => (
+        candidate.artifact_type === 'dns_allocated' &&
+        candidate.network_id === joinRequest.network_id &&
+        candidate.request_id === joinRequest.request_id &&
+        candidate.requested_fqdn === requestedFqdn
+    )) || null
+);
+
 const allocateNamespaceDns = async (store, joinRequest, input = {}) => {
     const provider = String(input.provider || 'cloudflare').trim().toLowerCase();
     if (provider !== 'cloudflare') {
@@ -1021,6 +1030,25 @@ const allocateNamespaceDns = async (store, joinRequest, input = {}) => {
         const error = new Error('server_ip_required');
         error.statusCode = 422;
         throw error;
+    }
+
+    const existingAllocation = findExistingDnsAllocationArtifact(store, joinRequest, requestedFqdn);
+    if (existingAllocation) {
+        return {
+            statusCode: 200,
+            response: {
+                protocol: 'simple-l1',
+                status: 'duplicate_observed',
+                bridge_role: 'discovery_inbox_only',
+                namespace_artifact: existingAllocation,
+            },
+            allocation: existingAllocation.evidence || {
+                provider: 'cloudflare',
+                zone,
+                requested_fqdn: requestedFqdn,
+                server_ip: serverIp,
+            },
+        };
     }
 
     const zoneId = await resolveCloudflareZoneId(zone);
