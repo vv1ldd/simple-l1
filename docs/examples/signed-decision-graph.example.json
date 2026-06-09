@@ -1,0 +1,63 @@
+{
+  "schema_version": "simple-l1.signed_decision_graph.v1",
+  "artifact_type": "signed_decision_graph",
+  "release_boundary": "SDGA_v0",
+  "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0",
+  "decision_graph_hash": "sha256:983dd84bdfb88c5aa39910d77f0ad261f10e232f5153e025e56ec266038ce700",
+  "execution_model": {
+    "runtime_role": "non_semantic_executor",
+    "semantic_interpretation_allowed": false,
+    "conditional_logic_allowed": false,
+    "policy_evaluation_allowed": false,
+    "spec_reference_allowed": false,
+    "ordering": "topological"
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "emit_guard_artifact",
+        "operation": "emit_guard_artifact",
+        "inputs": {
+          "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0"
+        },
+        "outputs": {
+          "artifact_ref": "guard_artifact"
+        },
+        "metadata": {
+          "trace": "pre_resolved"
+        }
+      },
+      {
+        "id": "emit_invariant_report",
+        "operation": "emit_invariant_report",
+        "inputs": {
+          "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0"
+        },
+        "outputs": {
+          "report_ref": "invariant_report"
+        },
+        "metadata": {
+          "trace": "pre_resolved"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "emit_guard_artifact",
+        "to": "emit_invariant_report",
+        "ordering": "after"
+      }
+    ]
+  },
+  "provenance": {
+    "issued_at": "1970-01-01T00:00:00.000Z",
+    "issuer": "simple-l1-release-boundary",
+    "source": "pre_runtime_semantic_resolver",
+    "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0"
+  },
+  "signature": {
+    "algorithm": "release-attestation-placeholder-v0",
+    "key_id": "release-attestation-placeholder-v0",
+    "value": "sha256:7d2912409a7e3ec3a9da3a70a8c299c7ca6b5dbb5f6816df464f9dba72227fac"
+  }
+}

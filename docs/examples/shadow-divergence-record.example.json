@@ -1,0 +1,23 @@
+{
+  "schema_version": "simple-l1.shadow_divergence_record.v1",
+  "artifact_type": "shadow_divergence_record",
+  "phase": "SEVP_v0",
+  "correlation_id": "shadow-0001",
+  "sdga_hash": "sha256:4ae9776e6d0897a39963705ca29557f3358813ad0c71df7e9ddc3f4ed56e1d9f",
+  "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0",
+  "kernel_result_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "runtime_result_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "divergence_type": "value_mismatch",
+  "field": "execution_status",
+  "expected": "completed",
+  "observed": "execution_failed",
+  "node_level_diff": [
+    {
+      "node_id": "emit_invariant_report",
+      "diff_type": "status_mismatch"
+    }
+  ],
+  "severity": "warn",
+  "observed_at": "1970-01-01T00:00:00.000Z",
+  "production_effect": "none"
+}

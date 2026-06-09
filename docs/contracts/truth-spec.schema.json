@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/truth-spec.schema.json",
+  "title": "SL1 Truth Spec",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "spec_id",
+    "compiler",
+    "entities",
+    "authority_boundaries",
+    "allowed_transitions",
+    "forbidden_transitions",
+    "invariants",
+    "tls_states",
+    "converge_independence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.truth_spec.v1"
+    },
+    "spec_id": {
+      "type": "string",
+      "pattern": "^sl1_truth_spec_v1$"
+    },
+    "status": {
+      "type": "string"
+    },
+    "compiler": {
+      "type": "object",
+      "required": [
+        "deterministic",
+        "stateless",
+        "side_effect_free",
+        "may_introduce_semantics",
+        "derived_artifacts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "deterministic": { "const": true },
+        "stateless": { "const": true },
+        "side_effect_free": { "const": true },
+        "may_introduce_semantics": { "const": false },
+        "derived_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["lintable_invariants", "positive_tests", "negative_tests", "runtime_guard_stubs"]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entity" },
+      "uniqueItems": true
+    },
+    "authority_boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/authorityBoundary" }
+    },
+    "allowed_transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "forbidden_transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "invariants": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/invariant" }
+    },
+    "tls_states": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["trusted", "pending_acme", "fallback_self_signed", "unreachable"]
+      },
+      "uniqueItems": true
+    },
+    "converge_independence": {
+      "type": "object",
+      "required": ["must_not_depend_on"],
+      "additionalProperties": false,
+      "properties": {
+        "must_not_depend_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["dns_propagation", "tls_issuance", "http_endpoint_availability"]
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "entity": {
+      "type": "object",
+      "required": ["id", "source", "owner", "persistence", "authority_status", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "owner": { "type": "string" },
+        "persistence": { "type": "string", "enum": ["evidence_store", "ephemeral", "local_peer_registry", "read_model", "derived_observation"] },
+        "authority_status": { "type": "string", "enum": ["non_authoritative", "exclusive_authority", "projection_only", "observability_only"] },
+        "description": { "type": "string" }
+      }
+    },
+    "authorityBoundary": {
+      "type": "object",
+      "required": ["domain", "owner", "allowed_authority", "forbidden"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": { "type": "string" },
+        "owner": { "type": "string" },
+        "allowed_authority": { "type": "string" },
+        "forbidden": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": ["from", "to", "actor"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "actor": { "type": "string" },
+        "requires": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reason": { "type": "string" }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "required": ["id", "statement", "violation_code"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+        "statement": { "type": "string" },
+        "violation_code": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+        "guards": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

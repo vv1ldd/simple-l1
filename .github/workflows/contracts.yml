@@ -5,6 +5,66 @@ on:
   pull_request:
 
 jobs:
+  evm-canonicalization:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: node/package-lock.json
+
+      - run: node --version
+      - run: npm --version
+      - run: npm ci
+      - name: Verify frozen ETH receipt canonicalization fixture
+        run: npm run evm:canonicalization:test
+
+  fpl-eligibility:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: node/package-lock.json
+
+      - run: node --version
+      - run: npm --version
+      - run: npm ci
+      - name: Verify frozen FPL v0 eligibility fixtures
+        run: npm run fpl:test
+
+  reconciliation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: node/package-lock.json
+
+      - run: node --version
+      - run: npm --version
+      - run: npm ci
+      - name: Verify frozen reconciliation v0 fixtures
+        run: npm run reconciliation:test
+
   contracts:
     runs-on: ubuntu-latest
     defaults:
@@ -23,3 +83,4 @@ jobs:
       - run: npm --version
       - run: npm ci
       - run: npm run contracts:validate
+      - run: npm run truth:check

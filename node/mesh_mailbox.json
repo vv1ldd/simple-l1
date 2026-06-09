@@ -1,0 +1,144 @@
+{
+  "schema_version": "simple-l1.mesh-mailbox.store.v1",
+  "messages": {
+    "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589": [
+      {
+        "message_id": "meshmsg_f1d9eda1dc9000beb6195b79",
+        "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+        "payload": {
+          "envelope": {
+            "schema_version": "simple-l1.identity_state_envelope.v1",
+            "envelope_id": "ise_e0f7b747025b5f3977d6eeabca4e1a9b",
+            "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+            "device_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+            "sequence": 1780783460151,
+            "previous_state_hash": null,
+            "issued_at": "2026-06-06T22:04:20.151Z",
+            "expires_at": "2026-06-06T22:14:20.151Z",
+            "observed_epoch": 0,
+            "controller_bindings": [
+              {
+                "binding_id": "cb_f6cec9daa5b01611ed04",
+                "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+                "controller_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+                "status": "active",
+                "observed_at": "2026-06-06T21:45:22.069Z",
+                "provider_evidence_hash": null
+              }
+            ],
+            "controller_binding_proposals": [],
+            "revocation_observations": [],
+            "provider_state_proof": {
+              "object_type": "StateProof",
+              "version": "simple-l1.identity-state-proof.v0",
+              "source": "local-ledger",
+              "state_root": "7be26db8d81c8efc46c176e40ba88bf8837fb613b09a0497624be7f2e706590d",
+              "epoch": 0,
+              "issued_at": "2026-06-06T22:04:20.151Z"
+            },
+            "signature": {
+              "algorithm": "p256-sha256-der",
+              "signed_by_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+              "value": "UNSIGNED_IDENTITY_MESH_OBSERVATION_000000"
+            },
+            "state_hash": "sha256:50e260c149036ed727e0dfdbd36adfe602dd9f118df6345255687ca71f9d4f30"
+          },
+          "source": "identity_home_reference"
+        },
+        "received_at": "2026-06-06T22:04:20.153Z"
+      },
+      {
+        "message_id": "meshmsg_76fd82e461f78d296ada9e12",
+        "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+        "payload": {
+          "envelope": {
+            "schema_version": "simple-l1.identity_state_envelope.v1",
+            "envelope_id": "ise_b8a2c32d0d3849e3b81c21d0c05f1d75",
+            "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+            "device_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+            "sequence": 1780783461083,
+            "previous_state_hash": null,
+            "issued_at": "2026-06-06T22:04:21.083Z",
+            "expires_at": "2026-06-06T22:14:21.083Z",
+            "observed_epoch": 0,
+            "controller_bindings": [
+              {
+                "binding_id": "cb_f6cec9daa5b01611ed04",
+                "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+                "controller_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+                "status": "active",
+                "observed_at": "2026-06-06T21:45:22.069Z",
+                "provider_evidence_hash": null
+              }
+            ],
+            "controller_binding_proposals": [],
+            "revocation_observations": [],
+            "provider_state_proof": {
+              "object_type": "StateProof",
+              "version": "simple-l1.identity-state-proof.v0",
+              "source": "local-ledger",
+              "state_root": "7be26db8d81c8efc46c176e40ba88bf8837fb613b09a0497624be7f2e706590d",
+              "epoch": 0,
+              "issued_at": "2026-06-06T22:04:21.083Z"
+            },
+            "signature": {
+              "algorithm": "p256-sha256-der",
+              "signed_by_key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+              "value": "UNSIGNED_IDENTITY_MESH_OBSERVATION_000000"
+            },
+            "state_hash": "sha256:921b990cd2eb4575aa5d552bd2497ff154683d76ae5379afae12e4a839650914"
+          },
+          "source": "identity_home_reference"
+        },
+        "received_at": "2026-06-06T22:04:21.085Z"
+      }
+    ],
+    "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5": [
+      {
+        "message_id": "meshmsg_e429b2bc919e0bfb06d30e9a",
+        "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+        "payload": {
+          "envelope": {
+            "schema_version": "simple-l1.identity_state_envelope.v1",
+            "envelope_id": "ise_54c218b033faebc4de254edbb29c6701",
+            "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+            "device_key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+            "sequence": 1780932587207,
+            "previous_state_hash": null,
+            "issued_at": "2026-06-08T15:29:47.207Z",
+            "expires_at": "2026-06-08T15:39:47.207Z",
+            "observed_epoch": 0,
+            "controller_bindings": [
+              {
+                "binding_id": "cb_5530a700dc9391b5496d",
+                "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+                "controller_key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+                "status": "active",
+                "observed_at": "2026-06-08T15:13:22.943Z",
+                "provider_evidence_hash": null
+              }
+            ],
+            "controller_binding_proposals": [],
+            "revocation_observations": [],
+            "provider_state_proof": {
+              "object_type": "StateProof",
+              "version": "simple-l1.identity-state-proof.v0",
+              "source": "local-ledger",
+              "state_root": "ceaa7cb5601496da9b3e20ccd34f2065fa6c3a7e2b059b017d5b793497aac493",
+              "epoch": 0,
+              "issued_at": "2026-06-08T15:29:47.207Z"
+            },
+            "signature": {
+              "algorithm": "p256-sha256-der",
+              "signed_by_key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+              "value": "UNSIGNED_IDENTITY_MESH_OBSERVATION_000000"
+            },
+            "state_hash": "sha256:7d599bd0ff3b9b554f80d00bde5d26dcb186ac39d4de3e70b83d596d4ca45255"
+          },
+          "source": "identity_home_reference"
+        },
+        "received_at": "2026-06-08T15:29:47.251Z"
+      }
+    ]
+  }
+}

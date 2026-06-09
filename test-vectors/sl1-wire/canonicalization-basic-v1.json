@@ -1,0 +1,23 @@
+{
+  "type": "sl1.conformance.vector.v1",
+  "id": "canonicalization-basic-v1",
+  "layer": "canonicalization",
+  "description": "Canonical JSON sorts object keys, normalizes strings to NFC, preserves array order, and emits no insignificant whitespace.",
+  "input": {
+    "z": "last",
+    "a": "Café",
+    "nested": {
+      "b": "2",
+      "a": "1"
+    },
+    "list": [
+      "beta",
+      "alpha"
+    ],
+    "bool": true
+  },
+  "expected": {
+    "canonical_json": "{\"a\":\"Café\",\"bool\":true,\"list\":[\"beta\",\"alpha\"],\"nested\":{\"a\":\"1\",\"b\":\"2\"},\"z\":\"last\"}",
+    "object_hash": "sha256:79a9d181252f8685a6d7a05aaf9c36173b57c6b9d3eb5a55ca38cf6996c20097"
+  }
+}

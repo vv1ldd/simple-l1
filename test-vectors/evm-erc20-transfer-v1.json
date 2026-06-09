@@ -1,0 +1,269 @@
+{
+  "schema_version": "simple-l1.evm_erc20_transfer_fixture.v1",
+  "fixture_id": "evm_erc20_transfer_success_v1",
+  "description": "FrozenGraphV2 coverage extension: successful ERC20 Transfer receipt to EVM_TX_NODE + EVM_LOG_NODE + ERC20_TRANSFER_NODE graph.",
+  "input": {
+    "chain_id": "0x1",
+    "source": "fixture:erc20-transfer-v1",
+    "observed_at": "2026-05-30T13:15:00.000Z",
+    "block": {
+      "timestamp": "0x6553f164"
+    },
+    "transaction": {
+      "hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x3333333333333333333333333333333333333333",
+      "value": "0x0",
+      "input": "0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240",
+      "nonce": "0x2b"
+    },
+    "receipt": {
+      "transactionHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "blockHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "blockNumber": "0x0121eac1",
+      "transactionIndex": "0x8",
+      "status": "0x1",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x3333333333333333333333333333333333333333",
+      "logs": [
+        {
+          "address": "0x3333333333333333333333333333333333333333",
+          "transactionHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "logIndex": "0x0",
+          "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000001111111111111111111111111111111111111111",
+            "0x0000000000000000000000002222222222222222222222222222222222222222"
+          ],
+          "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+        }
+      ],
+      "gasUsed": "0xc350",
+      "effectiveGasPrice": "0x3b9aca00"
+    }
+  },
+  "expected": {
+    "fact_id": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+    "canonical_fact": {
+      "fact_id": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+      "fact_type": "EVM_TX",
+      "chain_id": "1",
+      "block_number": "19000001",
+      "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "transaction_index": "8",
+      "receipt_status": "1",
+      "log_index": null,
+      "emitter_address": null,
+      "event_signature": null,
+      "topics": [],
+      "raw_data": {
+        "effective_gas_price": "1000000000",
+        "from": "0x1111111111111111111111111111111111111111",
+        "gas_used": "50000",
+        "input": "0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240",
+        "to": "0x3333333333333333333333333333333333333333",
+        "value": "0"
+      },
+      "observed_at": "2026-05-30T13:15:00.000Z",
+      "source": "fixture:erc20-transfer-v1",
+      "timestamp": "1700000100"
+    },
+    "canonical_fact_json": "{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"block_number\":\"19000001\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:15:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"50000\",\"input\":\"0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240\",\"to\":\"0x3333333333333333333333333333333333333333\",\"value\":\"0\"},\"receipt_status\":\"1\",\"source\":\"fixture:erc20-transfer-v1\",\"timestamp\":\"1700000100\",\"topics\":[],\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}",
+    "facts": [
+      {
+        "fact_id": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+        "fact_type": "EVM_TX",
+        "chain_id": "1",
+        "block_number": "19000001",
+        "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "transaction_index": "8",
+        "receipt_status": "1",
+        "log_index": null,
+        "emitter_address": null,
+        "event_signature": null,
+        "topics": [],
+        "raw_data": {
+          "effective_gas_price": "1000000000",
+          "from": "0x1111111111111111111111111111111111111111",
+          "gas_used": "50000",
+          "input": "0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240",
+          "to": "0x3333333333333333333333333333333333333333",
+          "value": "0"
+        },
+        "observed_at": "2026-05-30T13:15:00.000Z",
+        "source": "fixture:erc20-transfer-v1",
+        "timestamp": "1700000100"
+      },
+      {
+        "fact_id": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+        "fact_type": "EVM_LOG",
+        "chain_id": "1",
+        "block_number": "19000001",
+        "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "transaction_index": "8",
+        "receipt_status": "1",
+        "log_index": "0",
+        "emitter_address": "0x3333333333333333333333333333333333333333",
+        "event_signature": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000001111111111111111111111111111111111111111",
+          "0x0000000000000000000000002222222222222222222222222222222222222222"
+        ],
+        "raw_data": {
+          "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+        },
+        "observed_at": "2026-05-30T13:15:00.000Z",
+        "source": "fixture:erc20-transfer-v1",
+        "timestamp": "1700000100"
+      }
+    ],
+    "facts_json": [
+      "{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"block_number\":\"19000001\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:15:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"50000\",\"input\":\"0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240\",\"to\":\"0x3333333333333333333333333333333333333333\",\"value\":\"0\"},\"receipt_status\":\"1\",\"source\":\"fixture:erc20-transfer-v1\",\"timestamp\":\"1700000100\",\"topics\":[],\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}",
+      "{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"block_number\":\"19000001\",\"chain_id\":\"1\",\"emitter_address\":\"0x3333333333333333333333333333333333333333\",\"event_signature\":\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"fact_id\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"fact_type\":\"EVM_LOG\",\"log_index\":\"0\",\"observed_at\":\"2026-05-30T13:15:00.000Z\",\"raw_data\":{\"data\":\"0x00000000000000000000000000000000000000000000000000000000000f4240\"},\"receipt_status\":\"1\",\"source\":\"fixture:erc20-transfer-v1\",\"timestamp\":\"1700000100\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x0000000000000000000000001111111111111111111111111111111111111111\",\"0x0000000000000000000000002222222222222222222222222222222222222222\"],\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}"
+    ],
+    "graph": {
+      "schema_version": "simple-l1.evm_fact_graph.v1",
+      "graph_type": "deterministic_sdga_fact_graph",
+      "facts": [
+        {
+          "fact_id": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+          "fact_type": "EVM_TX",
+          "chain_id": "1",
+          "block_number": "19000001",
+          "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "transaction_index": "8",
+          "receipt_status": "1",
+          "log_index": null,
+          "emitter_address": null,
+          "event_signature": null,
+          "topics": [],
+          "raw_data": {
+            "effective_gas_price": "1000000000",
+            "from": "0x1111111111111111111111111111111111111111",
+            "gas_used": "50000",
+            "input": "0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240",
+            "to": "0x3333333333333333333333333333333333333333",
+            "value": "0"
+          },
+          "observed_at": "2026-05-30T13:15:00.000Z",
+          "source": "fixture:erc20-transfer-v1",
+          "timestamp": "1700000100"
+        },
+        {
+          "fact_id": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+          "fact_type": "EVM_LOG",
+          "chain_id": "1",
+          "block_number": "19000001",
+          "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "transaction_index": "8",
+          "receipt_status": "1",
+          "log_index": "0",
+          "emitter_address": "0x3333333333333333333333333333333333333333",
+          "event_signature": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000001111111111111111111111111111111111111111",
+            "0x0000000000000000000000002222222222222222222222222222222222222222"
+          ],
+          "raw_data": {
+            "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+          },
+          "observed_at": "2026-05-30T13:15:00.000Z",
+          "source": "fixture:erc20-transfer-v1",
+          "timestamp": "1700000100"
+        }
+      ],
+      "sdga_projection": {
+        "nodes": [
+          {
+            "id": "evm_tx:sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+            "node_type": "EVM_TX_NODE",
+            "fact_id": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+            "inputs": {
+              "block_hash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "chain_id": "1",
+              "receipt_status": "1",
+              "transaction_index": "8",
+              "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "outputs": {
+              "fact_ref": "sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "canonical_evm_receipt"
+            }
+          },
+          {
+            "id": "evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "node_type": "EVM_LOG_NODE",
+            "fact_id": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "inputs": {
+              "chain_id": "1",
+              "emitter_address": "0x3333333333333333333333333333333333333333",
+              "event_signature": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "log_index": "0",
+              "topics": [
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                "0x0000000000000000000000001111111111111111111111111111111111111111",
+                "0x0000000000000000000000002222222222222222222222222222222222222222"
+              ],
+              "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "outputs": {
+              "fact_ref": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "canonical_evm_log"
+            }
+          },
+          {
+            "id": "erc20_transfer:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "node_type": "ERC20_TRANSFER_NODE",
+            "fact_id": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "inputs": {
+              "chain_id": "1",
+              "log_index": "0",
+              "raw_amount": "1000000",
+              "token_contract": "0x3333333333333333333333333333333333333333",
+              "topic_from": "0x1111111111111111111111111111111111111111",
+              "topic_to": "0x2222222222222222222222222222222222222222",
+              "tx_hash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "outputs": {
+              "fact_ref": "sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "structural_erc20_transfer_decode"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "from": "evm_tx:sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8",
+            "to": "evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "ordering": "after"
+          },
+          {
+            "from": "evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "to": "erc20_transfer:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90",
+            "ordering": "after"
+          }
+        ]
+      }
+    },
+    "graph_json": "{\"facts\":[{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"block_number\":\"19000001\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:15:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"50000\",\"input\":\"0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000000f4240\",\"to\":\"0x3333333333333333333333333333333333333333\",\"value\":\"0\"},\"receipt_status\":\"1\",\"source\":\"fixture:erc20-transfer-v1\",\"timestamp\":\"1700000100\",\"topics\":[],\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"},{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"block_number\":\"19000001\",\"chain_id\":\"1\",\"emitter_address\":\"0x3333333333333333333333333333333333333333\",\"event_signature\":\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"fact_id\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"fact_type\":\"EVM_LOG\",\"log_index\":\"0\",\"observed_at\":\"2026-05-30T13:15:00.000Z\",\"raw_data\":{\"data\":\"0x00000000000000000000000000000000000000000000000000000000000f4240\"},\"receipt_status\":\"1\",\"source\":\"fixture:erc20-transfer-v1\",\"timestamp\":\"1700000100\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x0000000000000000000000001111111111111111111111111111111111111111\",\"0x0000000000000000000000002222222222222222222222222222222222222222\"],\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}],\"graph_type\":\"deterministic_sdga_fact_graph\",\"schema_version\":\"simple-l1.evm_fact_graph.v1\",\"sdga_projection\":{\"edges\":[{\"from\":\"evm_tx:sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"ordering\":\"after\",\"to\":\"evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\"},{\"from\":\"evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"ordering\":\"after\",\"to\":\"erc20_transfer:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\"}],\"nodes\":[{\"fact_id\":\"sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"id\":\"evm_tx:sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\",\"inputs\":{\"block_hash\":\"0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"chain_id\":\"1\",\"receipt_status\":\"1\",\"transaction_index\":\"8\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"canonical_evm_receipt\"},\"node_type\":\"EVM_TX_NODE\",\"outputs\":{\"fact_ref\":\"sha256:1088b38d25c18ec4489b4c0f95383c2ace2947db87102ee048855987256b4ad8\"}},{\"fact_id\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"id\":\"evm_log:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"inputs\":{\"chain_id\":\"1\",\"emitter_address\":\"0x3333333333333333333333333333333333333333\",\"event_signature\":\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"log_index\":\"0\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x0000000000000000000000001111111111111111111111111111111111111111\",\"0x0000000000000000000000002222222222222222222222222222222222222222\"],\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"canonical_evm_log\"},\"node_type\":\"EVM_LOG_NODE\",\"outputs\":{\"fact_ref\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\"}},{\"fact_id\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"id\":\"erc20_transfer:sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\",\"inputs\":{\"chain_id\":\"1\",\"log_index\":\"0\",\"raw_amount\":\"1000000\",\"token_contract\":\"0x3333333333333333333333333333333333333333\",\"topic_from\":\"0x1111111111111111111111111111111111111111\",\"topic_to\":\"0x2222222222222222222222222222222222222222\",\"tx_hash\":\"0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"structural_erc20_transfer_decode\"},\"node_type\":\"ERC20_TRANSFER_NODE\",\"outputs\":{\"fact_ref\":\"sha256:40e335fe467a174ff90c62ceed225b5513fd3c3c54ba44c7b2baf15fe42e7d90\"}}]}}"
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Any change to input, canonical output, fact_id, node shape, or edge shape is either a versioned protocol change or a violation."
+  }
+}

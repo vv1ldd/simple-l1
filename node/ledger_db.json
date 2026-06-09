@@ -1,4 +1,934 @@
 {
-  "accounts": {},
-  "transactions": []
+  "accounts": {
+    "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589": {
+      "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "selimadooo.sl1.one",
+      "publicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+      "credentialId": "lM_wWJFz-xOgPUBIlfD65fKkvN0",
+      "credentialPublicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "localhost",
+      "alias": "selimadooo.sl1.one",
+      "display_alias": "selimadooo",
+      "keys": [
+        {
+          "key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+          "publicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+          "credentialId": "lM_wWJFz-xOgPUBIlfD65fKkvN0",
+          "credentialPublicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "localhost",
+          "alias": "selimadooo.sl1.one",
+          "display_alias": "selimadooo",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-06T21:45:22.069Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_46baa27745",
+        "ETH": "0xe0567c77a3"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    },
+    "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5": {
+      "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "ssss.sl1.one",
+      "publicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+      "credentialId": "uAitAwKzMcoEHc1tE5-CeRhyeyQ",
+      "credentialPublicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "ssss.sl1.one",
+      "display_alias": "ssss",
+      "keys": [
+        {
+          "key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+          "publicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+          "credentialId": "uAitAwKzMcoEHc1tE5-CeRhyeyQ",
+          "credentialPublicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "ssss.sl1.one",
+          "display_alias": "ssss",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-08T15:13:22.943Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_e8596b92f7",
+        "ETH": "0xaaff8d118b"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    },
+    "sl1e_4e0b165328d56dc97ad72da7b2118331191574c": {
+      "entity_l1_address": "sl1e_4e0b165328d56dc97ad72da7b2118331191574c",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_b7346c7c2b4ce9b171735ba031d26d74c1711995",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "admin",
+      "publicKey": "3059301306072a8648ce03020706052b8104000a03420004ad8b3f6de867afb6e3dd3f84dded0f35e4fc168a85969b9ffae29eab60bf1dd17",
+      "credentialId": "cred_admin_webauthn_secure_anchor",
+      "keys": [
+        {
+          "key_l1_address": "sl1_b7346c7c2b4ce9b171735ba031d26d74c1711995",
+          "publicKey": "3059301306072a8648ce03020706052b8104000a03420004ad8b3f6de867afb6e3dd3f84dded0f35e4fc168a85969b9ffae29eab60bf1dd17",
+          "credentialId": "cred_admin_webauthn_secure_anchor",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-09T02:27:10.997Z"
+        }
+      ],
+      "balances": {
+        "SL": 5000,
+        "BTC": 1.45,
+        "ETH": 12.8,
+        "USDC": 2500
+      },
+      "external_addresses": {
+        "BTC": "bc1_q3059301306072a8648ce03020706052b810400",
+        "ETH": "0x3059301306072a8648ce03020706052b8104000"
+      },
+      "authority_policies": {
+        "session_limit": 5000,
+        "intent_scope": [
+          "payments",
+          "identity-claims",
+          "cross-chain-settlement"
+        ],
+        "active_policies": [
+          "Daily Limit 5000 SL"
+        ]
+      },
+      "provenance_log": [
+        {
+          "type": "GENESIS_ONBOARD",
+          "detail": "Sovereign developer account registered",
+          "timestamp": "2026-06-09T02:27:10.997Z"
+        }
+      ],
+      "nonce": 0
+    },
+    "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379": {
+      "entity_l1_address": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_56b051aa2000e16df18fc93ae744af0c68da21d2",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "sasa.sl1.one",
+      "publicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+      "credentialId": "YMDOEoKVaQbYTAIQXSyClxgIFD4",
+      "credentialPublicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "sasa.sl1.one",
+      "display_alias": "sasa",
+      "keys": [
+        {
+          "key_l1_address": "sl1_56b051aa2000e16df18fc93ae744af0c68da21d2",
+          "publicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+          "credentialId": "YMDOEoKVaQbYTAIQXSyClxgIFD4",
+          "credentialPublicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "sasa.sl1.one",
+          "display_alias": "sasa",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-09T18:11:57.548Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_93b4a5b487",
+        "ETH": "0x4dc66d65d6"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    },
+    "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982": {
+      "entity_l1_address": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_809200efa77ccc95e154dc006cc89f89f45505c6",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "misterone.sl1.one",
+      "publicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+      "credentialId": "9ECkQ3rKqs_aOc4-If6ePTkCEL0",
+      "credentialPublicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "misterone.sl1.one",
+      "display_alias": "misterone",
+      "keys": [
+        {
+          "key_l1_address": "sl1_809200efa77ccc95e154dc006cc89f89f45505c6",
+          "publicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+          "credentialId": "9ECkQ3rKqs_aOc4-If6ePTkCEL0",
+          "credentialPublicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "misterone.sl1.one",
+          "display_alias": "misterone",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-09T18:37:22.361Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_7542bf1362",
+        "ETH": "0x6415c7732e"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    }
+  },
+  "event_log": [
+    {
+      "id": "genesis-0000-0000-0000-000000000000",
+      "type": "SYSTEM_GENESIS",
+      "timestamp": "2026-05-13T16:00:00.000Z",
+      "payload": {
+        "network": "Simple-L1",
+        "manifesto": "THE AUTHORITY OF HUMAN INTENT. NO PHRASES. NO BRIDGES. JUST PURE HARDCORE CODE. [2026-05-13]",
+        "version": "0.1.0",
+        "intent_state": "ACTIVE_INTENTION"
+      },
+      "signature": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "id": "da67e3c234ae6392",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+        "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+        "key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "selimadooo.sl1.one",
+        "alias": "selimadooo.sl1.one",
+        "display_alias": "selimadooo",
+        "publicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+        "credentialId": "lM_wWJFz-xOgPUBIlfD65fKkvN0",
+        "credentialPublicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "localhost"
+      },
+      "timestamp": "2026-06-06T21:45:22.069Z"
+    },
+    {
+      "id": "4a044552fa493c32",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+        "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+        "key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "ssss.sl1.one",
+        "alias": "ssss.sl1.one",
+        "display_alias": "ssss",
+        "publicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+        "credentialId": "uAitAwKzMcoEHc1tE5-CeRhyeyQ",
+        "credentialPublicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-08T15:13:22.943Z"
+    },
+    {
+      "id": "6d1f2fc0d0c0b772",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
+        "entity_l1_address": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
+        "key_l1_address": "sl1_56b051aa2000e16df18fc93ae744af0c68da21d2",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "sasa.sl1.one",
+        "alias": "sasa.sl1.one",
+        "display_alias": "sasa",
+        "publicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+        "credentialId": "YMDOEoKVaQbYTAIQXSyClxgIFD4",
+        "credentialPublicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-09T18:11:57.548Z"
+    },
+    {
+      "id": "ec4a1ab9166872a2",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982",
+        "entity_l1_address": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982",
+        "key_l1_address": "sl1_809200efa77ccc95e154dc006cc89f89f45505c6",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "misterone.sl1.one",
+        "alias": "misterone.sl1.one",
+        "display_alias": "misterone",
+        "publicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+        "credentialId": "9ECkQ3rKqs_aOc4-If6ePTkCEL0",
+        "credentialPublicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-09T18:37:22.361Z"
+    }
+  ],
+  "pending_settlements": [],
+  "intent_registry": {},
+  "settlement_events": [],
+  "receipts": {
+    "rcpt_ee96d08deb99f76de606292a": {
+      "receipt_id": "rcpt_ee96d08deb99f76de606292a",
+      "receipt_version": "1.0",
+      "constitutional_status": "FINALIZED",
+      "state_description": "The constitutional runtime accepted this settlement as legitimate.",
+      "sl1_address": "sl1e_4e0b165328d56dc97ad72da7b2118331191574c",
+      "intent_id": "intent_eth_dep_9837fbc",
+      "intent_type": "CROSS_CHAIN_DEPOSIT",
+      "intent_hash": "e7a80d7f42d60fbfd546d7bdab9693c70d5544b77eae8d40562840622afef470",
+      "settlement": {
+        "network": "ethereum",
+        "asset": "USDC",
+        "amount": "1000",
+        "tx_hash": "0x9b78fa5e83a45cde82903fca91d84fde3a48e765be3d240ca4b2e652ad79a61b",
+        "block_number": 19827364,
+        "confirmations": 12,
+        "explorer_url": "https://etherscan.io/tx/0x9b78fa5e83a45cde82903fca91d84fde3a48e765be3d240ca4b2e652ad79a61b"
+      },
+      "proof": {
+        "proof_type": "EVM_TRANSACTION_PROOF",
+        "proof_fingerprint": "blake3:8f2a9d1c9e83b40fa78c1d5e3f9a0c2e4b6d7a8c9e0f1a2b3c4d5e6f7a8b9c0d",
+        "verified_at": "2026-06-09T01:32:10.997Z"
+      },
+      "attestation": {
+        "quorum_met": true,
+        "validator_count": 3,
+        "accepted": 3,
+        "required": 2,
+        "validators": [
+          "val_alpha",
+          "val_beta",
+          "val_gamma"
+        ]
+      },
+      "constitutional_epoch": 0,
+      "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+      "policy_version": "1.0.2",
+      "state_root": "ceaa7cb5601496da9b3e20ccd34f2065fa6c3a7e2b059b017d5b793497aac493",
+      "intent_created_at": "2026-06-09T01:27:10.997Z",
+      "settlement_fulfilled_at": "2026-06-09T01:32:10.997Z",
+      "issued_at": "2026-06-09T02:27:10.997Z",
+      "issuer_public_key": "3059301306072a8648ce3d020106082a8648ce3d030107034200047f561f3243502106d745d1c0d058fb46afb398ec5ab45aefc92d16745891387bddbcd13731d982313c606cdbdfc6e25a50e16bb1371dcdfeee747361a88c5200",
+      "receipt_signature": "30450221008f12ec25207fdd050429e14a5fd3d30cc926daee95ed864f6f3b2ef02275d4fe0220261326984bab2e5126dc71c11b113d109b5348c49b9d237629b8429981ccea70",
+      "semantic_hash": "ca3459840148cfb74e1bbd3937691b2b4294829510377bae58540b5842ff7555"
+    },
+    "rcpt_4060a3322af1b4cad2c91f63": {
+      "receipt_id": "rcpt_4060a3322af1b4cad2c91f63",
+      "receipt_version": "1.0",
+      "constitutional_status": "FINALIZED",
+      "state_description": "The constitutional runtime accepted this settlement as legitimate.",
+      "sl1_address": "sl1e_4e0b165328d56dc97ad72da7b2118331191574c",
+      "intent_id": "intent_base_dep_1248aef",
+      "intent_type": "CROSS_CHAIN_DEPOSIT",
+      "intent_hash": "34924910c4d1fc7bbb272ae8458ba77f65edd82bebf3f8cb0d475db23acfa15e",
+      "settlement": {
+        "network": "base",
+        "asset": "ETH",
+        "amount": "0.5",
+        "tx_hash": "0x5c8e2d7a9b1c3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f",
+        "block_number": 14829374,
+        "confirmations": 6,
+        "explorer_url": "https://basescan.org/tx/0x5c8e2d7a9b1c3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f"
+      },
+      "proof": {
+        "proof_type": "EVM_TRANSACTION_PROOF",
+        "proof_fingerprint": "blake3:4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b",
+        "verified_at": "2026-06-09T02:00:30.998Z"
+      },
+      "attestation": {
+        "quorum_met": true,
+        "validator_count": 3,
+        "accepted": 3,
+        "required": 2,
+        "validators": [
+          "val_alpha",
+          "val_beta",
+          "val_gamma"
+        ]
+      },
+      "constitutional_epoch": 0,
+      "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+      "policy_version": "1.0.2",
+      "state_root": "ceaa7cb5601496da9b3e20ccd34f2065fa6c3a7e2b059b017d5b793497aac493",
+      "intent_created_at": "2026-06-09T01:57:10.998Z",
+      "settlement_fulfilled_at": "2026-06-09T02:00:30.998Z",
+      "issued_at": "2026-06-09T02:27:10.998Z",
+      "issuer_public_key": "3059301306072a8648ce3d020106082a8648ce3d030107034200047f561f3243502106d745d1c0d058fb46afb398ec5ab45aefc92d16745891387bddbcd13731d982313c606cdbdfc6e25a50e16bb1371dcdfeee747361a88c5200",
+      "receipt_signature": "3045022100cd634438060e196282fe985af442d018cccd664b41ace6d9508ba4764b02158b02206392c12157c1c586f2a45e99ab3dc89810592147aa846bb04ce844b700439c55",
+      "semantic_hash": "734790cbe1621fbe5c98488a579142cd2646b225b9a7979887051331eac87ec6"
+    }
+  },
+  "policy_audit": [],
+  "capability_grants": [],
+  "capabilities": [],
+  "control_grants": [],
+  "authorizations": [],
+  "revocations": [],
+  "intent_approvals": [],
+  "intent_approval_replay_keys": [],
+  "controller_bindings": [
+    {
+      "id": "cb_f6cec9daa5b01611ed04",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+      "controller_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+      "key_l1_address": "sl1_09558f43db7d4f1ded617bcc76e0288278651e5c",
+      "credential_id": "lM_wWJFz-xOgPUBIlfD65fKkvN0",
+      "credential_public_key": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+      "credentialPublicKey": "pQECAyYgASFYICj6tbwVsahvjIoZ5LFPSSP6WBDy-9lHW3tKMtCPOTnPIlggQ-dEP8_NJiME5X8dTGwH6A3iilq2cOIef6Uv5gS8_WI",
+      "rp_id": "localhost",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-06T21:45:22.069Z"
+    },
+    {
+      "id": "cb_5530a700dc9391b5496d",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+      "controller_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+      "key_l1_address": "sl1_ccb6fead3223427cfb8e500324306fd982436dc8",
+      "credential_id": "uAitAwKzMcoEHc1tE5-CeRhyeyQ",
+      "credential_public_key": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+      "credentialPublicKey": "pQECAyYgASFYIK0TluNdxnuEHvEGdq-AqjxqcZQ5JbC0F8jEFxtkNVqUIlggHtFNVfp6aJ0Qr_bZCX9BYW62n59gz9oIWVThVg0D7KI",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-08T15:13:22.943Z"
+    },
+    {
+      "id": "cb_052f5fa608993c6a14f1",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
+      "controller_l1_address": "sl1_56b051aa2000e16df18fc93ae744af0c68da21d2",
+      "key_l1_address": "sl1_56b051aa2000e16df18fc93ae744af0c68da21d2",
+      "credential_id": "YMDOEoKVaQbYTAIQXSyClxgIFD4",
+      "credential_public_key": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+      "credentialPublicKey": "pQECAyYgASFYIGGgdnXmSimbw7xqSviVazstN5kX8O3oLxOJYUutzMWYIlgg_Nn3qvxJwkJd2tR-ApWY4O5WgFB4Jw0UFnnxf6Z74Ps",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-09T18:11:57.548Z"
+    },
+    {
+      "id": "cb_cd8cfe2713f3fa48b44e",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982",
+      "controller_l1_address": "sl1_809200efa77ccc95e154dc006cc89f89f45505c6",
+      "key_l1_address": "sl1_809200efa77ccc95e154dc006cc89f89f45505c6",
+      "credential_id": "9ECkQ3rKqs_aOc4-If6ePTkCEL0",
+      "credential_public_key": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+      "credentialPublicKey": "pQECAyYgASFYICbBUs47symQ1YK8NGXEufskwSJEFydkoGNQ0STKmuwYIlggeXa923rfH-9JNyNevDuLl4wZzHMgsHeKhzmZbxbM7zM",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-09T18:37:22.361Z"
+    }
+  ],
+  "controller_binding_proposals": [],
+  "policy_evaluations": [],
+  "policy_decisions": [],
+  "external_proofs": [],
+  "normalized_facts": [],
+  "verification_paths": [],
+  "finality_claims": [],
+  "external_proof_replay_keys": [],
+  "transactions": [],
+  "settlement_operations": [],
+  "settlement_proofs": [],
+  "settlement_idempotency_keys": [],
+  "marketplace_sellers": [],
+  "marketplace_listings": [],
+  "governance": {
+    "proposals": {},
+    "enacted_epochs": [
+      {
+        "epoch": 0,
+        "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+        "enacted_at": "2026-06-09T02:27:10.974Z",
+        "proposal_id": "genesis",
+        "description": "Genesis constitutional epoch"
+      }
+    ],
+    "snapshots": {
+      "0": {
+        "epoch": 0,
+        "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+        "constitution": {
+          "version": "1.0.2",
+          "name": "Simple L1 Constitutional Policies",
+          "description": "Declarative rules of legitimacy governing all intent types. Evaluated before any ledger mutation.",
+          "enacted": "2026-05-19",
+          "policies": [
+            {
+              "intent_type": "CROSS_CHAIN_DEPOSIT",
+              "description": "Inbound value from external settlement networks",
+              "rules": [
+                {
+                  "id": "deposit:network-whitelist",
+                  "description": "Only approved external networks may source deposits",
+                  "condition": {
+                    "field": "network",
+                    "op": "not_in",
+                    "value": [
+                      "ethereum",
+                      "base",
+                      "arbitrum",
+                      "polygon",
+                      "bsc",
+                      "optimism",
+                      "bitcoin",
+                      "ton",
+                      "solana"
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Deposit network is not constitutionally whitelisted"
+                },
+                {
+                  "id": "deposit:asset-whitelist",
+                  "description": "Only approved assets are accepted",
+                  "condition": {
+                    "field": "asset",
+                    "op": "not_in",
+                    "value": [
+                      "ETH",
+                      "USDT",
+                      "USDC",
+                      "WBTC",
+                      "BTC",
+                      "MATIC",
+                      "BNB",
+                      "TON",
+                      "SOL"
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Asset is not approved for deposit"
+                },
+                {
+                  "id": "deposit:amount-ceiling",
+                  "description": "Single deposit ceiling: 1,000,000 USD equivalent",
+                  "condition": {
+                    "field": "amount",
+                    "op": "gt",
+                    "value": 1000000
+                  },
+                  "action": "deny",
+                  "reason": "Single deposit exceeds constitutional ceiling (1M)"
+                },
+                {
+                  "id": "deposit:bitcoin-confirmations",
+                  "description": "Bitcoin deposits require 6 block confirmations",
+                  "condition": {
+                    "and": [
+                      {
+                        "field": "network",
+                        "op": "eq",
+                        "value": "bitcoin"
+                      },
+                      {
+                        "field": "confirmations",
+                        "op": "lt",
+                        "value": 6
+                      }
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Bitcoin deposit requires 6 confirmations"
+                },
+                {
+                  "id": "deposit:evm-confirmations",
+                  "description": "EVM deposits require network-specific confirmation depth",
+                  "condition": {
+                    "and": [
+                      {
+                        "field": "network",
+                        "op": "in",
+                        "value": [
+                          "polygon"
+                        ]
+                      },
+                      {
+                        "field": "confirmations",
+                        "op": "lt",
+                        "value": 30
+                      }
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Polygon deposit requires 30 confirmations"
+                }
+              ]
+            },
+            {
+              "intent_type": "CROSS_CHAIN_WITHDRAWAL",
+              "description": "Outbound value to external settlement networks — higher constitutional scrutiny",
+              "rules": [
+                {
+                  "id": "withdrawal:network-whitelist",
+                  "description": "Only approved external networks may receive withdrawals",
+                  "condition": {
+                    "field": "network",
+                    "op": "not_in",
+                    "value": [
+                      "ethereum",
+                      "base",
+                      "arbitrum",
+                      "polygon",
+                      "bsc",
+                      "optimism",
+                      "bitcoin",
+                      "ton",
+                      "solana"
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Withdrawal network is not constitutionally whitelisted"
+                },
+                {
+                  "id": "withdrawal:asset-whitelist",
+                  "description": "Only approved assets may be withdrawn",
+                  "condition": {
+                    "field": "asset",
+                    "op": "not_in",
+                    "value": [
+                      "ETH",
+                      "USDT",
+                      "USDC",
+                      "WBTC",
+                      "BTC",
+                      "MATIC",
+                      "BNB",
+                      "TON",
+                      "SOL"
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Asset is not approved for withdrawal"
+                },
+                {
+                  "id": "withdrawal:amount-ceiling",
+                  "description": "Single withdrawal ceiling: 500,000 USD equivalent",
+                  "condition": {
+                    "field": "amount",
+                    "op": "gt",
+                    "value": 500000
+                  },
+                  "action": "deny",
+                  "reason": "Single withdrawal exceeds constitutional ceiling (500K)",
+                  "value": 250000
+                },
+                {
+                  "id": "withdrawal:large-multisig",
+                  "description": "Withdrawals above 10,000 require treasury co-signature",
+                  "condition": {
+                    "and": [
+                      {
+                        "field": "amount",
+                        "op": "gte",
+                        "value": 10000
+                      },
+                      {
+                        "field": "treasury_signature",
+                        "op": "eq",
+                        "value": false
+                      }
+                    ]
+                  },
+                  "action": "require",
+                  "reason": "Withdrawal above 10,000 requires treasury multisig co-signature",
+                  "requirements": {
+                    "treasury_multisig": true,
+                    "description": "Treasury multisig required for this withdrawal"
+                  }
+                },
+                {
+                  "id": "withdrawal:large-delay",
+                  "description": "Large withdrawals (>50K) require 24h constitutional delay",
+                  "condition": {
+                    "and": [
+                      {
+                        "field": "amount",
+                        "op": "gte",
+                        "value": 50000
+                      },
+                      {
+                        "field": "delay_elapsed_ms",
+                        "op": "lt",
+                        "value": 86400000
+                      }
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Withdrawal above 50,000 requires 24h constitutional delay"
+                },
+                {
+                  "id": "withdrawal:bitcoin-min",
+                  "description": "Bitcoin withdrawal minimum: 0.001 BTC (dust protection)",
+                  "condition": {
+                    "and": [
+                      {
+                        "field": "network",
+                        "op": "eq",
+                        "value": "bitcoin"
+                      },
+                      {
+                        "field": "amount",
+                        "op": "lt",
+                        "value": 0.001
+                      }
+                    ]
+                  },
+                  "action": "deny",
+                  "reason": "Bitcoin withdrawal below dust threshold (0.001 BTC)"
+                }
+              ]
+            },
+            {
+              "intent_type": "TRANSFER",
+              "description": "Native SL1 internal transfers",
+              "rules": [
+                {
+                  "id": "transfer:amount-ceiling",
+                  "description": "Single transfer ceiling: 10,000,000 SL1",
+                  "condition": {
+                    "field": "amount",
+                    "op": "gt",
+                    "value": 10000000
+                  },
+                  "action": "deny",
+                  "reason": "Transfer exceeds constitutional ceiling (10M SL1)"
+                },
+                {
+                  "id": "transfer:self-transfer",
+                  "description": "Self-transfers are constitutionally meaningless and prohibited",
+                  "condition": {
+                    "field": "self_transfer",
+                    "op": "eq",
+                    "value": true
+                  },
+                  "action": "deny",
+                  "reason": "Self-transfer is not constitutionally admissible"
+                }
+              ]
+            }
+          ],
+          "last_amended": "2026-05-19T05:47:09.887Z",
+          "amendment_log": [
+            {
+              "proposal_id": "gov_15e15b781557abf8d6f2",
+              "amendment_type": "PARAMETER_CHANGE",
+              "title": "Raise withdrawal ceiling",
+              "enacted_at": "2026-05-19T05:46:36.789Z",
+              "epoch": 1
+            },
+            {
+              "proposal_id": "gov_bc4c4c3fff2900a13415",
+              "amendment_type": "PARAMETER_CHANGE",
+              "title": "Raise BTC withdrawal ceiling to 250K",
+              "enacted_at": "2026-05-19T05:47:09.887Z",
+              "epoch": 1
+            }
+          ]
+        },
+        "snapshot_at": "2026-06-09T02:27:10.974Z",
+        "proposal_id": "genesis"
+      }
+    },
+    "current_epoch": 0,
+    "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5"
+  },
+  "federation": {
+    "subnets": {
+      "simple-l1-primary": {
+        "subnet_id": "simple-l1-primary",
+        "name": "Simple L1 Primary",
+        "description": "Genesis subnet — the originating constitutional network",
+        "status": "ACTIVE",
+        "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+        "constitution_version": "1.0",
+        "constitutional_epoch": 0,
+        "validator_set": [],
+        "quorum": {
+          "numerator": 2,
+          "denominator": 3
+        },
+        "settlement_networks": [
+          "ethereum",
+          "base",
+          "arbitrum",
+          "polygon",
+          "bsc",
+          "optimism",
+          "bitcoin",
+          "ton",
+          "solana"
+        ],
+        "assets": [
+          "ETH",
+          "USDT",
+          "USDC",
+          "WBTC",
+          "BTC",
+          "MATIC",
+          "BNB",
+          "TON",
+          "SOL"
+        ],
+        "metadata": {
+          "genesis": true
+        },
+        "registered_at": "2026-06-09T02:27:10.974Z",
+        "last_updated_at": "2026-06-09T02:27:10.974Z",
+        "epoch_history": [
+          {
+            "epoch": 0,
+            "constitution_root": "43207a271dfc2f3a29c43a69159194f0b2d9dff41eb04764aaf8247b4793fbd5",
+            "recorded_at": "2026-06-09T02:27:10.974Z"
+          }
+        ]
+      }
+    },
+    "federation_root": "ff71be58907d8207dcc633ff865e8c741c39bb1d50ad121bade082e603d5141e",
+    "created_at": "2026-06-09T02:27:10.974Z"
+  },
+  "cluster_genesis": "2026-05-13T16:00:00.000Z",
+  "treasury": {
+    "btc_deposits": {
+      "bc1_46baa27745": "sl1e_d0ed84f7a97168fd2e9ee4fc0562cabb346b589",
+      "bc1_e8596b92f7": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
+      "bc1_q3059301306072a8648ce03020706052b810400": "sl1e_4e0b165328d56dc97ad72da7b2118331191574c",
+      "bc1_93b4a5b487": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
+      "bc1_7542bf1362": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982"
+    }
+  },
+  "state_root": "7cad10a93a19105b8fed24190bc59d393e5d00406bca78edbddc299e5e48ef1f"
 }

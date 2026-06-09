@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/identity-proof/schema/identity-proof-envelope.schema.json",
+  "title": "SL1 Identity Proof Envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "envelope_id",
+    "proof_type",
+    "issuer",
+    "subject",
+    "client_id",
+    "redirect_uri",
+    "intent",
+    "state",
+    "nonce",
+    "issued_at",
+    "expires_at",
+    "assurance_level",
+    "claims",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.identity_proof_envelope.v1"
+    },
+    "envelope_id": {
+      "type": "string",
+      "pattern": "^ipe_[a-f0-9]{32,64}$"
+    },
+    "proof_type": {
+      "const": "identity_proof"
+    },
+    "issuer": {
+      "type": "object",
+      "required": ["issuer_id", "issuer_url", "key_id"],
+      "additionalProperties": false,
+      "properties": {
+        "issuer_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuer_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "required": ["entity_l1_address", "key_l1_address"],
+      "additionalProperties": false,
+      "properties": {
+        "entity_l1_address": {
+          "$ref": "#/$defs/entityAddress"
+        },
+        "key_l1_address": {
+          "anyOf": [
+            { "$ref": "#/$defs/keyAddress" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "client_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "redirect_uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intent": {
+      "type": "object",
+      "required": ["type", "resource", "nonce"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resource": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "nonce": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "state": {
+      "type": "string"
+    },
+    "nonce": {
+      "type": "string"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "assurance_level": {
+      "enum": ["AL1", "AL2", "AL3"]
+    },
+    "claims": {
+      "type": "object",
+      "required": ["alias", "display_alias"],
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "display_alias": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "key_id", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "hmac-sha256"
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_\\-]{32,256}$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "entityAddress": {
+      "type": "string",
+      "pattern": "^sl1e_[a-f0-9]{39,64}$"
+    },
+    "keyAddress": {
+      "type": "string",
+      "pattern": "^sl1_[a-f0-9]{32,64}$"
+    }
+  }
+}

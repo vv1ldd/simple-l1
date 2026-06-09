@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/execution-result-envelope.schema.json",
+  "title": "SL1 Execution Result Envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "kernel_contract",
+    "sdga_hash",
+    "guard_artifact_hash",
+    "execution_status",
+    "completion_state",
+    "semantic_capability",
+    "node_results"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.execution_result_envelope.v1"
+    },
+    "artifact_type": {
+      "const": "execution_result_envelope"
+    },
+    "kernel_contract": {
+      "const": "EKC_v0"
+    },
+    "sdga_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "guard_artifact_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "execution_status": {
+      "type": "string",
+      "enum": ["completed", "rejected_identity", "execution_failed"]
+    },
+    "completion_state": {
+      "type": "string",
+      "enum": ["deterministic_complete", "not_started", "partial_failure"]
+    },
+    "semantic_capability": {
+      "type": "object",
+      "required": [
+        "reads_truth_spec",
+        "evaluates_policy",
+        "evaluates_guards",
+        "branches_on_conditions",
+        "infers_meaning",
+        "modifies_graph"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reads_truth_spec": { "const": false },
+        "evaluates_policy": { "const": false },
+        "evaluates_guards": { "const": false },
+        "branches_on_conditions": { "const": false },
+        "infers_meaning": { "const": false },
+        "modifies_graph": { "const": false }
+      }
+    },
+    "node_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "operation", "status", "output_ref"],
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "skipped_identity_rejected", "failed"]
+          },
+          "output_ref": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

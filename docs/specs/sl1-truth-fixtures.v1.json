@@ -1,0 +1,76 @@
+{
+  "schema_version": "simple-l1.truth_fixtures.v1",
+  "spec_id": "sl1_truth_spec_v1",
+  "positive": [
+    {
+      "id": "valid_admission_flow",
+      "description": "Discovery evidence is validated and then explicitly admitted by the host.",
+      "steps": [
+        { "from": "join_request", "to": "verified_candidate", "actor": "runtime_validation_layer" },
+        { "from": "verified_candidate", "to": "admitted_peer", "actor": "host" },
+        { "from": "admitted_peer", "to": "visible_mesh_node", "actor": "ui_projection_layer" }
+      ],
+      "expected": {
+        "allowed": true,
+        "admitted_peer_exists": true
+      }
+    },
+    {
+      "id": "tls_pending_does_not_fail_converge",
+      "description": "Pending ACME remains postflight-only and does not fail converge.",
+      "steps": [
+        { "from": "postflight_observation", "to": "tls_state", "actor": "postflight_observer", "state": "pending_acme" }
+      ],
+      "expected": {
+        "allowed": true,
+        "converge_failed": false
+      }
+    }
+  ],
+  "negative": [
+    {
+      "id": "invalid_bridge_admission_attempt",
+      "description": "Bridge must not emit admitted_peer state.",
+      "steps": [
+        { "from": "bridge", "to": "admitted_peer", "actor": "bridge" }
+      ],
+      "expected": {
+        "allowed": false,
+        "violation_code": "BRIDGE_AUTHORITY_VIOLATION"
+      }
+    },
+    {
+      "id": "invalid_discovery_to_membership",
+      "description": "A join_request must not become membership without host admission.",
+      "steps": [
+        { "from": "join_request", "to": "admitted_peer", "actor": "bridge" }
+      ],
+      "expected": {
+        "allowed": false,
+        "violation_code": "DISCOVERY_MEMBERSHIP_VIOLATION"
+      }
+    },
+    {
+      "id": "invalid_ui_peer_mutation",
+      "description": "UI projection layer must not mutate admission state.",
+      "steps": [
+        { "from": "ui_projection_layer", "to": "admitted_peer", "actor": "ui_projection_layer" }
+      ],
+      "expected": {
+        "allowed": false,
+        "violation_code": "UI_AUTHORITY_VIOLATION"
+      }
+    },
+    {
+      "id": "invalid_tls_converge_gate",
+      "description": "TLS state must not become a converge gate.",
+      "steps": [
+        { "from": "tls_state", "to": "converge", "actor": "postflight_observer", "state": "fallback_self_signed" }
+      ],
+      "expected": {
+        "allowed": false,
+        "violation_code": "TLS_CONVERGE_GATE_VIOLATION"
+      }
+    }
+  ]
+}

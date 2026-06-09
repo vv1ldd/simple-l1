@@ -1,0 +1,35 @@
+{
+  "type": "sl1.conformance.vector.v1",
+  "id": "intent-valid-v1",
+  "layer": "canonicalization",
+  "description": "Signed intent object has deterministic canonical bytes and object hash.",
+  "input": {
+    "type": "sl1.intent.v1",
+    "intent_id": "int_checkout_001",
+    "from": {
+      "identity": "sl1e_51c73d5f1e070dc8153eec313c0834599e6e7b3",
+      "key": "sl1_fb9a5839eb923e73640263e9bd4ce0e3e3698b47",
+      "state_root": "sha256:state-root-valid-001"
+    },
+    "action": "marketplace.order.prepare",
+    "context": {
+      "client_id": "meanly.marketplace",
+      "request_host": "marketplace.meanly.one",
+      "resource": "order:ord_123"
+    },
+    "constraints": {
+      "amount": "25.00",
+      "asset": "USDC",
+      "expires_at": "2026-06-06T22:55:00Z"
+    },
+    "nonce": "intent_nonce_001",
+    "issued_at": "2026-06-06T22:50:00Z",
+    "expires_at": "2026-06-06T22:55:00Z",
+    "ruleset_hash": "sha256:ruleset-v0-rc",
+    "signature": "fixture:sha256:05afc9f8b469603afdc77a2e82c9ea124ead394d407c6cc663a2fcefa2cec687"
+  },
+  "expected": {
+    "canonical_json": "{\"action\":\"marketplace.order.prepare\",\"constraints\":{\"amount\":\"25.00\",\"asset\":\"USDC\",\"expires_at\":\"2026-06-06T22:55:00Z\"},\"context\":{\"client_id\":\"meanly.marketplace\",\"request_host\":\"marketplace.meanly.one\",\"resource\":\"order:ord_123\"},\"expires_at\":\"2026-06-06T22:55:00Z\",\"from\":{\"identity\":\"sl1e_51c73d5f1e070dc8153eec313c0834599e6e7b3\",\"key\":\"sl1_fb9a5839eb923e73640263e9bd4ce0e3e3698b47\",\"state_root\":\"sha256:state-root-valid-001\"},\"intent_id\":\"int_checkout_001\",\"issued_at\":\"2026-06-06T22:50:00Z\",\"nonce\":\"intent_nonce_001\",\"ruleset_hash\":\"sha256:ruleset-v0-rc\",\"signature\":\"fixture:sha256:05afc9f8b469603afdc77a2e82c9ea124ead394d407c6cc663a2fcefa2cec687\",\"type\":\"sl1.intent.v1\"}",
+    "object_hash": "sha256:0d2667459210c392e51ae1803b58edd051b68644556e1e83056fec6dffe3ce45"
+  }
+}

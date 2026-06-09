@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/signed-guard-artifact.schema.json",
+  "title": "SL1 Signed Guard Artifact",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "release_boundary",
+    "spec_hash",
+    "compiler_version",
+    "guard_artifact_hash",
+    "compiled_output_hash",
+    "provenance",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.signed_guard_artifact.v1"
+    },
+    "artifact_type": {
+      "const": "signed_guard_artifact"
+    },
+    "release_boundary": {
+      "const": "SGARP_v0"
+    },
+    "spec_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compiler_commit": {
+      "type": "string"
+    },
+    "guard_artifact_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "compiled_output_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["issued_at", "issuer", "source_spec_id", "source_spec_version", "output_ordering"],
+      "additionalProperties": false,
+      "properties": {
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_spec_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_spec_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_ordering": {
+          "const": "stable"
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "key_id", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["release-attestation-placeholder-v0", "ed25519"]
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "schema_version": "simple-l1.evm_reorg_observation_fixture.v1",
+  "fixture_id": "evm_reorg_observation_divergence_v1",
+  "description": "FrozenGraphV8 temporal observation divergence: same chain_id and tx_hash observed under different block_hash values; canonicalizer preserves both graph identities and does not resolve truth.",
+  "observations": [
+    {
+      "chain_id": "0x1",
+      "source": "fixture:reorg-observation-v1",
+      "observed_at": "2026-05-30T16:15:00.000Z",
+      "block": {
+        "timestamp": "0x6553f3bc"
+      },
+      "transaction": {
+        "hash": "0x4545454545454545454545454545454545454545454545454545454545454545",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x9999999999999999999999999999999999999999",
+        "value": "0x1",
+        "input": "0x",
+        "nonce": "0x31"
+      },
+      "receipt": {
+        "transactionHash": "0x4545454545454545454545454545454545454545454545454545454545454545",
+        "blockHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "blockNumber": "0x0121eac7",
+        "transactionIndex": "0xe",
+        "status": "0x1",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x9999999999999999999999999999999999999999",
+        "logs": [],
+        "gasUsed": "0x5208",
+        "effectiveGasPrice": "0x3b9aca00"
+      }
+    },
+    {
+      "chain_id": "0x1",
+      "source": "fixture:reorg-observation-v1",
+      "observed_at": "2026-05-30T16:16:00.000Z",
+      "block": {
+        "timestamp": "0x6553f3f8"
+      },
+      "transaction": {
+        "hash": "0x4545454545454545454545454545454545454545454545454545454545454545",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x9999999999999999999999999999999999999999",
+        "value": "0x1",
+        "input": "0x",
+        "nonce": "0x31"
+      },
+      "receipt": {
+        "transactionHash": "0x4545454545454545454545454545454545454545454545454545454545454545",
+        "blockHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "blockNumber": "0x0121eac8",
+        "transactionIndex": "0xe",
+        "status": "0x1",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x9999999999999999999999999999999999999999",
+        "logs": [],
+        "gasUsed": "0x5208",
+        "effectiveGasPrice": "0x3b9aca00"
+      }
+    }
+  ],
+  "expected": {
+    "same_chain_id": true,
+    "same_tx_hash": true,
+    "block_hash_equal": false,
+    "fact_id_equal": false,
+    "graph_identity_equal": false,
+    "observation_a": {
+      "fact_id": "sha256:1cebfd1ae28659b148deccaf97acb976c0e027886f0be2be799df2ebde5b8478",
+      "graph_json_sha256": "sha256:ac8096ddd866829a5c9808df24251a867b9a4d8acba53f33e07c2385e1e7628f",
+      "block_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "block_number": "19000007"
+    },
+    "observation_b": {
+      "fact_id": "sha256:55df46a5d9cc76d02b398438b9bbbf78536389ab1bfeb67ad3351d3acce8d0e5",
+      "graph_json_sha256": "sha256:61bce42a9dd7b924062afa405b1009878fdf4aac8462f3e60d8550144852eab2",
+      "block_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "block_number": "19000008"
+    },
+    "verdict": null
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Same tx observed with different block context must produce visible graph divergence; canonicalizer must not choose a winning observation or emit finality verdicts."
+  }
+}

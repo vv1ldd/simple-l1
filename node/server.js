@@ -32,13 +32,28 @@ const {
 const { MemoryConnectRuntimeStore } = require('./connect-runtime-store');
 const {
     createIdentityProof,
+    createIdentityProofEnvelope,
     verifyIdentityProof,
 } = require('./identity-proof-runtime');
+const {
+    createIdentityStateEnvelope,
+    verifyIdentityStateEnvelope,
+    assertNoAuthorityLeak: assertNoIdentityMeshAuthorityLeak,
+} = require('./identity-mesh-runtime');
 const {
     ensureMarketplaceStores,
     executeMarketplaceSettlement,
     explainSettlement,
 } = require('./marketplace-flow-runtime');
+const {
+    activateSeller,
+    ensureSellerStores,
+    normalizeListing,
+    normalizeSeller,
+    refreshSellerActivation,
+    sellerSummary,
+    upsertByKey,
+} = require('./marketplace-seller-runtime');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -55,12 +70,17 @@ const { ConstitutionalGovernanceEngine,
         PROPOSAL_STATES, AMENDMENT_TYPES }     = require('./settlement/governance');
 const { FederationRegistry, SUBNET_STATUS }    = require('./settlement/federation');
 
+const EMBEDDED_RUNTIME = ['1', 'true', 'yes', 'on'].includes(String(process.env.SL1_EMBEDDED || '').toLowerCase());
 const DATA_DIR = process.env.SL1_DATA_DIR || __dirname;
 fs.mkdirSync(DATA_DIR, { recursive: true });
+const RUNTIME_PORT_FILE = process.env.SL1_RUNTIME_PORT_FILE || '';
+const RUNTIME_HOST = process.env.SL1_HOST || process.env.HOST || (EMBEDDED_RUNTIME ? '127.0.0.1' : '0.0.0.0');
+const RUNTIME_PORT = Number(process.env.PORT ?? (EMBEDDED_RUNTIME ? 0 : 3000));
 
 const LEDGER_FILE = path.join(DATA_DIR, 'ledger_db.json');
 const NETWORK_JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'network_join_requests.json');
 const INSTALL_REPORTS_FILE = path.join(DATA_DIR, 'install_reports.json');
+const MESH_MAILBOX_FILE = path.join(DATA_DIR, 'mesh_mailbox.json');
 const GENESIS_FILE = path.join(__dirname, 'genesis.json');
 let ledger = {
     accounts: {},              // Derived state (View)
@@ -78,6 +98,7 @@ let ledger = {
     intent_approvals: [],      // RFC-0018 IntentApproval artifacts
     intent_approval_replay_keys: [],
     controller_bindings: [],
+    controller_binding_proposals: [],
     policy_evaluations: [],    // RFC-0014 policy input artifacts
     policy_decisions: [],      // RFC-0014 policy decision artifacts
     external_proofs: [],       // RFC-0017 external proof artifacts
@@ -89,6 +110,8 @@ let ledger = {
     settlement_operations: [], // RFC-0026 settlement mutations
     settlement_proofs: [],     // RFC-0026 lineage proofs
     settlement_idempotency_keys: [],
+    marketplace_sellers: [],    // App-layer seller launch records; not protocol authority
+    marketplace_listings: [],   // App-layer listings for seller launch MVP
     governance: null,          // Constitutional Governance (initialized by engine)
     federation: null,          // Multi-Constitution Federation Registry
     cluster_genesis: null,     // Network Birthday
@@ -181,6 +204,8 @@ function applyEvent(event, isInitialReplay = false) {
                     controller_l1_address: keyAddress,
                     key_l1_address: keyAddress,
                     credential_id: credentialId,
+                    credential_public_key: credentialPublicKey,
+                    credentialPublicKey,
                     rp_id: credentialRpId,
                     status: 'active',
                     source: 'GENESIS',
@@ -227,11 +252,148 @@ function applyEvent(event, isInitialReplay = false) {
                 controller_l1_address: keyAddress,
                 key_l1_address: keyAddress,
                 credential_id: credentialId,
+                credential_public_key: credentialPublicKey,
+                credentialPublicKey,
                 rp_id: keyRecord.rp_id,
                 status: 'active',
                 source: 'PASSKEY_ADDED',
                 created_at: event.timestamp,
             });
+            break;
+        }
+
+        case 'NATIVE_CONTROLLER_BOOTSTRAPPED': {
+            const entityAddress = identityKernel.assertEntityAddress(event.payload.entity_l1_address);
+            const keyAddress = identityKernel.assertKeyAddress(event.payload.key_l1_address);
+            const publicKey = String(event.payload.publicKey || event.payload.public_key || '');
+            const label = String(event.payload.label || event.payload.device_name || 'Meanly One');
+            const now = event.timestamp;
+            const existing = ledger.accounts[entityAddress] || {};
+            ledger.accounts[entityAddress] = {
+                ...existing,
+                entity_l1_address: entityAddress,
+                address: entityAddress,
+                address_version: existing.address_version || identityKernel.ENTITY_ADDRESS_VERSION,
+                key_l1_address: existing.key_l1_address || keyAddress,
+                key_address_version: existing.key_address_version || identityKernel.KEY_ADDRESS_VERSION,
+                handle: existing.handle || label,
+                alias: existing.alias || null,
+                display_alias: existing.display_alias || label,
+                publicKey: existing.publicKey || publicKey,
+                keys: [
+                    ...(existing.keys || []).filter((key) => String(key.key_l1_address || '') !== keyAddress),
+                    {
+                        key_l1_address: keyAddress,
+                        publicKey,
+                        controller_type: 'native_macos_p256',
+                        role: existing.keys?.length ? 'secondary' : 'primary',
+                        status: 'active',
+                        registered_at: now,
+                    },
+                ],
+                balances: existing.balances || { SL: 1000, BTC: 0, ETH: 0 },
+                external_addresses: existing.external_addresses || {},
+                authority_policies: existing.authority_policies || {
+                    session_limit: 1000,
+                    intent_scope: ['payments', 'identity-claims'],
+                    active_policies: ['Daily Limit 1000 SL'],
+                },
+                provenance_log: existing.provenance_log || [],
+                nonce: existing.nonce || 0,
+                identity_source: existing.identity_source || 'native-wallet-bootstrap',
+            };
+            ledger.controller_bindings = ledger.controller_bindings || [];
+            ledger.controller_bindings = ledger.controller_bindings.filter((binding) =>
+                String(binding.entity_l1_address || '') !== entityAddress || String(binding.key_l1_address || binding.controller_l1_address || '') !== keyAddress
+            );
+            ledger.controller_bindings.push({
+                id: controllerBindingId(entityAddress, keyAddress, 'native_macos_p256'),
+                object_type: 'ControllerBinding',
+                entity_l1_address: entityAddress,
+                controller_l1_address: keyAddress,
+                key_l1_address: keyAddress,
+                controller_type: 'native_macos_p256',
+                controller_public_key: publicKey,
+                status: 'active',
+                source: 'NATIVE_CONTROLLER_BOOTSTRAPPED',
+                created_at: now,
+            });
+            break;
+        }
+
+        case 'CONTROLLER_BINDING_PROPOSED': {
+            ledger.controller_binding_proposals = ledger.controller_binding_proposals || [];
+            ledger.controller_binding_proposals = ledger.controller_binding_proposals.filter((proposal) => proposal.proposal_id !== event.payload.proposal_id);
+            ledger.controller_binding_proposals.push({
+                ...event.payload,
+                status: 'pending',
+                proposed_at: event.timestamp,
+            });
+            break;
+        }
+
+        case 'CONTROLLER_BINDING_APPROVED': {
+            let approvedProposal = null;
+            ledger.controller_binding_proposals = (ledger.controller_binding_proposals || []).map((proposal) => {
+                if (proposal.proposal_id !== event.payload.proposal_id) return proposal;
+                approvedProposal = proposal;
+                return {
+                    ...proposal,
+                    status: 'approved',
+                    approved_by_key_l1_address: event.payload.approved_by_key_l1_address,
+                    approved_at: event.timestamp,
+                    approval_hash: event.payload.approval_hash || null,
+                };
+            });
+            if (approvedProposal) {
+                const entityAddress = identityKernel.assertEntityAddress(approvedProposal.entity_l1_address);
+                const keyAddress = identityKernel.assertKeyAddress(approvedProposal.proposed_controller_key_l1_address);
+                const account = ledger.accounts[entityAddress];
+                if (account) {
+                    const credentialId = approvedProposal.credential_id || null;
+                    const credentialPublicKey = approvedProposal.credential_public_key || approvedProposal.credentialPublicKey || approvedProposal.controller_public_key || null;
+                    const keyRecord = {
+                        key_l1_address: keyAddress,
+                        publicKey: credentialPublicKey,
+                        credentialId,
+                        credentialPublicKey,
+                        counter: Number(approvedProposal.counter || 0),
+                        transports: approvedProposal.transports || ['internal', 'hybrid'],
+                        rp_id: approvedProposal.rp_id || null,
+                        controller_type: approvedProposal.controller_type || 'trusted_device',
+                        label: approvedProposal.label || null,
+                        role: (account.keys || []).length ? 'secondary' : 'primary',
+                        status: 'active',
+                        registered_at: event.timestamp,
+                    };
+                    account.keys = [
+                        ...(account.keys || []).filter((key) => String(key.key_l1_address || '') !== keyAddress),
+                        keyRecord,
+                    ];
+                    ledger.controller_bindings = ledger.controller_bindings || [];
+                    ledger.controller_bindings = ledger.controller_bindings.filter((binding) =>
+                        String(binding.entity_l1_address || '') !== entityAddress || String(binding.key_l1_address || binding.controller_l1_address || '') !== keyAddress
+                    );
+                    ledger.controller_bindings.push({
+                        id: controllerBindingId(entityAddress, keyAddress, credentialId || approvedProposal.proposal_id),
+                        object_type: 'ControllerBinding',
+                        entity_l1_address: entityAddress,
+                        controller_l1_address: keyAddress,
+                        key_l1_address: keyAddress,
+                        controller_type: approvedProposal.controller_type || 'trusted_device',
+                        credential_id: credentialId,
+                        credential_public_key: credentialPublicKey,
+                        credentialPublicKey,
+                        rp_id: approvedProposal.rp_id || null,
+                        transports: approvedProposal.transports || [],
+                        label: approvedProposal.label || null,
+                        status: 'active',
+                        source: 'CONTROLLER_BINDING_APPROVED',
+                        proposal_id: approvedProposal.proposal_id,
+                        created_at: event.timestamp,
+                    });
+                }
+            }
             break;
         }
 
@@ -314,6 +476,36 @@ function applyEvent(event, isInitialReplay = false) {
                 throw new Error(settlementResult.reason_codes.join(', '));
             }
             break;
+
+        case 'MARKETPLACE_SELLER_UPSERTED': {
+            ensureSellerStores(ledger);
+            const seller = normalizeSeller({
+                ...event.payload,
+                created_at: event.payload.created_at || event.timestamp,
+            }, new Date(event.timestamp));
+            upsertByKey(ledger.marketplace_sellers, 'seller_id', seller);
+            refreshSellerActivation(ledger, seller.seller_id, new Date(event.timestamp));
+            break;
+        }
+
+        case 'MARKETPLACE_LISTING_UPSERTED': {
+            ensureSellerStores(ledger);
+            const listing = normalizeListing({
+                ...event.payload,
+                created_at: event.payload.created_at || event.timestamp,
+            }, new Date(event.timestamp));
+            const seller = ledger.marketplace_sellers.find((candidate) => candidate.seller_id === listing.seller_id);
+            if (!seller) throw new Error('seller_not_found');
+            upsertByKey(ledger.marketplace_listings, 'listing_id', listing);
+            refreshSellerActivation(ledger, listing.seller_id, new Date(event.timestamp));
+            break;
+        }
+
+        case 'MARKETPLACE_SELLER_ACTIVATED': {
+            ensureSellerStores(ledger);
+            activateSeller(ledger, event.payload.seller_id, new Date(event.timestamp));
+            break;
+        }
     }
 
     if (!isInitialReplay) {
@@ -425,6 +617,7 @@ async function start() {
     ledger.intent_approvals = [];
     ledger.intent_approval_replay_keys = [];
     ledger.controller_bindings = [];
+    ledger.controller_binding_proposals = [];
     ledger.policy_evaluations = [];
     ledger.policy_decisions = [];
     ledger.external_proofs = [];
@@ -436,6 +629,8 @@ async function start() {
     ledger.settlement_operations = [];
     ledger.settlement_proofs = [];
     ledger.settlement_idempotency_keys = [];
+    ledger.marketplace_sellers = [];
+    ledger.marketplace_listings = [];
     history.forEach(ev => applyEvent(ev, true));
     ledger.event_log = history;
     ledger.state_root = calculateStateRoot(); // Initial root after replay
@@ -556,12 +751,17 @@ async function start() {
             decorateReply: false
         });
 
-        await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
-        console.log(`[DAOS] ${NODE_NAME} is active on port ${process.env.PORT || 3000}`);
+        await fastify.listen({ port: RUNTIME_PORT, host: RUNTIME_HOST });
+        writeEmbeddedRuntimePortFile();
+        const address = fastify.server.address();
+        const boundPort = typeof address === 'object' && address ? address.port : RUNTIME_PORT;
+        console.log(`[DAOS] ${NODE_NAME} is active on ${RUNTIME_HOST}:${boundPort}`);
         
         // 5. Automated Discovery
-        discoverPeers();
-        setInterval(discoverPeers, 60000); // Refresh every minute
+        if (!EMBEDDED_RUNTIME) {
+            discoverPeers();
+            setInterval(discoverPeers, 60000); // Refresh every minute
+        }
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
@@ -570,6 +770,27 @@ async function start() {
 
 const saveLedger = () => {
     fs.writeFileSync(LEDGER_FILE, JSON.stringify(ledger, null, 2));
+};
+
+const writeEmbeddedRuntimePortFile = () => {
+    if (!RUNTIME_PORT_FILE) return;
+
+    const address = fastify.server.address();
+    const port = typeof address === 'object' && address ? address.port : RUNTIME_PORT;
+    const host = RUNTIME_HOST === '0.0.0.0' ? '127.0.0.1' : RUNTIME_HOST;
+    const payload = {
+        status: 'ready',
+        embedded: EMBEDDED_RUNTIME,
+        pid: process.pid,
+        host,
+        port,
+        base_url: `http://${host}:${port}`,
+        data_dir: DATA_DIR,
+        started_at: new Date().toISOString(),
+    };
+
+    fs.mkdirSync(path.dirname(RUNTIME_PORT_FILE), { recursive: true });
+    fs.writeFileSync(RUNTIME_PORT_FILE, JSON.stringify(payload, null, 2));
 };
 
 // --- HELPERS ---
@@ -601,12 +822,15 @@ const SEED_NODES = [
 
 // Node Metadata & Capabilities
 const NODE_VERSION = "0.2.0-alpha.1";
+const IDENTITY_PROTOCOL_VERSION = process.env.SL1_IDENTITY_PROTOCOL_VERSION || 'capsule-v0';
 const NODE_CAPABILITIES = ["REPLAY", "GOSSIP", "VALIDATOR", "GATEWAY"];
 let NODE_ID = crypto.randomBytes(16).toString('hex');
 
 let PEERS = [...new Set([...(process.env.PEERS || '').split(','), ...SEED_NODES])].filter(Boolean);
 const sl1eRuntimeStore = new MemoryConnectRuntimeStore();
 const SL1_CONNECT_SECRET = process.env.SL1_CONNECT_SECRET || crypto.createHash('sha256').update(`sl1-connect:${NODE_ID}`).digest('hex');
+const IDENTITY_CAPSULE_VERSION = 'simple-l1.identity-capsule.v0';
+const STATE_PROOF_VERSION = 'simple-l1.identity-state-proof.v0';
 
 function legacyMutationDisabled(reply, endpoint, replacement) {
     return reply.code(410).send({
@@ -663,6 +887,7 @@ const bufferFromStoredKey = (value) => {
 
 const rpIdForHost = (host) => {
     const hostname = String(host || '').split(':')[0].toLowerCase();
+    if (hostname === '127.0.0.1' || hostname === '::1') return 'localhost';
     if (hostname.startsWith('connect.') && hostname.split('.').length > 2) {
         return hostname.replace(/^connect\./, '');
     }
@@ -670,7 +895,14 @@ const rpIdForHost = (host) => {
     return hostname;
 };
 
-const originForHost = (host) => `https://${String(host || '').split(':')[0].toLowerCase()}`;
+const originForHost = (host) => {
+    const hostname = String(host || '').split(':')[0].toLowerCase();
+    if (hostname === '127.0.0.1' || hostname === '::1' || hostname === 'localhost') {
+        return `http://localhost:${RUNTIME_PORT || 3000}`;
+    }
+
+    return `https://${hostname}`;
+};
 
 const stableStringify = (value) => {
     if (Array.isArray(value)) {
@@ -742,6 +974,39 @@ const loadInstallReportStore = () => {
 
 const saveInstallReportStore = (store) => {
     fs.writeFileSync(INSTALL_REPORTS_FILE, JSON.stringify(store, null, 2));
+};
+
+const loadMeshMailboxStore = () => {
+    if (!fs.existsSync(MESH_MAILBOX_FILE)) {
+        return { schema_version: 'simple-l1.mesh-mailbox.store.v1', messages: {} };
+    }
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(MESH_MAILBOX_FILE, 'utf8'));
+        return {
+            schema_version: parsed.schema_version || 'simple-l1.mesh-mailbox.store.v1',
+            messages: parsed.messages && typeof parsed.messages === 'object' ? parsed.messages : {},
+        };
+    } catch (error) {
+        console.warn(`[MESH MAILBOX] Failed to read mailbox store: ${error.message}`);
+        return { schema_version: 'simple-l1.mesh-mailbox.store.v1', messages: {} };
+    }
+};
+
+const saveMeshMailboxStore = (store) => {
+    fs.writeFileSync(MESH_MAILBOX_FILE, JSON.stringify(store, null, 2));
+};
+
+const assertRelayPayloadIsObservationOnly = (payload = {}) => {
+    const text = JSON.stringify(payload).toLowerCase();
+    const forbidden = ['authority_grant', 'authorization_code', 'application_session', 'raw_assertion', 'clientdatajson', 'authenticatordata'];
+    const hit = forbidden.find((marker) => text.includes(marker));
+    if (hit) {
+        const error = new Error('relay_payload_authority_or_credential_leak');
+        error.statusCode = 422;
+        error.marker = hit;
+        throw error;
+    }
 };
 
 const normalizeInstallReport = (input = {}) => {
@@ -1208,6 +1473,19 @@ const allVerifiableCredentials = () => {
 
 const firstVerifiableAccount = () => allVerifiableCredentials()[0]?.account || null;
 
+const verifiableIdentityOptions = () => Object.values(ledger.accounts || {})
+    .filter(account => verifiableAccountCredentials(account).length > 0)
+    .map(account => {
+        const entityAddress = account.entity_l1_address || account.address || '';
+        const label = accountVisibleAlias(account) || accountDisplayName(account) || shortAddress(entityAddress);
+        return {
+            entity_l1_address: entityAddress,
+            label,
+        };
+    })
+    .filter(option => option.entity_l1_address)
+    .sort((left, right) => String(left.label || '').localeCompare(String(right.label || '')));
+
 const normalizeIdentityHint = (value) => String(value || '').trim().toLowerCase();
 
 const accountMatchesIdentityHint = (account, identityHint) => {
@@ -1248,6 +1526,284 @@ const verifiableCredentialsForQuery = (query) => {
 
     return verifiableAccountCredentials(hintedAccount)
         .map((credential) => ({ account: hintedAccount, credential }));
+};
+
+const controllerBindingId = (entityAddress, keyAddress, credentialId) =>
+    `cb_${crypto.createHash('sha256').update(`${entityAddress}:${keyAddress}:${credentialId}`).digest('hex').slice(0, 20)}`;
+
+const controllerBindingHash = (binding) => sha256Hex(stableStringify({
+    object_type: binding.object_type,
+    version: binding.version,
+    binding_id: binding.binding_id,
+    entity_l1_address: binding.entity_l1_address,
+    controller_type: binding.controller_type,
+    controller_key_l1: binding.controller_key_l1,
+    credential_id: binding.credential_id,
+    credential_public_key: binding.credential_public_key,
+    rp_id: binding.rp_id,
+    registration_transcript_hash: binding.registration_transcript_hash,
+}));
+
+const identityCapsuleEvidenceHash = (capsule) => sha256Hex(stableStringify({
+    protocol: capsule.protocol,
+    object_type: capsule.object_type,
+    version: capsule.version,
+    evidence_role: capsule.evidence_role,
+    genesis: capsule.genesis,
+    controller_bindings: capsule.controller_bindings,
+}));
+
+const currentIdentityStateProof = (source = 'local-ledger') => ({
+    object_type: 'StateProof',
+    version: STATE_PROOF_VERSION,
+    source,
+    state_root: ledger.state_root || calculateStateRoot(),
+    epoch: Number(ledger.governance?.current_epoch || 0),
+    issued_at: new Date().toISOString(),
+});
+
+const identityGenesisEvidence = (account, credential) => {
+    const entityAddress = account?.entity_l1_address || account?.address;
+    const keyAddress = credential?.key_l1_address || account?.key_l1_address;
+    const payload = {
+        object_type: 'IdentityGenesis',
+        entity_l1_address: entityAddress,
+        genesis_timestamp: credential?.registered_at || account?.registered_at || null,
+        genesis_hash: null,
+        controller_key_l1: keyAddress,
+        handle: account?.handle || null,
+        alias: account?.alias || null,
+        display_alias: account?.display_alias || account?.displayAlias || null,
+        protocol_epoch: Number(ledger.governance?.current_epoch || 0),
+    };
+
+    payload.genesis_hash = sha256Hex(stableStringify({
+        object_type: payload.object_type,
+        entity_l1_address: payload.entity_l1_address,
+        genesis_timestamp: payload.genesis_timestamp,
+        controller_key_l1: payload.controller_key_l1,
+        handle: payload.handle,
+        alias: payload.alias,
+        display_alias: payload.display_alias,
+        protocol_epoch: payload.protocol_epoch,
+    }));
+
+    return payload;
+};
+
+const controllerBindingEvidence = (account, credential, transcript = {}) => {
+    const entityAddress = account?.entity_l1_address || account?.address;
+    const credentialPublicKey = credential?.credentialPublicKey || credential?.credential_public_key;
+    const keyAddress = credential?.key_l1_address || account?.key_l1_address || identityKernel.keyAddressFromPublicKey(credentialPublicKey);
+    const credentialId = String(credential?.credentialId || credential?.credential_id || '');
+    const binding = {
+        object_type: 'ControllerBinding',
+        version: 'simple-l1.controller-binding.v0',
+        binding_id: controllerBindingId(entityAddress, keyAddress, credentialId),
+        entity_l1_address: entityAddress,
+        controller_type: 'passkey',
+        controller_key_l1: keyAddress,
+        key_l1_address: keyAddress,
+        credential_id: credentialId,
+        credential_public_key: credentialPublicKey,
+        rp_id: credential?.rp_id || account?.rp_id || null,
+        created_at: credential?.registered_at || account?.registered_at || null,
+        revocation_epoch: null,
+        registration_transcript_hash: sha256Hex(stableStringify({
+            rp_id: credential?.rp_id || account?.rp_id || null,
+            credential_id: credentialId,
+            credential_public_key_hash: credentialPublicKey ? sha256Hex(String(credentialPublicKey)) : null,
+            ...transcript,
+        })),
+    };
+
+    binding.binding_hash = controllerBindingHash(binding);
+
+    return binding;
+};
+
+const identityCapsuleForAccount = (account, transcript = {}) => {
+    const credential = verifiableAccountCredentials(account)[0];
+    if (!account || !credential) return null;
+
+    const capsule = {
+        protocol: 'simple-l1',
+        object_type: 'IdentityCapsule',
+        version: IDENTITY_CAPSULE_VERSION,
+        evidence_role: 'immutable_provenance',
+        genesis: identityGenesisEvidence(account, credential),
+        controller_bindings: [
+            controllerBindingEvidence(account, credential, transcript),
+        ],
+    };
+
+    capsule.evidence_hash = identityCapsuleEvidenceHash(capsule);
+
+    return capsule;
+};
+
+const identityPortabilityPayload = (account, transcript = {}) => {
+    const capsule = identityCapsuleForAccount(account, transcript);
+    if (!capsule) return {};
+
+    const entityAddress = account?.entity_l1_address || account?.address || capsule.genesis?.entity_l1_address || null;
+    return {
+        identity_capsule: capsule,
+        state_proof: currentIdentityStateProof('local-ledger'),
+        portability_contract: {
+            version: 'meanly-one.identity-portability.v1',
+            identity_l1_address: entityAddress,
+            invariant: 'identity_address_must_never_change',
+            create_identity_semantics: 'add_first_controller',
+            native_link_semantics: 'approve_additional_controller',
+        },
+    };
+};
+
+const parseIdentityCapsule = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+
+    const text = String(value).trim();
+    if (!text) return null;
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        // Continue to compact base64url form.
+    }
+
+    const compact = text.startsWith('sl1capsule_') ? text.slice('sl1capsule_'.length) : text;
+    try {
+        return JSON.parse(Buffer.from(compact, 'base64url').toString('utf8'));
+    } catch (error) {
+        return null;
+    }
+};
+
+const localRevocationMatches = (binding) => {
+    const bindingId = String(binding?.binding_id || binding?.id || '');
+    const credentialId = String(binding?.credential_id || '');
+
+    return (ledger.controller_bindings || []).some((candidate) => {
+        const sameBinding = bindingId && String(candidate.id || candidate.binding_id || '') === bindingId;
+        const sameCredential = credentialId && String(candidate.credential_id || '') === credentialId;
+        return (sameBinding || sameCredential) && String(candidate.status || '') === 'revoked';
+    });
+};
+
+const verifiedCapsuleOwner = (capsuleInput, hostname, query = {}) => {
+    const capsule = parseIdentityCapsule(capsuleInput);
+    if (!capsule) return null;
+    if (capsule.object_type !== 'IdentityCapsule' || capsule.version !== IDENTITY_CAPSULE_VERSION) {
+        return { error: 'identity_capsule_unsupported', statusCode: 422 };
+    }
+
+    const binding = (capsule.controller_bindings || [])[0];
+    if (!binding) return { error: 'identity_capsule_missing_controller_binding', statusCode: 422 };
+    if (!capsule.evidence_hash || capsule.evidence_hash !== identityCapsuleEvidenceHash(capsule)) {
+        return { error: 'identity_capsule_evidence_hash_mismatch', statusCode: 403 };
+    }
+    if (!binding.binding_hash || binding.binding_hash !== controllerBindingHash(binding)) {
+        return { error: 'identity_capsule_binding_hash_mismatch', statusCode: 403 };
+    }
+
+    const entityAddress = identityKernel.normalizeEntityAddress(capsule.genesis?.entity_l1_address || binding.entity_l1_address);
+    const credentialId = String(binding.credential_id || '');
+    const credentialPublicKey = String(binding.credential_public_key || binding.credentialPublicKey || '');
+    const keyAddress = identityKernel.normalizeKeyAddress(binding.controller_key_l1 || binding.key_l1_address);
+    if (!entityAddress || !credentialId || !credentialPublicKey || !keyAddress) {
+        return { error: 'identity_capsule_incomplete', statusCode: 422 };
+    }
+    if (identityKernel.keyAddressFromPublicKey(credentialPublicKey) !== keyAddress) {
+        return { error: 'identity_capsule_key_derivation_mismatch', statusCode: 403 };
+    }
+    if (binding.rp_id && String(binding.rp_id) !== rpIdForHost(hostname)) {
+        return { error: 'identity_capsule_rp_mismatch', statusCode: 403 };
+    }
+    if (localRevocationMatches(binding)) {
+        return { error: 'identity_capsule_controller_revoked', statusCode: 403 };
+    }
+
+    const hint = query.identity_hint || query.login_hint || query.entity_l1_address;
+    if (hint && !accountMatchesIdentityHint({
+        entity_l1_address: entityAddress,
+        address: entityAddress,
+        alias: capsule.genesis?.alias || null,
+        display_alias: capsule.genesis?.display_alias || null,
+    }, hint)) {
+        return { error: 'identity_capsule_hint_mismatch', statusCode: 403 };
+    }
+
+    const account = {
+        entity_l1_address: entityAddress,
+        address: entityAddress,
+        key_l1_address: keyAddress,
+        handle: capsule.genesis?.handle || entityAddress,
+        alias: capsule.genesis?.alias || null,
+        display_alias: capsule.genesis?.display_alias || null,
+        rp_id: binding.rp_id || rpIdForHost(hostname),
+        keys: [{
+            key_l1_address: keyAddress,
+            credentialId,
+            credential_id: credentialId,
+            credentialPublicKey,
+            credential_public_key: credentialPublicKey,
+            counter: Number(binding.counter || 0),
+            transports: binding.transports || ['internal', 'hybrid', 'usb', 'nfc', 'ble'],
+            rp_id: binding.rp_id || rpIdForHost(hostname),
+            role: 'primary',
+            status: 'active',
+            registered_at: binding.created_at || capsule.genesis?.genesis_timestamp || null,
+        }],
+        balances: { SL: 0, BTC: 0, ETH: 0 },
+        provenance_log: [],
+        nonce: 0,
+    };
+
+    return {
+        source: 'identity_capsule',
+        assurance_level: 'AL1',
+        account,
+        credential: account.keys[0],
+        capsule,
+        state_proof: currentIdentityStateProof('local-cache'),
+    };
+};
+
+const rememberVerifiedCapsuleOwner = (owner) => {
+    if (!owner || owner.source !== 'identity_capsule') return false;
+
+    const entityAddress = owner.account.entity_l1_address || owner.account.address;
+    if (!entityAddress) return false;
+    if (ledger.accounts?.[entityAddress]) {
+        ledger.accounts[entityAddress].identity_source = ledger.accounts[entityAddress].identity_source || 'local-ledger';
+        return false;
+    }
+
+    ledger.accounts[entityAddress] = {
+        ...owner.account,
+        identity_source: 'rebuilt_from_capsule',
+        restored_from_capsule_at: new Date().toISOString(),
+    };
+    ledger.controller_bindings = ledger.controller_bindings || [];
+    ledger.controller_bindings.push({
+        id: controllerBindingId(entityAddress, owner.credential.key_l1_address, owner.credential.credentialId),
+        object_type: 'ControllerBinding',
+        entity_l1_address: entityAddress,
+        controller_l1_address: owner.credential.key_l1_address,
+        key_l1_address: owner.credential.key_l1_address,
+        credential_id: owner.credential.credentialId,
+        credential_public_key: owner.credential.credentialPublicKey,
+        credentialPublicKey: owner.credential.credentialPublicKey,
+        rp_id: owner.credential.rp_id,
+        status: 'active',
+        source: 'IDENTITY_CAPSULE_REHYDRATED',
+        created_at: new Date().toISOString(),
+    });
+    ledger.state_root = calculateStateRoot();
+    saveLedger();
+    return true;
 };
 
 const shortAddress = (value) => {
@@ -1429,6 +1985,14 @@ const authorizationRedirectUrl = (query, code) => {
     return target.toString();
 };
 
+const isAllowedSl1eRedirectUri = (redirectUri, clientId = '') => {
+    const value = String(redirectUri || '');
+    if (value.startsWith('http')) return true;
+
+    return String(clientId || '') === 'meanly.one.native'
+        && value === 'simplel1://identity-selected';
+};
+
 const proofIntentFromQuery = (query) => {
     const type = String(query.intent_type || '').trim();
     if (!type) return null;
@@ -1521,8 +2085,25 @@ const checkRateLimit = (request, reply, bucket, limit = 30, windowMs = 60 * 1000
 };
 
 const createSl1eAuthenticationOptions = (query, hostname, extraChallenge = {}) => {
-    const verifiableCredentials = verifiableCredentialsForQuery(query);
-    if (Object.keys(ledger.accounts || {}).length === 0) {
+    const capsuleOwner = verifiedCapsuleOwner(query.identity_capsule || query.identityCapsule, hostname, query);
+    if (capsuleOwner?.error) {
+        return {
+            statusCode: capsuleOwner.statusCode || 422,
+            payload: { error: capsuleOwner.error },
+        };
+    }
+
+    const localVerifiableCredentials = verifiableCredentialsForQuery(query);
+    const verifiableCredentials = capsuleOwner
+        ? [
+            capsuleOwner,
+            ...localVerifiableCredentials.filter(({ credential }) =>
+                String(credential.credentialId || credential.credential_id) !== String(capsuleOwner.credential.credentialId || capsuleOwner.credential.credential_id)
+            ),
+        ]
+        : localVerifiableCredentials;
+
+    if (Object.keys(ledger.accounts || {}).length === 0 && !capsuleOwner) {
         return { statusCode: 404, payload: { error: 'no_identity_account_registered' } };
     }
 
@@ -1547,6 +2128,10 @@ const createSl1eAuthenticationOptions = (query, hostname, extraChallenge = {}) =
         rpId,
         origin: originForHost(hostname),
         expiresAtMs: Date.now() + 2 * 60 * 1000,
+        capsuleOwner: capsuleOwner || null,
+        assurance_level: capsuleOwner?.assurance_level || 'AL2',
+        credential_source: capsuleOwner ? 'capsule_binding' : 'local_ledger',
+        ledger_lookup: !capsuleOwner,
         ...extraChallenge,
     });
 
@@ -1569,6 +2154,11 @@ const createSl1eAuthenticationOptions = (query, hostname, extraChallenge = {}) =
         statusCode: 200,
         payload: {
             authorization_request_id: authorizationRequestId,
+            assurance_level: capsuleOwner?.assurance_level || 'AL2',
+            evidence_source: capsuleOwner ? 'identity_capsule' : 'local-ledger',
+            credential_source: capsuleOwner ? 'capsule_binding' : 'local_ledger',
+            ledger_lookup: !capsuleOwner,
+            state_proof: capsuleOwner?.state_proof || currentIdentityStateProof('local-ledger'),
             publicKey,
         },
     };
@@ -1583,7 +2173,13 @@ const verifySl1eAuthenticationChallenge = async (authorizationRequestId, asserti
     }
 
     const credentialId = String(assertion?.id || assertion?.rawId || '');
-    const owner = findCredentialOwner(credentialId);
+    const capsuleOwner = challengeRecord.capsuleOwner;
+    const localOwner = findCredentialOwner(credentialId);
+    const localOwnerHasPublicKey = Boolean(localOwner?.credential?.credentialPublicKey || localOwner?.credential?.credential_public_key);
+    const capsuleMatchesCredential = String(capsuleOwner?.credential?.credentialId || capsuleOwner?.credential?.credential_id || '') === credentialId;
+    const owner = localOwnerHasPublicKey
+        ? localOwner
+        : (capsuleMatchesCredential ? capsuleOwner : localOwner);
     if (!owner) {
         const error = new Error('credential_not_bound_to_identity');
         error.statusCode = 403;
@@ -1619,12 +2215,16 @@ const verifySl1eAuthenticationChallenge = async (authorizationRequestId, asserti
     }
 
     owner.credential.counter = verification.authenticationInfo?.newCounter ?? owner.credential.counter ?? 0;
+    const projectionRebuilt = rememberVerifiedCapsuleOwner(owner);
     sl1eRuntimeStore.delete('authChallenges', String(authorizationRequestId));
 
     return {
         ...owner,
         credentialId,
         challengeRecord,
+        assertion_verified: true,
+        projection_rebuilt: projectionRebuilt,
+        identity_restored: owner.source === 'identity_capsule',
         verification,
     };
 };
@@ -1682,6 +2282,7 @@ const issueSl1eProof = (query, verifiedAccount = null, proofContext = {}) => {
         response,
         clientId: proof.clientId,
         redirectUri: proof.redirectUri,
+        intent: proof.intent || null,
         expiresAtMs: expiresAt.getTime(),
     };
 
@@ -1691,52 +2292,156 @@ const issueSl1eProof = (query, verifiedAccount = null, proofContext = {}) => {
     return { code, proofToken, response };
 };
 
+const authorizeBootstrapState = (query, issuerHost = 'connect.simplelayer.one') => {
+    const queryWithBrowserHint = { ...query };
+    const browserIdentityHint = query.browser_identity_hint || query.remembered_identity_hint;
+    if (!queryWithBrowserHint.identity_hint && !queryWithBrowserHint.login_hint && !queryWithBrowserHint.entity_l1_address && browserIdentityHint) {
+        queryWithBrowserHint.identity_hint = browserIdentityHint;
+    }
+
+    const clientName = String(query.client_name || query.client_id || 'External app');
+    const isMeanlyReference = String(query.client_id || '') === 'meanly.reference';
+    const isConnectMode = query.flow === 'connect' || query.mode === 'connect';
+    const wantsIdentitySwitch = String(query.sl1e_switch || '') === '1';
+    const hintedAccount = hintedVerifiableAccount(queryWithBrowserHint);
+    const displayAccount = hintedAccount || (wantsIdentitySwitch ? null : firstVerifiableAccount());
+    const selectedIdentity = displayAccount
+        ? {
+            entity_l1_address: displayAccount.entity_l1_address || displayAccount.address,
+            label: accountVisibleAlias(displayAccount) || shortAddress(displayAccount.entity_l1_address || displayAccount.address),
+            display_alias: accountDisplayName(displayAccount) || null,
+        }
+        : null;
+    const hasIntent = Boolean(String(query.intent_type || '').trim());
+    const rawIntentTitle = String(query.intent_title || '').trim();
+    const rawIntentCta = String(query.intent_cta || '').trim();
+    const initialAction = wantsIdentitySwitch
+        ? 'login'
+        : (isConnectMode && !displayAccount
+            ? 'register'
+            : (query.mode === 'register' ? 'register' : 'login'));
+
+    return {
+        protocol: 'simple-l1',
+        issuer: originForHost(issuerHost),
+        rp_id: rpIdForHost(issuerHost),
+        request: {
+            client_id: query.client_id || null,
+            client_name: clientName,
+            redirect_uri: query.redirect_uri || null,
+            state: query.state || null,
+            nonce: query.nonce || null,
+            has_intent: hasIntent,
+            intent_title: rawIntentTitle || 'Continue with Meanly',
+            intent_cta: rawIntentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue'),
+            is_connect_mode: isConnectMode,
+            wants_identity_switch: wantsIdentitySwitch,
+        },
+        ui: {
+            mode: initialAction === 'register'
+                ? 'Create account'
+                : (hasIntent ? (rawIntentTitle || rawIntentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue')) : 'Sign in'),
+            initial_action: initialAction,
+            status: initialAction === 'register'
+                ? 'Create your account.'
+                : (hasIntent
+                    ? 'Confirm with your passkey.'
+                    : 'Use your passkey to continue.'),
+        },
+        selected_identity: selectedIdentity,
+        identities: verifiableIdentityOptions(),
+    };
+};
+
+const walletBootstrapState = (query = {}, issuerHost = 'connect.simplelayer.one') => {
+    const queryWithBrowserHint = { ...query };
+    const browserIdentityHint = query.browser_identity_hint || query.remembered_identity_hint;
+    if (!queryWithBrowserHint.identity_hint && !queryWithBrowserHint.login_hint && !queryWithBrowserHint.entity_l1_address && browserIdentityHint) {
+        queryWithBrowserHint.identity_hint = browserIdentityHint;
+    }
+
+    const switchMode = String(query.sl1e_switch || '') === '1';
+    const hintedAddress = queryWithBrowserHint.identity_hint || queryWithBrowserHint.login_hint || queryWithBrowserHint.entity_l1_address;
+    const hintedLocalAccount = hintedAddress ? accountByEntityAddress(hintedAddress) : null;
+    const account = switchMode ? null : (hintedVerifiableAccount(queryWithBrowserHint) || hintedLocalAccount || firstVerifiableAccount());
+    const profile = identityProfile(account);
+
+    return {
+        protocol: 'simple-l1',
+        issuer: originForHost(issuerHost),
+        rp_id: rpIdForHost(issuerHost),
+        profile,
+        selected_identity: profile
+            ? {
+                entity_l1_address: profile.entity_l1_address,
+                label: profile.display_alias || profile.username || shortAddress(profile.entity_l1_address),
+                display_alias: profile.display_alias || null,
+            }
+            : null,
+        identities: verifiableIdentityOptions(),
+        switch_mode: switchMode,
+    };
+};
+
 const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') => {
     const clientName = htmlEscape(query.client_name || query.client_id || 'External app');
+    const isMeanlyReference = String(query.client_id || '') === 'meanly.reference';
     const isConnectMode = query.flow === 'connect' || query.mode === 'connect';
     const aliasLocale = normalizeLocale(query.alias_locale || query.ui_locale || query.locale);
     const aliasPlaceholder = aliasLocale === 'ru' ? '@имя' : '@username';
+    const wantsIdentitySwitch = String(query.sl1e_switch || '') === '1';
     const hintedAccount = hintedVerifiableAccount(query);
-    const displayAccount = hintedAccount || (isConnectMode ? null : firstVerifiableAccount());
+    const displayAccount = hintedAccount || (wantsIdentitySwitch ? null : firstVerifiableAccount());
     const displayIdentity = displayAccount
         ? (accountVisibleAlias(displayAccount) || shortAddress(displayAccount.entity_l1_address || displayAccount.address))
         : null;
     const resolvedIdentityHint = displayAccount
         ? String(displayAccount.entity_l1_address || displayAccount.address || '').trim()
         : '';
-    const lockToExistingIdentity = isConnectMode && Boolean(hintedAccount);
-    const initialAction = isConnectMode && !lockToExistingIdentity
+    const identitySwitchButtons = verifiableIdentityOptions()
+        .filter(option => normalizeIdentityHint(option.entity_l1_address) !== normalizeIdentityHint(resolvedIdentityHint))
+        .map(option => `<button type="button" role="menuitem" data-sl1e-switch-identity="${htmlEscape(option.entity_l1_address)}">Use ${htmlEscape(option.label || shortAddress(option.entity_l1_address))}</button>`)
+        .join('');
+    const lockToExistingIdentity = isConnectMode && Boolean(displayAccount);
+    const initialAction = wantsIdentitySwitch
+        ? 'login'
+        : (isConnectMode && !lockToExistingIdentity
         ? 'register'
-        : (query.mode === 'register' ? 'register' : 'login');
+        : (query.mode === 'register' ? 'register' : 'login'));
     const hasIntent = Boolean(String(query.intent_type || '').trim());
+    const rawIntentTitle = String(query.intent_title || '').trim();
+    const rawIntentDescription = String(query.intent_description || '').trim();
+    const rawIntentCta = String(query.intent_cta || '').trim();
+    const humanActionTitle = rawIntentTitle || rawIntentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue');
     const initialStatus = initialAction === 'register'
-        ? 'Create a passkey to get your SL1 identity.'
+        ? 'Create your account.'
         : (hasIntent
-            ? 'Review the intent hash and resource, then approve with your passkey.'
-            : 'Use your passkey here, or continue on your phone.');
+            ? 'Confirm with your passkey.'
+            : 'Use your passkey to continue.');
     const mode = isConnectMode
-        ? (query.intent_type ? 'Approve Intent' : 'Connect Identity')
+        ? (initialAction === 'register'
+            ? 'Create account'
+            : (hasIntent ? humanActionTitle : 'Sign in'))
         : (query.mode === 'register'
-        ? 'Create IdentityProof'
-            : 'Issue IdentityProof');
-    const lead = isConnectMode && !lockToExistingIdentity
-        ? 'One passkey creates your SL1 identity. Your private key stays in iCloud Keychain / Secure Enclave.'
+        ? 'Create account'
+            : 'Sign in');
+    const lead = wantsIdentitySwitch
+        ? 'Choose the identity you want to use here.'
+        : (isConnectMode && !lockToExistingIdentity
+        ? 'Create your account with a passkey.'
         : (isConnectMode && hasIntent
-            ? `${clientName} asks you to approve a concrete execution intent. Review the intent details before signing with your passkey.`
+            ? `Use your passkey to continue.`
             : (isConnectMode
-            ? `${clientName} is asking for an identity proof. Your passkey approves only this request.`
-            : `${clientName} requests an audience-bound identity proof. This does not create authority or permissions.`));
-    const intentTitle = htmlEscape(query.intent_title || 'Authenticate with SL1E');
-    const intentDescription = htmlEscape(query.intent_description || 'The application receives a verifiable identity fact, not authority.');
-    const intentType = htmlEscape(query.intent_type || 'identity.proof');
-    const intentNonce = htmlEscape(query.intent_nonce ? `${String(query.intent_nonce).slice(0, 22)}...` : 'session nonce');
-    const intentResource = htmlEscape(query.intent_resource ? `${String(query.intent_resource).slice(0, 44)}...` : 'identity proof');
-    const intentCta = String(query.intent_cta || '').trim();
+            ? `Use your passkey to continue.`
+            : `Use your passkey to continue.`)));
+    const intentTitle = htmlEscape(rawIntentTitle || 'Continue with Meanly');
+    const intentDescription = htmlEscape(rawIntentDescription || 'Use your passkey to continue.');
+    const intentCta = rawIntentCta;
     const approveWithPasskeyLabel = hasIntent
-        ? `Approve and sign: ${intentCta || 'this intent'}`
-        : 'Approve with Passkey';
+        ? (intentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue'))
+        : 'Sign in';
     const requestedIdentityHint = normalizeIdentityHint(query.identity_hint || query.login_hint || query.entity_l1_address);
-    const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : (hasIntent && lockToExistingIdentity ? ' login-ready' : '')}` : '';
+    const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : (initialAction === 'login' ? ' login-ready' : '')}` : '';
     const hiddenFields = Object.entries(query)
         .map(([key, value]) => `<input type="hidden" name="${htmlEscape(key)}" value="${htmlEscape(value)}">`)
         .join('\n');
@@ -1746,10 +2451,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Simple Layer Identity</title>
-    <meta name="application-name" content="Simple Layer Identity">
+    <title>Meanly One Web Wallet</title>
+    <meta name="application-name" content="Meanly One Web Wallet">
     <meta name="theme-color" content="#f6f6f1">
-    <meta name="apple-mobile-web-app-title" content="Simple Layer Identity">
+    <meta name="apple-mobile-web-app-title" content="Meanly One Web Wallet">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
@@ -1783,6 +2488,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         .identity-actions.visible { display:grid; gap:4px; }
         .identity-actions button { margin:0; padding:8px 9px; border:0; border-radius:8px; background:transparent; color:var(--text); font-size:11px; text-align:left; }
         .identity-actions button:hover { background:var(--accent-soft); }
+        .identity-action-divider { height:1px; margin:4px 2px; background:var(--border); }
+        .identity-switch-panel { display:grid; gap:6px; margin:14px 0 0; padding:8px; border:1px solid var(--border); border-radius:13px; background:#111112; }
+        .identity-switch-panel button { margin:0; padding:10px 11px; border:1px solid var(--border); border-radius:10px; background:#151516; color:var(--text); font-size:12px; text-align:left; }
+        .identity-switch-panel button:hover { background:var(--panel-3); border-color:var(--border-strong); }
         .alias-field { display:none; margin:12px 0 0; text-align:left; }
         .alias-field.visible { display:block; }
         .alias-field label { display:block; margin:0 0 6px; color:var(--muted-2); font-size:10px; font-weight:760; text-transform:uppercase; letter-spacing:.08em; }
@@ -1805,7 +2514,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         button:hover:not(:disabled) { background:#ffffff; border-color:#ffffff; }
         .connect-mode form { display:none; }
         .connect-mode.register-ready form,
-        .connect-mode.login-ready form { display:block; }
+        .connect-mode.login-ready form,
+        .connect-mode .approval-step.active form { display:block; }
         button:disabled { opacity:.58; cursor:wait; }
         .text-action { display:none; margin:9px auto 0; color:#d4d4d8; font-size:11px; font-weight:760; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
         .text-action.visible { display:inline-flex; }
@@ -1819,59 +2529,73 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         .handoff-panel p { color:var(--muted); font-size:11px; line-height:1.35; font-weight:680; }
         .handoff-refresh { width:auto; margin:9px auto 0; padding:0; border:0; border-radius:0; background:transparent; color:#d4d4d8; font-size:11px; font-weight:760; text-decoration:underline; text-underline-offset:3px; }
         @media (max-width: 680px) { .choice-grid { grid-template-columns:1fr; } main { border-radius:16px; } }
+        :root { color-scheme: light; --bg:#eef0fc; --panel:#ffffff; --panel-2:#f8fafc; --panel-3:#efe6ff; --text:#050505; --muted:#4b5563; --muted-2:#6b7280; --accent:#7c3aed; --accent-soft:#efe6ff; --acid:#d8ff6f; --border:#050505; --border-strong:#050505; --shadow:8px 8px 0 #050505; }
+        body { background:linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.035) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.18),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; color:var(--text); font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; padding:22px; }
+        body::before { display:none; }
+        main { width:min(520px,calc(100% - 32px)); padding:28px; background:#fff; border:3px solid var(--border); border-radius:24px; box-shadow:var(--shadow); color:var(--text); }
+        main.no-identity, main:not(.connect-mode) { width:min(520px,calc(100% - 32px)); }
+        .brand { color:var(--border); font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:900; letter-spacing:.08em; margin-bottom:12px; }
+        .dot { width:12px; height:12px; border-radius:0; background:var(--accent); border:2px solid var(--border); box-shadow:2px 2px 0 var(--border); transform:rotate(-8deg); }
+        h1 { color:var(--text); font-size:clamp(38px,7vw,54px); font-weight:950; letter-spacing:-.08em; text-wrap:balance; }
+        p, .connect-lead, .status, .proof span, .choice-card span, .handoff-panel p { color:var(--muted); font-weight:800; }
+        .identity-pill, .choice-card, .proof, .identity-switch-panel, .handoff-panel, .alias-wrap { background:#fff; border:2px solid var(--border); border-radius:14px; box-shadow:3px 3px 0 var(--border); color:var(--text); }
+        .choice-card.selected { background:var(--acid); border-color:var(--border); box-shadow:4px 4px 0 var(--border); }
+        .choice-card:hover { background:var(--accent-soft); border-color:var(--border); }
+        .identity-actions { border:2px solid var(--border); border-radius:14px; background:#fff; box-shadow:5px 5px 0 var(--border); }
+        .identity-actions button, .identity-switch-panel button { color:var(--text); font-weight:900; }
+        .identity-actions button:hover, .identity-switch-panel button:hover { background:var(--accent-soft); }
+        .proof { margin:18px 0; background:#f8fafc; }
+        .proof b { color:var(--text); font-weight:950; }
+        .alias-wrap:focus-within { background:#fff; border-color:var(--accent); box-shadow:4px 4px 0 var(--border); }
+        .alias-wrap input { color:var(--text); caret-color:var(--accent); }
+        .alias-wrap input::placeholder { color:#9ca3af; }
+        .intent-confirmation { border:2px solid var(--border); background:#fff7d6; color:#161411; box-shadow:3px 3px 0 var(--border); }
+        button { border:2px solid var(--border); border-radius:14px; background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--border); font-weight:950; }
+        button:hover:not(:disabled) { background:#6d28d9; border-color:var(--border); transform:translate(-1px,-1px); }
+        .handoff-link, .text-action { color:var(--text); font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:900; }
     </style>
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
 <body>
     <main class="${connectClass}">
-        <div class="brand"><span class="dot"></span>Simple Layer Identity</div>
-        <h1>${mode}</h1>
-        <p class="connect-lead">${htmlEscape(lead)}</p>
+        <div class="brand"><span class="dot"></span>Meanly One Web Wallet</div>
+        <h1 id="sl1e-title">${mode}</h1>
+        <p id="sl1e-lead" class="connect-lead">${htmlEscape(lead)}</p>
+        ${wantsIdentitySwitch && identitySwitchButtons ? `<div class="identity-switch-panel" aria-label="Choose Meanly ID">${identitySwitchButtons}</div>` : ''}
         ${displayIdentity ? `<div class="identity-menu">
             <button id="sl1e-identity-pill" class="identity-pill" type="button" aria-haspopup="true" aria-expanded="false">${htmlEscape(displayIdentity)}</button>
             <div id="sl1e-identity-actions" class="identity-actions" role="menu">
-                <button id="sl1e-manage-identity" type="button" role="menuitem">Manage SL1 identity</button>
-                <button id="sl1e-forget-identity" type="button" role="menuitem">Forget on this device</button>
-                <button id="sl1e-replace-identity" type="button" role="menuitem">Create new SL1 identity</button>
+                <button id="sl1e-manage-identity" type="button" role="menuitem">Manage Meanly ID</button>
+                ${identitySwitchButtons ? `<div class="identity-action-divider" aria-hidden="true"></div>${identitySwitchButtons}` : ''}
+                <button id="sl1e-forget-identity" type="button" role="menuitem">Sign out / choose another</button>
+                <button id="sl1e-replace-identity" type="button" role="menuitem">Create new Meanly ID</button>
             </div>
         </div>` : ''}
-        ${isConnectMode && lockToExistingIdentity ? `
-        <div class="choice-grid" aria-label="SL1 Identity options">
-            <button class="choice-card${initialAction === 'login' ? ' selected' : ''}" type="button" data-sl1e-choice="login">
-                <strong>${hasIntent ? 'Intent ready for review' : 'Continue with passkey'}</strong>
-                <span>${hasIntent ? `Read the canonical hash below, then use the approval button to sign.` : `Confirm it is you and return to ${clientName}.`}</span>
-            </button>
-        </div>
-        <div class="axioms"><span>No private key stored</span><span>Passkey -> SL1 address</span><span>Proof only</span></div>
-        ` : ''}
         <section id="approval-step" class="approval-step${isConnectMode ? ' active' : ''}">
             <div id="sl1e-alias-field" class="alias-field${initialAction === 'register' ? ' visible' : ''}">
                 <label id="sl1e-alias-label" for="sl1e-alias">Choose your alias</label>
                 <div id="sl1e-alias-wrap" class="alias-wrap"><input id="sl1e-alias" name="alias" autocomplete="username" maxlength="25" placeholder="${htmlEscape(aliasPlaceholder)}"></div>
             </div>
             <div class="proof">
-                <div><span>Intent</span><b>${intentTitle}</b></div>
-                <div><span>Type</span><b>${intentType}</b></div>
-                <div><span>Client</span><b>${clientName}</b></div>
-                <div><span>Hash</span><b>${intentNonce}</b></div>
-                <div><span>Resource</span><b>${intentResource}</b></div>
-                <div><span>Rule</span><b>Passkey signs this intent only</b></div>
+                <div><span>You are opening</span><b>${intentTitle}</b></div>
+                <div><span>For</span><b>${clientName}</b></div>
+                <div><span>Safety</span><b>Only this sign-in is approved</b></div>
             </div>
             <p class="${isConnectMode ? 'intent-description' : ''}">${intentDescription}</p>
-            <p class="intent-confirmation">Your passkey will approve only the exact intent hash and resource shown above. It will not grant general access to ${clientName}.</p>
+            <p class="intent-confirmation">Meanly will not get your passkey. It only receives a one-time confirmation that this is you.</p>
             <form id="sl1e-form" method="POST" action="/api/sl1e/authorize/complete">
                 ${hiddenFields}
-                <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create Passkey Identity' : approveWithPasskeyLabel)}</button>
+                <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create account' : approveWithPasskeyLabel)}</button>
             </form>
-            ${isConnectMode && !hasIntent ? `<a id="sl1e-secondary-action" class="text-action visible" href="#">${lockToExistingIdentity ? 'Create new SL1 identity' : 'I already have SL1 identity'}</a>` : ''}
+            ${isConnectMode && !hasIntent ? `<a id="sl1e-secondary-action" class="text-action visible" href="#">${lockToExistingIdentity ? 'Create new account' : 'I already have an account'}</a>` : ''}
             <div id="sl1e-status" class="status">${htmlEscape(initialStatus)}</div>
-            ${isConnectMode ? `<button id="sl1e-handoff-link" class="handoff-link" type="button">Continue on another device</button>
+            ${isConnectMode ? `<button id="sl1e-handoff-link" class="handoff-link" type="button">Use native app or another device</button>
             <div id="sl1e-handoff-panel" class="handoff-panel" aria-live="polite">
                 <img id="sl1e-handoff-qr" alt="QR code to continue on another device">
-                <p id="sl1e-handoff-meta">Scan with a phone that has your SL1 passkey. This screen will continue automatically.</p>
+                <p id="sl1e-handoff-meta">Optional: scan with a phone or native client that has your SL1 controller. This screen will continue automatically.</p>
                 <button id="sl1e-handoff-refresh" class="handoff-refresh" type="button">Refresh QR</button>
             </div>` : ''}
-            <div class="note">Issued by ${htmlEscape(issuerHost)}. You can revoke controllers later.</div>
+            <div class="note">Your identity address stays the same across web and native.</div>
         </section>
     </main>
     <script>
@@ -1879,9 +2603,11 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const button = document.getElementById('sl1e-approve');
         const approveWithPasskeyLabel = ${JSON.stringify(approveWithPasskeyLabel)};
         const lockToExistingIdentity = ${lockToExistingIdentity ? 'true' : 'false'};
-        const resolvedIdentityHint = ${JSON.stringify(resolvedIdentityHint)};
+        let activeIdentityHint = ${JSON.stringify(resolvedIdentityHint)};
         const requestedIdentityHint = ${JSON.stringify(requestedIdentityHint)};
         const aliasPlaceholder = ${JSON.stringify(aliasPlaceholder)};
+        const titleNode = document.getElementById('sl1e-title');
+        const leadNode = document.getElementById('sl1e-lead');
         const statusNode = document.getElementById('sl1e-status');
         const identityPill = document.getElementById('sl1e-identity-pill');
         const identityActions = document.getElementById('sl1e-identity-actions');
@@ -1902,10 +2628,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const registrationReservationMinutes = 5;
         const registerHandoffQrText = () => {
             const alias = aliasLabelFromInput();
-            const visibleAlias = alias ? '@' + alias : 'this SL1 identity';
-            return 'Scan with your phone to finish creating ' + visibleAlias + '. The username is reserved for about ' + registrationReservationMinutes + ' minutes. This screen will continue automatically.';
+            const visibleAlias = alias ? '@' + alias : 'this account';
+            return 'Optional: scan with a native client or phone to finish creating ' + visibleAlias + '. The username is reserved for about ' + registrationReservationMinutes + ' minutes. This screen will continue automatically.';
         };
-        const loginHandoffQrText = 'Scan with a phone that has your SL1 passkey. This screen will continue automatically.';
+        const loginHandoffQrText = 'Optional: scan with a native client or phone that has your SL1 controller. This screen will continue automatically.';
         const setStatus = (message) => { statusNode.textContent = message; };
         const approvalStep = document.getElementById('approval-step');
         const isConnectMode = ${isConnectMode ? 'true' : 'false'};
@@ -1918,24 +2644,18 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         let updatePrimaryButtonState = () => {};
         const aliasReservationStorageKey = 'sl1e.alias_reservation';
 
-        if (isConnectMode && !requestedIdentityHint) {
-            try {
-                const rememberedIdentity = window.localStorage?.getItem('sl1e.identity_hint');
-                if (rememberedIdentity) {
-                    const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.set('identity_hint', rememberedIdentity);
-                    window.location.replace(nextUrl.toString());
-                }
-            } catch (error) {
-                // Local identity memory is an enhancement; Connect works without it.
-            }
-        }
-
         const rememberIdentity = (payload) => {
-            const identityHint = payload?.identity?.entity_l1_address || resolvedIdentityHint;
+            const identityHint = payload?.identity?.entity_l1_address || activeIdentityHint;
             if (!identityHint) return;
+            activeIdentityHint = identityHint;
             try {
                 window.localStorage?.setItem('sl1e.identity_hint', identityHint);
+                if (payload?.identity_capsule) {
+                    window.localStorage?.setItem('sl1e.identity_capsule', JSON.stringify(payload.identity_capsule));
+                }
+                if (payload?.portability_contract) {
+                    window.localStorage?.setItem('sl1e.portability_contract', JSON.stringify(payload.portability_contract));
+                }
             } catch (error) {
                 // Ignore private browsing or storage-disabled contexts.
             }
@@ -2026,6 +2746,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const forgetActiveIdentity = () => {
             try {
                 window.localStorage?.removeItem('sl1e.identity_hint');
+                window.localStorage?.removeItem('sl1e.identity_capsule');
+                window.localStorage?.removeItem('sl1e.portability_contract');
+                window.localStorage?.removeItem('sl1e.alias_reservation');
+                window.sessionStorage?.removeItem('meanly.reference.state');
             } catch (error) {
                 // Storage may be unavailable; navigation still clears query-scoped hint.
             }
@@ -2036,6 +2760,27 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             nextUrl.searchParams.delete('entity_l1_address');
             nextUrl.searchParams.delete('mode');
             nextUrl.searchParams.set('flow', 'connect');
+            nextUrl.searchParams.set('sl1e_switch', '1');
+            window.location.replace(nextUrl.toString());
+        };
+
+        const switchActiveIdentity = (identityHint) => {
+            const normalizedHint = String(identityHint || '').trim();
+            if (!normalizedHint) return;
+            try {
+                window.localStorage?.setItem('sl1e.identity_hint', normalizedHint);
+                window.localStorage?.removeItem('sl1e.identity_capsule');
+                window.localStorage?.removeItem('sl1e.portability_contract');
+            } catch (error) {
+                // Storage may be unavailable; query hint is enough for this request.
+            }
+
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set('identity_hint', normalizedHint);
+            nextUrl.searchParams.delete('login_hint');
+            nextUrl.searchParams.delete('entity_l1_address');
+            nextUrl.searchParams.delete('sl1e_switch');
+            if (isConnectMode) nextUrl.searchParams.set('flow', 'connect');
             window.location.replace(nextUrl.toString());
         };
 
@@ -2051,16 +2796,19 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         });
         document.addEventListener('click', closeIdentityMenu);
         identityActions?.addEventListener('click', (event) => event.stopPropagation());
+        document.querySelectorAll('[data-sl1e-switch-identity]').forEach((button) => {
+            button.addEventListener('click', () => switchActiveIdentity(button.dataset.sl1eSwitchIdentity));
+        });
         manageIdentityButton?.addEventListener('click', () => {
             const nextUrl = new URL('/identity', window.location.origin);
-            const identityHint = resolvedIdentityHint || requestedIdentityHint;
+            const identityHint = activeIdentityHint || requestedIdentityHint;
             if (identityHint) nextUrl.searchParams.set('identity_hint', identityHint);
             window.location.href = nextUrl.toString();
         });
         forgetIdentityButton?.addEventListener('click', forgetActiveIdentity);
         replaceIdentityButton?.addEventListener('click', () => {
             closeIdentityMenu();
-            selectAction('register', 'Create a new SL1 identity. It will become active on this device.');
+            selectAction('register', 'Create a new account. It will become active on this device.');
             aliasInput?.focus();
         });
 
@@ -2099,7 +2847,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             if (selectedAction === 'register') {
                 const aliasError = aliasValidationMessage(label);
                 if (label && aliasError) setStatus(aliasError);
-                if (label && !aliasError) setStatus('Create a new SL1 identity with a passkey. No private key leaves your device.');
+                if (label && !aliasError) setStatus('Create a new account with a passkey. No private key leaves your device.');
             }
             updatePrimaryButtonState();
         };
@@ -2141,7 +2889,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                         stopDeviceHandoffPolling();
                         clearAliasReservation();
                         setStatus('Proof verified on phone. Returning to application...');
-                        redirectFromPayload({ redirect_url: payload.redirect_url });
+                        await redirectFromPayload({ redirect_url: payload.redirect_url });
                     }
                 } catch (error) {
                     // Keep polling; transient network failures should not cancel the QR session.
@@ -2180,9 +2928,13 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                         handoffQuery.set('prior_alias_reservation_owner', priorReservationOwner);
                     }
                 } else {
-                    const identityHint = resolvedIdentityHint;
+                const identityHint = activeIdentityHint;
                     if (identityHint && !handoffQuery.has('identity_hint')) {
                         handoffQuery.set('identity_hint', identityHint);
+                    }
+                    const identityCapsule = window.localStorage?.getItem('sl1e.identity_capsule');
+                    if (identityCapsule && !handoffQuery.has('identity_capsule')) {
+                        handoffQuery.set('identity_capsule', identityCapsule);
                     }
                 }
                 const query = Object.fromEntries(handoffQuery);
@@ -2195,7 +2947,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 if (!response.ok) {
                     if (payload.error === 'alias_unavailable') {
                         const alias = aliasLabelFromInput();
-                        selectAction('login', '@' + alias + ' already exists. Continue with passkey or recover it from your phone.');
+                        selectAction('login', '@' + alias + ' already exists. Sign in or recover it from your phone.');
                         const unavailableError = new Error('@' + alias + ' already exists.');
                         unavailableError.handled = true;
                         throw unavailableError;
@@ -2261,27 +3013,84 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             });
             approvalStep.classList.add('active');
             aliasField?.classList.toggle('visible', asksForAlias);
-            if (aliasLabel) aliasLabel.textContent = selectedAction === 'register' ? 'Choose your alias' : 'Your SL1 alias';
+            if (aliasLabel) aliasLabel.textContent = selectedAction === 'register' ? 'Choose your alias' : 'Your Meanly alias';
             card?.classList.toggle('register-ready', selectedAction === 'register');
             card?.classList.toggle('login-ready', selectedAction === 'login' && !lockToExistingIdentity);
             if (selectedAction === 'register') {
                 activeAliasReservationOwner = null;
             }
             if (secondaryAction) {
-                secondaryAction.textContent = selectedAction === 'register' ? 'I already have SL1 identity' : 'Create new SL1 identity';
+                secondaryAction.textContent = selectedAction === 'register' ? 'I already have an account' : 'Create new account';
                 secondaryAction.classList.add('visible');
             }
             button.textContent = selectedAction === 'register'
-                ? 'Create Passkey Identity'
-                : (lockToExistingIdentity ? approveWithPasskeyLabel : 'Continue with passkey');
+                ? 'Create account'
+                : (lockToExistingIdentity ? approveWithPasskeyLabel : 'Sign in');
             updatePrimaryButtonState();
             setStatus(message || (selectedAction === 'register'
-                ? 'Create a new SL1 identity with a passkey. No private key leaves your device.'
-                : 'Use your passkey here, or continue on your phone.'));
+                ? 'Create your account with a passkey. You can use the same account later in the app.'
+                : 'Confirm with your passkey. We will bring you back to Meanly.'));
         };
 
-        const redirectFromPayload = (payload) => {
+        const hydrateAuthorizeState = async () => {
+            if (!isConnectMode) return;
+            try {
+                const query = new URLSearchParams(window.location.search);
+                if (!query.has('identity_hint') && !query.has('login_hint') && !query.has('entity_l1_address')) {
+                    const rememberedIdentity = window.localStorage?.getItem('sl1e.identity_hint');
+                    if (rememberedIdentity) query.set('browser_identity_hint', rememberedIdentity);
+                }
+
+                const response = await fetch('/api/sl1e/authorize/bootstrap?' + query.toString(), {
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-store',
+                });
+                if (!response.ok) return;
+                const state = await response.json();
+                const selectedIdentity = state?.selected_identity;
+                if (selectedIdentity?.entity_l1_address) {
+                    activeIdentityHint = selectedIdentity.entity_l1_address;
+                    if (identityPill && selectedIdentity.label) identityPill.textContent = selectedIdentity.label;
+                    try { window.localStorage?.setItem('sl1e.identity_hint', activeIdentityHint); } catch (error) {}
+                    if (titleNode && state?.ui?.mode) titleNode.textContent = state.ui.mode;
+                    if (leadNode && state?.request?.has_intent) {
+                        leadNode.textContent = 'Confirm with your passkey. We will return you to ' + state.request.client_name + ' automatically.';
+                    }
+                    if (selectedAction === 'register') {
+                        selectAction('login', state?.ui?.status || 'Confirm with your passkey. We will bring you back to Meanly.');
+                    }
+                    card?.classList.remove('no-identity', 'register-ready');
+                    card?.classList.add('login-ready');
+                    aliasField?.classList.remove('visible');
+                    updatePrimaryButtonState();
+                } else if (state?.ui?.initial_action === 'register' && selectedAction !== 'register') {
+                    if (titleNode && state.ui.mode) titleNode.textContent = state.ui.mode;
+                    selectAction('register', state.ui.status);
+                }
+            } catch (error) {
+                // Bootstrap is an enhancement; existing form flow still works.
+            }
+        };
+
+        const isNativeShell = () => /SovereignApp|MeanlyOne|Meanly One/i.test(String(navigator.userAgent || ''));
+
+        const redirectFromPayload = async (payload) => {
             if (payload.redirect_url) {
+                if (isNativeShell()) {
+                    setStatus('Proof approved. Returning to the browser that started this request...');
+                    try {
+                        await fetch(payload.redirect_url, {
+                            method: 'GET',
+                            mode: 'no-cors',
+                            credentials: 'omit',
+                            cache: 'no-store',
+                        });
+                    } catch (error) {
+                        // The originating browser polls the marketplace for completion.
+                    }
+                    return;
+                }
+
                 window.location.href = payload.redirect_url;
                 return;
             }
@@ -2290,9 +3099,13 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         };
 
         const completeLogin = async (query) => {
-            const identityHint = resolvedIdentityHint;
+            const identityHint = activeIdentityHint;
             if (identityHint && !query.has('identity_hint')) {
                 query.set('identity_hint', identityHint);
+            }
+            const identityCapsule = window.localStorage?.getItem('sl1e.identity_capsule');
+            if (identityCapsule && !query.has('identity_capsule')) {
+                query.set('identity_capsule', identityCapsule);
             }
             const optionsResponse = await fetch('/api/sl1e/authentication/options?' + query.toString(), {
                 headers: { 'Accept': 'application/json' },
@@ -2369,7 +3182,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                         throw reservedError;
                     }
 
-                    selectAction('login', '@' + alias + ' already exists. Continue with passkey or recover it from your phone.');
+                    selectAction('login', '@' + alias + ' already exists. Sign in or recover it from your phone.');
                     const unavailableError = new Error('@' + alias + ' already exists.');
                     unavailableError.handled = true;
                     throw unavailableError;
@@ -2437,16 +3250,16 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
 
             if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) {
                 if (selectedAction === 'login') {
-                    setStatus('This device cannot use passkeys directly. Continue on your phone.');
+                    setStatus('This device cannot use passkeys here. Continue on your phone.');
                 } else {
-                    setStatus('Create your SL1 identity on a device that supports passkeys, like your phone.');
+                    setStatus('Create your Meanly identity on a device that supports passkeys, like your phone.');
                 }
                 await startDeviceHandoff();
                 return;
             }
 
             setBusy(true);
-            setStatus('Preparing passkey challenge...');
+            setStatus('Getting your passkey ready...');
 
             try {
                 const query = new URLSearchParams(window.location.search);
@@ -2455,8 +3268,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     : await completeLogin(query);
 
                 rememberIdentity(completePayload);
-                setStatus('Proof verified. Returning to application...');
-                redirectFromPayload(completePayload);
+                setStatus('Confirmed. Taking you back to Meanly...');
+                await redirectFromPayload(completePayload);
             } catch (error) {
                 const message = error.message || 'Passkey approval failed.';
                 if (error.handled) {
@@ -2472,7 +3285,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 }
 
                 if (selectedAction === 'register' && /previously registered|already registered|excluded/i.test(message)) {
-                    selectAction('login', 'This passkey is already registered. Continue with passkey instead.');
+                    selectAction('login', 'This passkey is already registered. Sign in instead.');
                     setBusy(false);
                     return;
                 }
@@ -2500,7 +3313,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     if (lockToExistingIdentity && !hasIntent) {
                         runSelectedAction();
                     } else if (lockToExistingIdentity && hasIntent) {
-                        setStatus('Review the intent details, then press the approval button to sign.');
+                        setStatus('Press the button to continue.');
                     }
                 } else {
                     aliasInput?.focus();
@@ -2518,7 +3331,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             if (selectedAction === 'register') {
                 selectAction('login', 'Use your passkey here, or continue on your phone.');
             } else {
-                selectAction('register', 'Create a new SL1 identity with a passkey. No private key leaves your device.');
+                selectAction('register', 'Create a new account with a passkey. No private key leaves your device.');
                 aliasInput?.focus();
             }
         });
@@ -2526,6 +3339,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             event.preventDefault();
             runSelectedAction();
         });
+        hydrateAuthorizeState();
         restoreAliasReservation();
         updatePrimaryButtonState();
     </script>
@@ -2745,15 +3559,61 @@ const accountByEntityAddress = (entityAddress) => {
 const identityProfile = (account) => {
     if (!account) return null;
     const entityAddress = account.entity_l1_address || account.address;
-    const keys = accountCredentials(account).map((credential, index) => ({
-        credential_id: credential.credentialId || credential.credential_id,
-        key_l1_address: credential.key_l1_address || account.key_l1_address || null,
-        role: credential.role || (index === 0 ? 'primary' : 'secondary'),
-        rp_id: credential.rp_id || account.rp_id || null,
-        transports: credential.transports || [],
-        registered_at: credential.registered_at || null,
-        status: credential.status || credential.credential_status || 'active',
-    }));
+    const bindings = (ledger.controller_bindings || [])
+        .filter((binding) =>
+            String(binding.entity_l1_address || '') === entityAddress
+            && String(binding.status || 'active') === 'active'
+        );
+    const bindingForCredential = (credential, keyAddress) => bindings.find((binding) => {
+        const credentialId = credential?.credentialId || credential?.credential_id;
+        return (credentialId && String(binding.credential_id || '') === String(credentialId))
+            || (keyAddress && String(binding.key_l1_address || binding.controller_l1_address || '') === String(keyAddress));
+    });
+    const keyRecords = accountCredentials(account).map((credential, index) => {
+        const keyAddress = credential.key_l1_address || account.key_l1_address || null;
+        const binding = bindingForCredential(credential, keyAddress);
+        return {
+            credential_id: credential.credentialId || credential.credential_id || binding?.credential_id || null,
+            key_l1_address: keyAddress,
+            role: credential.role || (index === 0 ? 'primary' : 'secondary'),
+            controller_type: credential.controller_type || binding?.controller_type || (credential.rp_id || binding?.rp_id ? 'webauthn_passkey' : 'native_controller'),
+            label: credential.label || binding?.label || null,
+            rp_id: credential.rp_id || binding?.rp_id || account.rp_id || null,
+            transports: credential.transports || binding?.transports || [],
+            registered_at: credential.registered_at || binding?.created_at || null,
+            status: credential.status || credential.credential_status || binding?.status || 'active',
+            source: binding?.source || credential.source || null,
+        };
+    });
+    const knownKeyAddresses = new Set(keyRecords.map((key) => String(key.key_l1_address || '')).filter(Boolean));
+    const bindingOnlyRecords = bindings
+        .filter((binding) => !knownKeyAddresses.has(String(binding.key_l1_address || binding.controller_l1_address || '')))
+        .map((binding, index) => ({
+            credential_id: binding.credential_id || null,
+            key_l1_address: binding.key_l1_address || binding.controller_l1_address || null,
+            role: index === 0 && keyRecords.length === 0 ? 'primary' : 'secondary',
+            controller_type: binding.controller_type || 'trusted_device',
+            label: binding.label || null,
+            rp_id: binding.rp_id || null,
+            transports: binding.transports || [],
+            registered_at: binding.created_at || null,
+            status: binding.status || 'active',
+            source: binding.source || null,
+        }));
+    const keys = [...keyRecords, ...bindingOnlyRecords];
+    const pendingRequests = (ledger.controller_binding_proposals || [])
+        .filter((proposal) =>
+            String(proposal.entity_l1_address || '') === entityAddress
+            && String(proposal.status || 'pending') === 'pending'
+        )
+        .map((proposal) => ({
+            proposal_id: proposal.proposal_id,
+            proposed_controller_key_l1_address: proposal.proposed_controller_key_l1_address,
+            controller_type: proposal.controller_type || 'unknown',
+            label: proposal.label || null,
+            proposed_at: proposal.proposed_at || null,
+            status: proposal.status || 'pending',
+        }));
 
     return {
         entity_l1_address: entityAddress,
@@ -2762,76 +3622,230 @@ const identityProfile = (account) => {
         display_alias: accountDisplayName(account) || null,
         active_key_count: keys.length,
         keys,
+        pending_device_requests: pendingRequests,
     };
 };
 
 const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
-    const hinted = hintedVerifiableAccount(query) || firstVerifiableAccount();
+    const switchMode = String(query.sl1e_switch || '') === '1';
+    const hintedAddress = query.identity_hint || query.login_hint || query.entity_l1_address;
+    const hintedLocalAccount = hintedAddress ? accountByEntityAddress(hintedAddress) : null;
+    const hinted = switchMode ? null : (hintedVerifiableAccount(query) || hintedLocalAccount || firstVerifiableAccount());
     const profile = identityProfile(hinted);
     const entityAddress = profile?.entity_l1_address || '';
     const profileJson = JSON.stringify(profile);
+    const initialIdentitySessionToken = verifySignedToken(query.identity_session_token, {
+        typ: 'identity_management_session',
+        entity_l1_address: entityAddress,
+    })?.entity_l1_address === entityAddress
+        ? String(query.identity_session_token)
+        : null;
+    const identitySwitchButtons = verifiableIdentityOptions()
+        .filter(option => normalizeIdentityHint(option.entity_l1_address) !== normalizeIdentityHint(entityAddress))
+        .map(option => `<button class="secondary subtle" type="button" data-switch-identity="${htmlEscape(option.entity_l1_address)}">Switch to ${htmlEscape(option.label || shortAddress(option.entity_l1_address))}</button>`)
+        .join('');
     return `<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SL1 Identity</title>
+    <title>Meanly One Web Wallet</title>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
     <style>
-        :root { color-scheme:dark; --bg:#080808; --panel:#101011; --line:#28282b; --text:#f4f4f5; --muted:#8d8d93; --button:#f4f4f5; }
+        :root { color-scheme:dark; --bg:#080808; --panel:#101011; --panel-2:#151517; --line:#28282b; --line-strong:#3a3a40; --text:#f4f4f5; --muted:#8d8d93; --muted-2:#636369; --button:#f4f4f5; --good:#b9f6ca; --warn:#ffe0a3; }
         * { box-sizing:border-box; }
         body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.08),transparent 26rem),#080808; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; display:grid; place-items:center; padding:22px; }
-        main { width:min(720px,100%); border:1px solid var(--line); border-radius:22px; background:linear-gradient(180deg,#121213,#0c0c0d); box-shadow:0 28px 90px rgba(0,0,0,.55); padding:24px; }
+        main { width:min(860px,100%); border:1px solid var(--line); border-radius:24px; background:linear-gradient(180deg,#121213,#0c0c0d); box-shadow:0 28px 90px rgba(0,0,0,.55); padding:24px; }
         .brand { color:var(--muted); font-size:11px; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
-        h1 { margin:10px 0 8px; font-size:38px; line-height:1; letter-spacing:-.06em; }
-        p { color:var(--muted); line-height:1.55; font-weight:650; }
-        .panel { margin-top:18px; border:1px solid var(--line); border-radius:16px; background:#141416; padding:16px; }
+        h1 { margin:10px 0 8px; font-size:42px; line-height:1; letter-spacing:-.065em; }
+        h2 { margin:0 0 10px; font-size:17px; letter-spacing:-.025em; }
+        p { margin:0; color:var(--muted); line-height:1.55; font-weight:650; }
+        label { display:block; margin:12px 0 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+        input { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:#111113; color:var(--text); font:inherit; font-weight:720; }
+        .hero { display:grid; grid-template-columns:minmax(0,1fr); gap:18px; align-items:end; }
+        .steps { display:none; gap:8px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#101012; }
+        .step { display:flex; align-items:center; gap:9px; color:var(--muted); font-size:12px; font-weight:760; }
+        .step span { display:grid; place-items:center; width:22px; height:22px; border-radius:999px; background:#f4f4f5; color:#09090a; font-size:11px; font-weight:900; }
+        .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.74fr); gap:14px; margin-top:18px; }
+        .panel { border:1px solid var(--line); border-radius:18px; background:#141416; padding:16px; }
+        .panel.soft { background:#101012; }
         .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
         .row:last-child { border-bottom:0; }
-        code { color:#dcdce0; word-break:break-all; }
+        .empty { display:grid; gap:12px; padding:16px; border:1px dashed var(--line-strong); border-radius:14px; background:#101012; }
+        .device-list { display:grid; gap:10px; margin-top:10px; }
+        .device { display:grid; gap:7px; padding:13px; border:1px solid var(--line); border-radius:14px; background:var(--panel-2); }
+        .device-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+        .device-title { display:flex; flex-direction:column; gap:2px; }
+        .device-title strong { font-size:14px; }
+        .badge { display:inline-flex; align-items:center; width:max-content; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:11px; font-weight:780; }
+        .badge.ready { color:var(--good); border-color:rgba(185,246,202,.28); background:rgba(185,246,202,.08); }
+        .badge.pending { color:var(--warn); border-color:rgba(255,224,163,.28); background:rgba(255,224,163,.08); }
+        details { margin-top:12px; color:var(--muted); }
+        summary { cursor:pointer; font-size:12px; font-weight:820; }
+        code,pre { color:#dcdce0; word-break:break-all; white-space:pre-wrap; }
+        pre { max-height:260px; overflow:auto; padding:12px; border:1px solid var(--line); border-radius:12px; background:#0b0b0c; font-size:11px; }
         button,.button { display:inline-flex; justify-content:center; align-items:center; min-height:42px; padding:11px 14px; border:1px solid var(--button); border-radius:12px; background:var(--button); color:#09090a; font-weight:820; text-decoration:none; cursor:pointer; }
         button.secondary,.button.secondary { background:transparent; color:var(--text); border-color:var(--line); }
+        button.subtle,.button.subtle { min-height:38px; font-size:12px; }
         button.danger { background:#2a1111; border-color:#683131; color:#ffd5d5; }
         button:disabled { opacity:.55; cursor:wait; }
         .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-        .key { display:grid; gap:6px; padding:12px 0; border-bottom:1px solid var(--line); }
-        .key:last-child { border-bottom:0; }
-        .key-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+        .actions button,.actions .button { flex:1 1 180px; }
+        .primary-actions button { min-height:48px; font-size:14px; }
+        .secondary-actions { margin-top:8px; }
+        .secondary-actions button,.secondary-actions .button { min-height:38px; font-size:12px; opacity:.86; }
+        .hidden { display:none !important; }
+        .pairing-panel { display:none; margin-top:14px; }
+        .pairing-panel.visible { display:grid; gap:12px; }
+        .pairing-panel img { display:block; width:190px; height:190px; margin:0 auto; padding:8px; border-radius:12px; background:#fff; }
         .muted { color:var(--muted); font-size:12px; }
         .status { min-height:18px; margin-top:12px; color:var(--muted); font-size:13px; font-weight:720; }
-        @media (max-width:640px) { h1 { font-size:31px; } .row,.key-head { flex-direction:column; align-items:flex-start; } button,.button { width:100%; } }
+        @media (max-width:760px) { .hero,.grid { grid-template-columns:1fr; } h1 { font-size:34px; } .row,.device-head { flex-direction:column; align-items:flex-start; } button,.button { width:100%; } }
+        :root { color-scheme: light; --bg:#eef0fc; --panel:#ffffff; --panel-2:#f8fafc; --line:#050505; --line-strong:#050505; --text:#050505; --muted:#4b5563; --muted-2:#6b7280; --button:#7c3aed; --good:#047857; --warn:#92400e; --accent:#7c3aed; --brand-soft:#efe6ff; --acid:#d8ff6f; }
+        body { background:linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.035) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.18),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; color:var(--text); font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; }
+        main { background:#fff; border:3px solid var(--line); border-radius:24px; box-shadow:8px 8px 0 var(--line); }
+        .brand { color:var(--line); font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:900; letter-spacing:.08em; }
+        .brand::before { content:""; display:inline-block; width:12px; height:12px; margin-right:8px; background:var(--accent); border:2px solid var(--line); box-shadow:2px 2px 0 var(--line); transform:rotate(-8deg); vertical-align:-2px; }
+        h1 { color:var(--text); font-size:clamp(42px,7vw,64px); font-weight:950; letter-spacing:-.08em; }
+        h2 { color:var(--text); font-weight:950; }
+        p, .muted, .status, label { color:var(--muted); font-weight:800; }
+        .panel, .panel.soft, .empty, .device, .steps, input, pre { background:#fff; border:2px solid var(--line); border-radius:16px; box-shadow:4px 4px 0 var(--line); color:var(--text); }
+        .panel.soft, .empty { background:#f8fafc; }
+        .row { border-bottom:2px solid rgba(5,5,5,.12); }
+        .badge { border:2px solid var(--line); color:var(--line); background:#fff; font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:900; }
+        .badge.ready { color:#064e3b; border-color:var(--line); background:#ecfdf5; }
+        .badge.pending { color:#78350f; border-color:var(--line); background:#fff7d6; }
+        button,.button { border:2px solid var(--line); border-radius:14px; background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--line); font-weight:950; }
+        button.secondary,.button.secondary { background:#fff; color:var(--text); border-color:var(--line); }
+        button.danger { background:#ffe1e1; border-color:var(--line); color:#7f1d1d; }
+        button:hover:not(:disabled),.button:hover { transform:translate(-1px,-1px); box-shadow:5px 5px 0 var(--line); }
     </style>
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
 <body>
     <main>
-        <div class="brand">Simple Layer Identity</div>
-        <h1>Manage SL1 identity</h1>
-        <p>Add another passkey, review active controllers, or forget this identity on the current device.</p>
-        <section class="panel" id="identity-panel"></section>
-        <div class="actions">
-            <button id="auth-button" type="button">Unlock with passkey</button>
-            <button id="add-button" class="secondary" type="button" disabled>Add passkey</button>
-            <button id="forget-button" class="secondary" type="button">Forget on this device</button>
-            <a class="button secondary" href="/connect">Back to Connect</a>
+        <section class="hero">
+            <div>
+                <div class="brand">Meanly One Web Wallet</div>
+                <h1>Web Wallet</h1>
+                <p>Create Identity means add the first controller. Your <code>sl1e_*</code> stays the same when native app, devices, or clients change.</p>
+            </div>
+            <div class="steps" aria-label="Identity flow">
+                <div class="step"><span>1</span>Create or select identity</div>
+                <div class="step"><span>2</span>Add second device</div>
+                <div class="step"><span>3</span>Sync devices</div>
+                <div class="step"><span>4</span>Continue with Meanly</div>
+                <div class="step"><span>5</span>Receive identity proof</div>
+            </div>
+        </section>
+        <div class="grid">
+            <section class="panel" id="identity-panel"></section>
+            <section class="panel soft" id="devices-panel"></section>
         </div>
-        <div id="status" class="status">Issued by ${htmlEscape(issuerHost)}.</div>
+        <section class="panel pairing-panel" id="pairing-panel" aria-live="polite">
+            <h2>Add phone by QR</h2>
+            <p>Scan this QR on your Google phone. The phone will create a device request, then you approve it here.</p>
+            <img id="pairing-qr" alt="QR code to add this phone">
+            <div id="pairing-status" class="muted">Waiting for phone...</div>
+        </section>
+        <div class="actions primary-actions">
+            <button id="continue-button" type="button" disabled>Continue with Meanly</button>
+            <button id="pair-button" class="secondary" type="button" disabled>Add phone</button>
+            <button id="create-button" type="button">Create Web Wallet</button>
+            <button id="auth-button" class="secondary" type="button">Unlock</button>
+        </div>
+        <div class="actions secondary-actions">
+            <button id="sync-button" class="secondary" type="button" disabled>Sync Devices</button>
+            <button id="add-button" class="secondary hidden" type="button" disabled>Add passkey on this Mac</button>
+            ${identitySwitchButtons}
+            <button id="forget-button" class="secondary" type="button">Lock / Sign out</button>
+            <a class="button secondary hidden" href="/connect">Connect page</a>
+        </div>
+        <div id="status" class="status"></div>
     </main>
     <script>
         const initialProfile = ${profileJson};
         const initialEntity = ${JSON.stringify(entityAddress)};
         const panel = document.getElementById('identity-panel');
+        const devicesPanel = document.getElementById('devices-panel');
         const statusNode = document.getElementById('status');
+        const createButton = document.getElementById('create-button');
         const authButton = document.getElementById('auth-button');
         const addButton = document.getElementById('add-button');
+        const pairButton = document.getElementById('pair-button');
+        const syncButton = document.getElementById('sync-button');
+        const continueButton = document.getElementById('continue-button');
         const forgetButton = document.getElementById('forget-button');
-        let identitySessionToken = null;
+        const pairingPanel = document.getElementById('pairing-panel');
+        const pairingQr = document.getElementById('pairing-qr');
+        const pairingStatus = document.getElementById('pairing-status');
+        const switchIdentityButtons = document.querySelectorAll('[data-switch-identity]');
+        let identitySessionToken = ${JSON.stringify(initialIdentitySessionToken)};
         let profile = initialProfile;
+        let lastSync = null;
+        let pairingPollTimer = null;
         const setStatus = (message) => { statusNode.textContent = message; };
         const entityAddress = () => profile?.entity_l1_address || initialEntity;
+        const escapeHtml = (value) => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+        const shortValue = (value) => {
+            const text = String(value || '');
+            return text.length <= 22 ? text : text.slice(0, 12) + '...' + text.slice(-7);
+        };
+        const randomToken = () => {
+            if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+            const bytes = new Uint8Array(16);
+            window.crypto?.getRandomValues(bytes);
+            return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        };
+        const primaryDevice = () => (profile?.keys || []).find((key) => key.role === 'primary') || (profile?.keys || [])[0] || null;
+        const deviceLabel = (key, index) => {
+            if (key.label) return key.label;
+            if (index === 0) return 'This Mac';
+            const type = String(key.controller_type || '').toLowerCase();
+            const transports = (key.transports || []).map((transport) => String(transport).toLowerCase());
+            if (type.includes('native_macos')) return index === 0 ? 'This Mac' : 'Mac device';
+            if (transports.includes('hybrid')) return 'Phone passkey';
+            if (key.rp_id) return index === 0 ? 'Primary passkey' : 'Browser passkey';
+            return index === 0 ? 'Primary device' : 'Trusted device ' + (index + 1);
+        };
+        const deviceMeta = (key) => {
+            const parts = [];
+            if (key.rp_id) parts.push('Passkey');
+            if (key.registered_at) parts.push('Added ' + new Date(key.registered_at).toLocaleDateString());
+            if (!parts.length && key.controller_type) parts.push(String(key.controller_type).replaceAll('_', ' '));
+            return parts.join(' · ') || 'Trusted device';
+        };
+        const friendlyError = (error, fallback) => {
+            const message = String(error?.message || error || '').trim();
+            if (/not allowed|permission|denied|cancel|abort|user agent/i.test(message)) {
+                return 'Passkey was cancelled or not allowed. Try again.';
+            }
+            if (/invalid domain|rp|origin|localhost|127\\.0\\.0\\.1/i.test(message)) {
+                return 'Open this app on localhost and try again.';
+            }
+            if (/already registered/i.test(message)) {
+                return 'This device is already trusted.';
+            }
+            return message || fallback;
+        };
+        const updateActions = () => {
+            const hasIdentity = Boolean(profile);
+            createButton.classList.toggle('hidden', hasIdentity);
+            continueButton.classList.toggle('hidden', !hasIdentity);
+            pairButton.classList.toggle('hidden', !hasIdentity);
+            authButton.classList.toggle('hidden', !hasIdentity || Boolean(identitySessionToken));
+            addButton.classList.add('hidden');
+            syncButton.classList.toggle('hidden', !hasIdentity);
+            forgetButton.classList.toggle('hidden', !hasIdentity);
+        };
 
-        if (!new URLSearchParams(window.location.search).has('identity_hint')) {
+        if (!new URLSearchParams(window.location.search).has('identity_hint') && !new URLSearchParams(window.location.search).has('sl1e_switch')) {
             try {
                 const remembered = window.localStorage?.getItem('sl1e.identity_hint');
                 if (remembered) {
@@ -2844,21 +3858,55 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
 
         const renderProfile = () => {
             if (!profile) {
-                panel.innerHTML = '<p>No active SL1 identity found on this node. Create one through SL1 Connect first.</p>';
+                panel.innerHTML = '<h2>Create your identity</h2><div class="empty"><p>This Mac becomes your first trusted device.</p><label for="identity-alias">Name</label><input id="identity-alias" autocomplete="username" maxlength="25" placeholder="@yourname"><button type="button" id="inline-create-button">Create on this Mac</button></div>';
+                devicesPanel.innerHTML = '<h2>Trusted Devices</h2><p>Your Mac appears here after identity creation.</p>';
+                createButton.disabled = false;
                 authButton.disabled = true;
                 addButton.disabled = true;
+                pairButton.disabled = true;
+                syncButton.disabled = true;
+                continueButton.disabled = true;
+                updateActions();
+                document.getElementById('inline-create-button')?.addEventListener('click', createIdentityOnThisDevice);
                 return;
             }
             const keys = profile.keys || [];
+            const pendingRequests = profile.pending_device_requests || [];
+            const displayName = profile.display_alias || profile.username || 'Meanly identity';
             panel.innerHTML = [
-                '<div class="row"><span>Username</span><strong>' + (profile.username || 'SL1 identity') + '</strong></div>',
-                '<div class="row"><span>Entity</span><code>' + profile.entity_l1_address + '</code></div>',
-                '<div class="row"><span>Active passkeys</span><strong>' + keys.length + '</strong></div>',
-                '<div class="key-list">' + keys.map((key) => '<div class="key"><div class="key-head"><strong>' + (key.role || 'passkey') + '</strong><button class="danger" type="button" data-revoke="' + key.credential_id + '"' + (keys.length <= 1 ? ' disabled' : '') + '>Remove</button></div><code>' + key.key_l1_address + '</code><span class="muted">rpId ' + (key.rp_id || 'unknown') + '</span></div>').join('') + '</div>',
+                '<h2>' + escapeHtml(displayName) + '</h2>',
+                '<p>Your identity is ready on this device.</p>',
+                '<div class="row"><span>Identity</span><strong>Ready</strong></div>',
+                '<div class="row"><span>Trusted devices</span><strong>' + keys.length + '</strong></div>',
+                pendingRequests.length ? '<div class="row"><span>Device requests</span><strong>' + pendingRequests.length + '</strong></div>' : '',
+                lastSync ? '<div class="row"><span>Last Sync</span><strong>' + escapeHtml(lastSync) + '</strong></div>' : '',
+                '<details><summary>Developer details</summary><div class="row"><span>Identity address</span><code>' + escapeHtml(profile.entity_l1_address) + '</code></div><div class="row"><span>Runtime</span><code>localhost</code></div></details>',
+            ].join('');
+            devicesPanel.innerHTML = [
+                '<h2>Trusted Devices</h2>',
+                keys.length
+                    ? '<div class="device-list">' + keys.map((key, index) => '<div class="device"><div class="device-head"><div class="device-title"><strong>' + escapeHtml(deviceLabel(key, index)) + '</strong><span class="muted">' + escapeHtml(deviceMeta(key)) + '</span></div><span class="badge ready">Trusted</span></div><details><summary>Developer details</summary><code>' + escapeHtml(key.key_l1_address || 'device key unavailable') + '</code><button class="danger subtle" type="button" data-revoke="' + escapeHtml(key.credential_id || '') + '"' + (!key.credential_id || keys.length <= 1 ? ' disabled' : '') + '>Remove Device</button></details></div>').join('') + '</div>'
+                    : '<p>No trusted devices yet.</p>',
+                pendingRequests.length
+                    ? '<h2 style="margin-top:16px">Device Requests</h2><div class="device-list">' + pendingRequests.map((request) => '<div class="device"><div class="device-head"><div class="device-title"><strong>' + escapeHtml(request.label || 'New device request') + '</strong><span class="muted">' + escapeHtml(shortValue(request.proposed_controller_key_l1_address)) + '</span></div><span class="badge pending">Waiting for approval</span></div><button class="secondary subtle" type="button" data-approve="' + escapeHtml(request.proposal_id || '') + '"' + (!identitySessionToken ? ' disabled' : '') + '>Approve Device</button></div>').join('') + '</div>'
+                    : '',
             ].join('');
             panel.querySelectorAll('[data-revoke]').forEach((button) => {
                 button.addEventListener('click', () => revokePasskey(button.dataset.revoke));
             });
+            devicesPanel.querySelectorAll('[data-revoke]').forEach((button) => {
+                button.addEventListener('click', () => revokePasskey(button.dataset.revoke));
+            });
+            devicesPanel.querySelectorAll('[data-approve]').forEach((button) => {
+                button.addEventListener('click', () => approveDeviceRequest(button.dataset.approve));
+            });
+            createButton.disabled = true;
+            authButton.disabled = false;
+            addButton.disabled = !identitySessionToken;
+            pairButton.disabled = false;
+            syncButton.disabled = false;
+            continueButton.disabled = false;
+            updateActions();
         };
 
         const refreshProfile = async () => {
@@ -2870,9 +3918,9 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
         };
 
         const authenticate = async () => {
-            if (!profile) return;
+            if (!profile) return false;
             authButton.disabled = true;
-            setStatus('Confirm this identity with passkey...');
+            setStatus('Confirm this identity on a trusted device...');
             try {
                 const optionsResponse = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/authentication/options', { headers: { 'Accept': 'application/json' } });
                 const optionsPayload = await optionsResponse.json();
@@ -2887,24 +3935,31 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
                 if (!completeResponse.ok) throw new Error(completePayload.error || 'Could not unlock identity.');
                 identitySessionToken = completePayload.identity_session_token;
                 addButton.disabled = false;
-                setStatus('Identity unlocked. You can add or remove passkeys.');
+                pairButton.disabled = false;
+                updateActions();
+                setStatus('Identity unlocked. You can add or remove trusted devices.');
+                return true;
             } catch (error) {
-                setStatus(error.message || 'Passkey authentication failed.');
+                setStatus(friendlyError(error, 'Could not unlock identity.'));
+                return false;
             } finally {
                 authButton.disabled = false;
             }
         };
 
-        const addPasskey = async () => {
-            if (!identitySessionToken) return authenticate();
+        const addDevice = async () => {
+            if (!identitySessionToken) {
+                const unlocked = await authenticate();
+                if (!unlocked) return;
+            }
             addButton.disabled = true;
-            setStatus('Preparing new passkey...');
+            setStatus('Preparing a new trusted device...');
             try {
                 const optionsResponse = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/passkeys/registration/options', {
                     headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + identitySessionToken },
                 });
                 const optionsPayload = await optionsResponse.json();
-                if (!optionsResponse.ok) throw new Error(optionsPayload.error || 'Could not prepare passkey.');
+                if (!optionsResponse.ok) throw new Error(optionsPayload.error || 'Could not prepare device setup.');
                 const attestation = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: optionsPayload.publicKey });
                 const completeResponse = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/passkeys/registration/complete', {
                     method: 'POST',
@@ -2912,20 +3967,102 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
                     body: JSON.stringify({ registration_request_id: optionsPayload.registration_request_id, attestation }),
                 });
                 const completePayload = await completeResponse.json();
-                if (!completeResponse.ok) throw new Error(completePayload.error || 'Could not add passkey.');
+                if (!completeResponse.ok) throw new Error(completePayload.error || 'Could not add device.');
                 profile = completePayload.identity;
                 renderProfile();
-                setStatus('New passkey added.');
+                setStatus('Device added. It can now use this identity.');
             } catch (error) {
-                setStatus(error.message || 'Could not add passkey.');
+                setStatus(friendlyError(error, 'Could not add device.'));
             } finally {
                 addButton.disabled = !identitySessionToken;
             }
         };
 
+        const approveDeviceRequest = async (proposalId) => {
+            if (!proposalId) return;
+            if (!identitySessionToken) {
+                const unlocked = await authenticate();
+                if (!unlocked) return;
+            }
+            setStatus('Approving device...');
+            try {
+                const response = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/controller-bindings/proposals/' + encodeURIComponent(proposalId) + '/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + identitySessionToken },
+                    body: JSON.stringify({ approved_by_key_l1_address: primaryDevice()?.key_l1_address || null }),
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || 'Could not approve device.');
+                await refreshProfile();
+                setStatus('Device approved. It is now trusted for this identity.');
+            } catch (error) {
+                setStatus(friendlyError(error, 'Could not approve device.'));
+            }
+        };
+
+        const stopPairingPolling = () => {
+            if (pairingPollTimer) {
+                clearInterval(pairingPollTimer);
+                pairingPollTimer = null;
+            }
+        };
+
+        const pollPairing = (pollUrl) => {
+            stopPairingPolling();
+            pairingPollTimer = setInterval(async () => {
+                try {
+                    const response = await fetch(pollUrl, { headers: { 'Accept': 'application/json' } });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.error || 'Could not check phone pairing.');
+                    if (payload.proposal && payload.status === 'pending') {
+                        profile = payload.identity || profile;
+                        renderProfile();
+                        pairingStatus.textContent = 'Phone request received. Approve it in Trusted Devices.';
+                        setStatus('Phone request received. Approve it to trust this device.');
+                    }
+                    if (payload.status === 'approved') {
+                        stopPairingPolling();
+                        profile = payload.identity || profile;
+                        renderProfile();
+                        pairingStatus.textContent = 'Phone approved.';
+                        setStatus('Phone approved. Devices synced through the same identity.');
+                    }
+                } catch (error) {
+                    pairingStatus.textContent = friendlyError(error, 'Could not check phone pairing.');
+                }
+            }, 2200);
+        };
+
+        const addPhoneByQr = async () => {
+            if (!identitySessionToken) {
+                const unlocked = await authenticate();
+                if (!unlocked) return;
+            }
+            pairButton.disabled = true;
+            setStatus('Preparing phone pairing...');
+            try {
+                const response = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/device-pairings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + identitySessionToken },
+                    body: JSON.stringify({ device_kind: 'phone' }),
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || 'Could not prepare phone pairing.');
+                pairingQr.src = payload.qr_svg_url;
+                pairingPanel.classList.add('visible');
+                pairingStatus.textContent = 'Scan with your Google phone.';
+                setStatus('Scan the QR with your phone, then approve the device request here.');
+                pollPairing(payload.poll_url);
+            } catch (error) {
+                setStatus(friendlyError(error, 'Could not prepare phone pairing.'));
+            } finally {
+                pairButton.disabled = !identitySessionToken;
+            }
+        };
+
         const revokePasskey = async (credentialId) => {
             if (!identitySessionToken) return authenticate();
-            setStatus('Removing passkey...');
+            setStatus('Removing device...');
             const response = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/passkeys/' + encodeURIComponent(credentialId) + '/revoke', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + identitySessionToken },
@@ -2933,21 +4070,817 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
             });
             const payload = await response.json();
             if (!response.ok) {
-                setStatus(payload.error || 'Could not remove passkey.');
+                setStatus(payload.error === 'cannot_remove_last_passkey' ? 'Keep at least one trusted device.' : (payload.error || 'Could not remove device.'));
                 return;
             }
             profile = payload.identity;
             renderProfile();
-            setStatus('Passkey removed.');
+            setStatus('Device removed.');
+        };
+
+        const syncDevices = async () => {
+            if (!profile) return;
+            const device = primaryDevice();
+            const deviceKeyAddress = device?.key_l1_address;
+            if (!deviceKeyAddress) {
+                setStatus('No trusted device key is available to sync.');
+                return;
+            }
+            syncButton.disabled = true;
+            setStatus('Syncing devices...');
+            try {
+                const stateResponse = await fetch('/api/sl1e/identity/' + encodeURIComponent(entityAddress()) + '/mesh/state?device_key_l1_address=' + encodeURIComponent(deviceKeyAddress), { headers: { 'Accept': 'application/json' } });
+                const statePayload = await stateResponse.json();
+                if (!stateResponse.ok) throw new Error(statePayload.error || 'Could not read device state.');
+                const publishResponse = await fetch('/api/sl1e/mesh/mailbox/' + encodeURIComponent(entityAddress()), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ envelope: statePayload.envelope, source: 'identity_home_reference' }),
+                });
+                const publishPayload = await publishResponse.json();
+                if (!publishResponse.ok) throw new Error(publishPayload.error || 'Could not publish device state.');
+                const mailboxResponse = await fetch('/api/sl1e/mesh/mailbox/' + encodeURIComponent(entityAddress()), { headers: { 'Accept': 'application/json' } });
+                const mailboxPayload = await mailboxResponse.json();
+                if (!mailboxResponse.ok) throw new Error(mailboxPayload.error || 'Could not read synced devices.');
+                lastSync = new Date().toLocaleTimeString();
+                renderProfile();
+                setStatus('Devices synced. ' + (mailboxPayload.messages || []).length + ' observation' + ((mailboxPayload.messages || []).length === 1 ? '' : 's') + ' available.');
+            } catch (error) {
+                setStatus(friendlyError(error, 'Could not sync devices.'));
+            } finally {
+                syncButton.disabled = false;
+            }
+        };
+
+        const registrationQuery = (alias) => {
+            const redirectUri = window.location.origin + '/meanly/identity-proof/callback';
+            const state = randomToken();
+            const nonce = randomToken();
+            const params = new URLSearchParams({
+                client_id: 'meanly.reference',
+                client_name: 'Meanly',
+                redirect_uri: redirectUri,
+                state,
+                nonce,
+                mode: 'connect',
+                flow: 'connect',
+                intent_type: 'meanly.login',
+                intent_title: 'Continue with Meanly',
+                intent_description: 'Meanly receives a verified identity result. App session creation is outside this reference flow.',
+                intent_resource: 'meanly.reference',
+                intent_cta: 'Continue',
+            });
+            if (alias) {
+                const normalizedAlias = String(alias).replace(/^@+/, '').trim();
+                if (normalizedAlias) {
+                    params.set('alias', normalizedAlias);
+                    params.set('display_alias', normalizedAlias);
+                }
+            }
+            return { params, state };
+        };
+
+        const createIdentityOnThisDevice = async () => {
+            const inlineButton = document.getElementById('inline-create-button');
+            const aliasInput = document.getElementById('identity-alias');
+            const alias = aliasInput?.value || '';
+            inlineButton.disabled = true;
+            createButton.disabled = true;
+            setStatus('Creating identity on this Mac...');
+            try {
+                const { params, state } = registrationQuery(alias);
+                try { window.sessionStorage?.setItem('meanly.reference.state', state); } catch (error) {}
+                const optionsResponse = await fetch('/api/sl1e/registration/options?' + params.toString(), {
+                    headers: { 'Accept': 'application/json' },
+                });
+                const optionsPayload = await optionsResponse.json();
+                if (!optionsResponse.ok) throw new Error(optionsPayload.message || optionsPayload.error || 'Could not prepare identity creation.');
+                const attestation = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: optionsPayload.publicKey });
+                const completeResponse = await fetch('/api/sl1e/registration/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        registration_request_id: optionsPayload.registration_request_id,
+                        attestation,
+                    }),
+                });
+                const completePayload = await completeResponse.json();
+                if (!completeResponse.ok) throw new Error(completePayload.detail || completePayload.error || 'Could not create identity.');
+                const identity = completePayload.identity || {};
+                if (identity.entity_l1_address) {
+                    try {
+                        window.localStorage?.setItem('sl1e.identity_hint', identity.entity_l1_address);
+                        if (completePayload.identity_capsule) {
+                            window.localStorage?.setItem('sl1e.identity_capsule', JSON.stringify(completePayload.identity_capsule));
+                        }
+                        if (completePayload.portability_contract) {
+                            window.localStorage?.setItem('sl1e.portability_contract', JSON.stringify(completePayload.portability_contract));
+                        }
+                    } catch (error) {}
+                    window.location.href = '/identity?identity_hint=' + encodeURIComponent(identity.entity_l1_address);
+                    return;
+                }
+                window.location.reload();
+            } catch (error) {
+                setStatus(friendlyError(error, 'Could not create identity on this Mac.'));
+                inlineButton.disabled = false;
+                createButton.disabled = false;
+            }
+        };
+
+        const startIdentityFlow = (useCurrentIdentity) => {
+            const { params, state } = registrationQuery('');
+            try { window.sessionStorage?.setItem('meanly.reference.state', state); } catch (error) {}
+            if (useCurrentIdentity && entityAddress()) {
+                params.set('identity_hint', entityAddress());
+            }
+            window.location.href = '/authorize?' + params.toString();
         };
 
         authButton.addEventListener('click', authenticate);
-        addButton.addEventListener('click', addPasskey);
+        addButton.addEventListener('click', addDevice);
+        pairButton.addEventListener('click', addPhoneByQr);
+        syncButton.addEventListener('click', syncDevices);
+        createButton.addEventListener('click', () => profile ? startIdentityFlow(false) : createIdentityOnThisDevice());
+        continueButton.addEventListener('click', () => startIdentityFlow(true));
+        switchIdentityButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const identityHint = String(button.dataset.switchIdentity || '').trim();
+                if (!identityHint) return;
+                try {
+                    window.localStorage?.setItem('sl1e.identity_hint', identityHint);
+                    window.localStorage?.removeItem('sl1e.identity_capsule');
+                } catch (error) {}
+                window.location.href = '/identity?identity_hint=' + encodeURIComponent(identityHint);
+            });
+        });
         forgetButton.addEventListener('click', () => {
+            identitySessionToken = null;
             try { window.localStorage?.removeItem('sl1e.identity_hint'); } catch (error) {}
-            window.location.href = '/connect';
+            try { window.localStorage?.removeItem('sl1e.identity_capsule'); } catch (error) {}
+            try { window.localStorage?.removeItem('sl1e.portability_contract'); } catch (error) {}
+            try { window.localStorage?.removeItem('sl1e.alias_reservation'); } catch (error) {}
+            try { window.sessionStorage?.removeItem('meanly.reference.state'); } catch (error) {}
+            window.location.href = '/identity?sl1e_switch=1';
         });
         renderProfile();
+        if (identitySessionToken) {
+            addButton.disabled = false;
+            pairButton.disabled = false;
+            setStatus('Identity unlocked by Meanly One. You can add a trusted device.');
+        }
+    </script>
+</body>
+</html>`;
+};
+
+const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
+    const initialRoute = {
+        path: String(query.__spa_path || '/wallet'),
+        query: Object.fromEntries(Object.entries(query).filter(([key]) => key !== '__spa_path')),
+    };
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Meanly One Web Wallet</title>
+    <meta name="application-name" content="Meanly One Web Wallet">
+    <meta name="theme-color" content="#eef0fc">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
+    <style>
+        :root { color-scheme: light; --bg:#eef0fc; --panel:#fff; --soft:#f8fafc; --text:#050505; --muted:#4b5563; --accent:#7c3aed; --acid:#d8ff6f; --warn:#fff7d6; --border:#050505; --shadow:8px 8px 0 #050505; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.035) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.18),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; color:var(--text); font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; }
+        .app { min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; padding:28px; }
+        .topbar, .foot { justify-self:center; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:3px solid var(--border); border-radius:999px; background:#fff; box-shadow:4px 4px 0 var(--border); font-size:12px; font-weight:950; }
+        .topbar a, .topbar button { min-height:30px; padding:6px 13px; border:0; border-radius:999px; background:transparent; box-shadow:none; color:var(--text); text-decoration:none; font:inherit; cursor:pointer; }
+        .topbar a.active, .topbar button.active { background:var(--accent); color:#fff; border:2px solid var(--border); }
+        main { display:grid; place-items:center; padding:60px 0; }
+        .card { width:min(460px,calc(100vw - 42px)); padding:30px; border:4px solid var(--border); border-radius:26px; background:#fff; box-shadow:var(--shadow); text-align:center; }
+        .card.wide { width:min(560px,calc(100vw - 42px)); text-align:center; }
+        .brand { display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+        .brand::before { content:""; width:12px; height:12px; background:var(--accent); border:2px solid var(--border); box-shadow:2px 2px 0 var(--border); transform:rotate(-8deg); }
+        h1 { margin:0 0 10px; font-size:clamp(40px,8vw,64px); line-height:.92; letter-spacing:-.085em; font-weight:950; text-wrap:balance; }
+        h2 { margin:0 0 10px; font-size:24px; letter-spacing:-.05em; font-weight:950; }
+        p { margin:0; color:var(--muted); font-weight:800; line-height:1.45; }
+        .pill { display:inline-flex; align-items:center; justify-content:center; gap:7px; margin:8px 0 18px; padding:5px 10px; border:3px solid var(--border); border-radius:999px; background:#fff; box-shadow:3px 3px 0 var(--border); font-size:12px; font-weight:950; }
+        .panel { margin-top:18px; padding:16px; border:3px solid var(--border); border-radius:16px; background:var(--soft); box-shadow:4px 4px 0 var(--border); }
+        .panel.warn { background:var(--warn); text-align:left; }
+        .row { display:flex; justify-content:space-between; gap:16px; padding:7px 0; font-weight:950; }
+        .row span { color:var(--muted); }
+        .actions { display:grid; gap:10px; margin-top:18px; }
+        button, .button { min-height:48px; padding:12px 16px; border:3px solid var(--border); border-radius:14px; background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--border); font-weight:950; cursor:pointer; text-decoration:none; }
+        button.secondary, .button.secondary { background:#fff; color:var(--text); }
+        button.acid { background:var(--acid); color:var(--text); }
+        button:disabled { opacity:.58; cursor:wait; }
+        input { width:100%; min-height:48px; padding:11px 13px; border:3px solid var(--border); border-radius:14px; background:#fff; color:var(--text); box-shadow:3px 3px 0 var(--border); font:inherit; font-weight:900; text-align:center; }
+        input:focus { outline:0; border-color:var(--accent); box-shadow:4px 4px 0 var(--border); }
+        label { display:block; margin:0 0 8px; color:var(--muted); font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; text-align:left; }
+        .identity-list { display:grid; gap:9px; margin-top:16px; }
+        .identity-list button { background:#111; color:#fff; text-align:left; justify-content:flex-start; }
+        .split { display:grid; gap:16px; align-items:start; }
+        .device { display:grid; gap:5px; padding:12px; border:2px solid var(--border); border-radius:14px; background:#fff; }
+        .status { min-height:18px; margin-top:12px; color:var(--muted); font-size:12px; font-weight:900; text-align:center; }
+        .muted { color:var(--muted); font-size:12px; font-weight:850; }
+        .hidden { display:none !important; }
+        @media (max-width:760px) { .app { padding:18px; } main { padding:34px 0; } .split { grid-template-columns:1fr; } .card, .card.wide { width:100%; } }
+    </style>
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <nav class="topbar" aria-label="Meanly navigation">
+            <a href="/">Shop</a>
+            <a href="/catalog">Categories</a>
+            <button type="button" data-nav="/wallet">Vault</button>
+        </nav>
+        <main id="app-root"></main>
+        <div class="foot"><span class="brand">Meanly</span><span>2026</span></div>
+    </div>
+    <script>
+        const initialRoute = ${JSON.stringify(initialRoute)};
+        const root = document.getElementById('app-root');
+        const navButtons = Array.from(document.querySelectorAll('[data-nav]'));
+        const appState = {
+            route: initialRoute,
+            wallet: null,
+            authorize: null,
+            activeIdentityHint: '',
+            profile: null,
+            status: '',
+        };
+        const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+        const shortValue = (value) => { const text = String(value || ''); return text.length <= 22 ? text : text.slice(0, 12) + '...' + text.slice(-7); };
+        const setStatus = (message) => { appState.status = message || ''; const node = document.getElementById('spa-status'); if (node) node.textContent = appState.status; };
+        const routeQuery = () => new URLSearchParams(appState.route.query || {});
+        const rememberIdentity = (identity, payload = {}) => {
+            const hint = identity?.entity_l1_address || identity?.entityAddress || identity;
+            if (!hint) return;
+            appState.activeIdentityHint = String(hint);
+            try {
+                window.localStorage?.setItem('sl1e.identity_hint', appState.activeIdentityHint);
+                if (payload.identity_capsule) window.localStorage?.setItem('sl1e.identity_capsule', JSON.stringify(payload.identity_capsule));
+                if (payload.portability_contract) window.localStorage?.setItem('sl1e.portability_contract', JSON.stringify(payload.portability_contract));
+            } catch (error) {}
+        };
+        const rememberedIdentity = () => {
+            try { return window.localStorage?.getItem('sl1e.identity_hint') || ''; } catch (error) { return ''; }
+        };
+        const randomToken = () => {
+            if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+            const bytes = new Uint8Array(16);
+            window.crypto?.getRandomValues(bytes);
+            return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        };
+        const routeFromLocation = () => ({ path: window.location.pathname, query: Object.fromEntries(new URLSearchParams(window.location.search)) });
+        const navigate = (path, query = {}, replace = false) => {
+            appState.route = { path, query };
+            const qs = new URLSearchParams(query).toString();
+            const next = path + (qs ? '?' + qs : '');
+            if (replace) window.history.replaceState(appState.route, '', next);
+            else window.history.pushState(appState.route, '', next);
+            render();
+        };
+        window.addEventListener('popstate', () => { appState.route = routeFromLocation(); render(); });
+        navButtons.forEach((button) => button.addEventListener('click', () => navigate(button.dataset.nav, {})));
+        const updateNav = () => {
+            navButtons.forEach((button) => button.classList.toggle('active', button.dataset.nav === '/wallet'));
+        };
+        const apiQueryWithBrowserHint = () => {
+            const query = routeQuery();
+            if (!query.has('identity_hint') && !query.has('login_hint') && !query.has('entity_l1_address')) {
+                const remembered = rememberedIdentity();
+                if (remembered) query.set('browser_identity_hint', remembered);
+            }
+            return query;
+        };
+        const loadWalletState = async () => {
+            const query = apiQueryWithBrowserHint();
+            const response = await fetch('/api/sl1e/wallet/bootstrap?' + query.toString(), { headers:{ Accept:'application/json' }, cache:'no-store' });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || 'Could not load wallet.');
+            appState.wallet = payload;
+            appState.profile = payload.profile || null;
+            if (payload.selected_identity?.entity_l1_address) rememberIdentity(payload.selected_identity.entity_l1_address);
+        };
+        const loadAuthorizeState = async () => {
+            const query = apiQueryWithBrowserHint();
+            const response = await fetch('/api/sl1e/authorize/bootstrap?' + query.toString(), { headers:{ Accept:'application/json' }, cache:'no-store' });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || 'Could not load request.');
+            appState.authorize = payload;
+            if (payload.selected_identity?.entity_l1_address) rememberIdentity(payload.selected_identity.entity_l1_address);
+        };
+        const renderLoading = () => {
+            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Loading</h1><p>Preparing your wallet...</p></section>';
+        };
+        const renderIdentityList = (identities, current) => {
+            if (!identities?.length) return '';
+            return '<div class="identity-list">' + identities.map((identity) => '<button type="button" data-switch-identity="' + escapeHtml(identity.entity_l1_address) + '">' + (current === identity.entity_l1_address ? 'Use ' : 'Switch to ') + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>').join('') + '</div>';
+        };
+        const renderAuthorize = () => {
+            const state = appState.authorize;
+            const request = state.request || {};
+            const identity = state.selected_identity;
+            const identities = state.identities || [];
+            const isRegister = state.ui?.initial_action === 'register' && !identity;
+            const title = isRegister ? 'Create account' : (state.ui?.mode || request.intent_title || 'Open Meanly Vault');
+            root.innerHTML = '<section class="card">' +
+                '<div class="brand">Meanly One Web Wallet</div>' +
+                '<h1>' + escapeHtml(title) + '</h1>' +
+                '<p>' + escapeHtml(isRegister ? 'Choose a name and continue with your passkey.' : 'Use your passkey to continue.') + '</p>' +
+                (identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
+                (state.request?.wants_identity_switch ? renderIdentityList(identities, identity?.entity_l1_address) : '') +
+                (isRegister ? '<div class="panel"><label for="spa-alias">Username</label><input id="spa-alias" autocomplete="username" maxlength="25" placeholder="@username"></div>' : '') +
+                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(isRegister ? 'Create account' : (request.intent_cta || 'Continue')) + '</button>' +
+                (!isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">Choose another account</button>' : '') +
+                (isRegister && identities.length ? '<button id="sign-in-existing" class="secondary" type="button">I already have an account</button>' : '') +
+                '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || state.ui?.status || '') + '</div></section>';
+            document.getElementById('primary-action')?.addEventListener('click', () => isRegister ? createAccountFromAuthorize() : approveAuthorize());
+            document.getElementById('choose-account')?.addEventListener('click', () => {
+                const query = Object.fromEntries(routeQuery());
+                query.sl1e_switch = '1';
+                navigate('/authorize', query);
+            });
+            document.getElementById('sign-in-existing')?.addEventListener('click', () => {
+                const first = identities[0]?.entity_l1_address;
+                if (!first) return;
+                rememberIdentity(first);
+                const query = Object.fromEntries(routeQuery());
+                query.identity_hint = first;
+                delete query.sl1e_switch;
+                navigate('/authorize', query, true);
+            });
+            root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
+                rememberIdentity(button.dataset.switchIdentity);
+                const query = Object.fromEntries(routeQuery());
+                query.identity_hint = button.dataset.switchIdentity;
+                delete query.sl1e_switch;
+                navigate('/authorize', query);
+            }));
+        };
+        const renderWallet = () => {
+            const wallet = appState.wallet || {};
+            const profile = wallet.profile;
+            const identities = wallet.identities || [];
+            if (!profile) {
+                root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Create account</h1><p>Choose a name and continue with your passkey.</p><div class="panel"><label for="wallet-alias">Username</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="@username"></div><div class="actions"><button id="wallet-create" type="button">Create account</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">Sign in</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+                document.getElementById('wallet-create')?.addEventListener('click', createAccountForWallet);
+                document.getElementById('wallet-existing')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
+                return;
+            }
+            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Your Vault</h1><p>Saved items and orders are ready here.</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">Open Vault</button><button id="switch-wallet" class="secondary" type="button">Switch account</button><button id="lock-wallet" class="secondary" type="button">Sign out</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            document.getElementById('open-vault')?.addEventListener('click', openVaultAuthorize);
+            document.getElementById('switch-wallet')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
+            document.getElementById('lock-wallet')?.addEventListener('click', () => {
+                try {
+                    window.localStorage?.removeItem('sl1e.identity_hint');
+                    window.localStorage?.removeItem('sl1e.identity_capsule');
+                    window.localStorage?.removeItem('sl1e.portability_contract');
+                } catch (error) {}
+                appState.activeIdentityHint = '';
+                navigate('/wallet', { sl1e_switch:'1' });
+            });
+        };
+        const renderSwitch = () => {
+            const wallet = appState.wallet || {};
+            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Sign in</h1><p>Choose the account you want to use here.</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">Create account</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
+                rememberIdentity(button.dataset.switchIdentity);
+                navigate('/wallet', { identity_hint: button.dataset.switchIdentity });
+            }));
+            document.getElementById('new-account')?.addEventListener('click', () => navigate('/wallet', { mode:'register' }));
+        };
+        const render = async () => {
+            updateNav();
+            renderLoading();
+            try {
+                if (appState.route.path === '/authorize') {
+                    await loadAuthorizeState();
+                    renderAuthorize();
+                    return;
+                }
+                await loadWalletState();
+                if (appState.route.query?.sl1e_switch === '1') renderSwitch();
+                else renderWallet();
+            } catch (error) {
+                root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Try again</h1><p>' + escapeHtml(error.message || 'Could not load wallet.') + '</p><div class="actions"><button type="button" onclick="window.location.reload()">Reload</button></div></section>';
+            }
+        };
+        const authorizeQueryWithIdentity = () => {
+            const query = routeQuery();
+            const identityHint = appState.activeIdentityHint || appState.authorize?.selected_identity?.entity_l1_address;
+            if (identityHint && !query.has('identity_hint')) query.set('identity_hint', identityHint);
+            const capsule = (() => { try { return window.localStorage?.getItem('sl1e.identity_capsule'); } catch (error) { return ''; } })();
+            if (capsule && !query.has('identity_capsule')) query.set('identity_capsule', capsule);
+            return query;
+        };
+        const redirectFromPayload = (payload) => {
+            if (!payload.redirect_url) throw new Error('Connect response did not include a redirect URL.');
+            window.location.href = payload.redirect_url;
+        };
+        const approveAuthorize = async () => {
+            if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) throw new Error('This device cannot use passkeys here.');
+            setStatus('Getting your passkey ready...');
+            const query = authorizeQueryWithIdentity();
+            const optionsResponse = await fetch('/api/sl1e/authentication/options?' + query.toString(), { headers:{ Accept:'application/json' } });
+            const optionsPayload = await optionsResponse.json();
+            if (!optionsResponse.ok) throw new Error(optionsPayload.error || 'Could not prepare passkey.');
+            setStatus('Confirm with Face ID, Touch ID, or your security key...');
+            const assertion = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: optionsPayload.publicKey });
+            setStatus('Confirming...');
+            const completeResponse = await fetch('/api/sl1e/authorize/complete', { method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' }, body:JSON.stringify({ authorization_request_id: optionsPayload.authorization_request_id, assertion }) });
+            const completePayload = await completeResponse.json();
+            if (!completeResponse.ok) throw new Error(completePayload.error || 'Could not continue.');
+            rememberIdentity(completePayload.identity, completePayload);
+            setStatus('Confirmed. Taking you back to Meanly...');
+            redirectFromPayload(completePayload);
+        };
+        const normalizedAlias = (value) => String(value || '').trim().replace(/^@+/, '').toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9\\-]/g, '').slice(0, 24);
+        const createAccount = async (query, aliasInputId, shouldRedirect) => {
+            const alias = normalizedAlias(document.getElementById(aliasInputId)?.value || '');
+            if (!alias || alias.length < 3) { setStatus('Username must be at least 3 characters.'); return; }
+            query.delete('identity_hint');
+            query.delete('login_hint');
+            query.delete('entity_l1_address');
+            query.set('alias', alias);
+            query.set('display_alias', alias);
+            setStatus('Creating your account...');
+            const optionsResponse = await fetch('/api/sl1e/registration/options?' + query.toString(), { headers:{ Accept:'application/json' } });
+            const optionsPayload = await optionsResponse.json();
+            if (!optionsResponse.ok) throw new Error(optionsPayload.message || optionsPayload.error || 'Could not prepare account creation.');
+            const attestation = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: optionsPayload.publicKey });
+            const completeResponse = await fetch('/api/sl1e/registration/complete', { method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' }, body:JSON.stringify({ registration_request_id: optionsPayload.registration_request_id, attestation }) });
+            const completePayload = await completeResponse.json();
+            if (!completeResponse.ok) throw new Error(completePayload.detail || completePayload.error || 'Could not create account.');
+            rememberIdentity(completePayload.identity, completePayload);
+            if (shouldRedirect) {
+                redirectFromPayload(completePayload);
+                return;
+            }
+            setStatus('Account created.');
+            navigate('/wallet', { identity_hint: completePayload.identity?.entity_l1_address || appState.activeIdentityHint }, true);
+        };
+        const createAccountFromAuthorize = async () => createAccount(routeQuery(), 'spa-alias', true);
+        const createAccountForWallet = async () => {
+            const params = new URLSearchParams({
+                client_id:'meanly.reference',
+                client_name:'Meanly',
+                redirect_uri: window.location.origin + '/meanly/identity-proof/callback',
+                state: randomToken(),
+                nonce: randomToken(),
+                mode:'connect',
+                flow:'connect',
+                intent_type:'meanly.login',
+                intent_title:'Open Meanly Vault',
+                intent_description:'Create your Meanly account.',
+                intent_resource:'meanly.reference',
+                intent_cta:'Open Vault',
+            });
+            await createAccount(params, 'wallet-alias', false);
+        };
+        const openVaultAuthorize = () => {
+            const params = {
+                client_id:'meanly.reference',
+                client_name:'Meanly',
+                redirect_uri: window.location.origin + '/meanly/identity-proof/callback',
+                state: randomToken(),
+                nonce: randomToken(),
+                mode:'connect',
+                flow:'connect',
+                intent_type:'meanly.login',
+                intent_title:'Open Meanly Vault',
+                intent_description:'Sign in to open purchases, receipts, safe codes, and saved products.',
+                intent_resource:'meanly.reference',
+                intent_cta:'Open Vault',
+            };
+            if (appState.activeIdentityHint || appState.profile?.entity_l1_address) params.identity_hint = appState.activeIdentityHint || appState.profile.entity_l1_address;
+            navigate('/authorize', params);
+        };
+        appState.route = window.location.pathname === initialRoute.path ? initialRoute : routeFromLocation();
+        render();
+    </script>
+</body>
+</html>`;
+};
+
+const renderMeanlyIdentityProofCallbackPage = (issuerHost = 'connect.simplelayer.one') => `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Meanly Identity Result</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
+    <style>
+        :root { color-scheme:dark; --bg:#080808; --panel:#101011; --line:#28282b; --text:#f4f4f5; --muted:#8d8d93; --button:#f4f4f5; --good:#b9f6ca; --warn:#ffe0a3; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.08),transparent 26rem),#080808; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; display:grid; place-items:center; padding:22px; }
+        main { width:min(620px,100%); border:1px solid var(--line); border-radius:24px; background:linear-gradient(180deg,#121213,#0c0c0d); box-shadow:0 28px 90px rgba(0,0,0,.55); padding:24px; }
+        .brand { color:var(--muted); font-size:11px; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
+        h1 { margin:10px 0 8px; font-size:38px; line-height:1; letter-spacing:-.06em; }
+        p { margin:0; color:var(--muted); line-height:1.55; font-weight:650; }
+        .result { margin-top:18px; padding:16px; border:1px solid var(--line); border-radius:16px; background:#141416; }
+        .badge { display:inline-flex; margin-bottom:10px; padding:5px 9px; border-radius:999px; border:1px solid rgba(185,246,202,.28); background:rgba(185,246,202,.08); color:var(--good); font-size:12px; font-weight:820; }
+        .badge.warn { border-color:rgba(255,224,163,.28); background:rgba(255,224,163,.08); color:var(--warn); }
+        .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+        .row:last-child { border-bottom:0; }
+        code,pre { color:#dcdce0; word-break:break-all; white-space:pre-wrap; }
+        pre { max-height:260px; overflow:auto; padding:12px; border:1px solid var(--line); border-radius:12px; background:#0b0b0c; font-size:11px; }
+        details { margin-top:12px; color:var(--muted); }
+        summary { cursor:pointer; font-size:12px; font-weight:820; }
+        .button { display:inline-flex; justify-content:center; align-items:center; width:100%; min-height:42px; margin-top:14px; padding:11px 14px; border:1px solid var(--button); border-radius:12px; background:var(--button); color:#09090a; font-weight:820; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="brand">Meanly reference</div>
+        <h1>Finishing identity check</h1>
+        <p>This screen receives the local result from Meanly One reference runtime. It does not create a Marketplace session yet.</p>
+        <section class="result" id="result">
+            <span class="badge warn">Checking</span>
+            <p>Exchanging the one-time code for a verified identity result...</p>
+        </section>
+        <a class="button" href="/identity">Back to My Identity</a>
+    </main>
+    <script>
+        const resultNode = document.getElementById('result');
+        const escapeHtml = (value) => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+        const shortValue = (value) => {
+            const text = String(value || '');
+            return text.length <= 26 ? text : text.slice(0, 14) + '...' + text.slice(-8);
+        };
+        const renderError = (message) => {
+            resultNode.innerHTML = '<span class="badge warn">Needs attention</span><p>' + escapeHtml(message) + '</p>';
+        };
+        const renderSuccess = (payload) => {
+            const envelope = payload.identity_proof_envelope || {};
+            const subject = envelope.subject || {};
+            resultNode.innerHTML = [
+                '<span class="badge">Identity proof received</span>',
+                '<p>Meanly can now exchange this verified identity result for its own app session when the Marketplace callback exists.</p>',
+                '<div class="row"><span>Identity</span><code>' + escapeHtml(shortValue(subject.entity_l1_address)) + '</code></div>',
+                '<div class="row"><span>Client</span><strong>' + escapeHtml(envelope.client_id || 'Meanly') + '</strong></div>',
+                '<div class="row"><span>Intent</span><strong>' + escapeHtml(envelope.intent?.type || 'meanly.login') + '</strong></div>',
+                '<details><summary>Proof details</summary><pre>' + escapeHtml(JSON.stringify(envelope, null, 2)) + '</pre></details>',
+            ].join('');
+        };
+        const finish = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            if (!code) {
+                renderError('No identity result was returned. Start again from My Identity.');
+                return;
+            }
+            try {
+                const expectedState = window.sessionStorage?.getItem('meanly.reference.state');
+                if (expectedState && state !== expectedState) {
+                    renderError('The returned request did not match this browser session. Start again from My Identity.');
+                    return;
+                }
+            } catch (error) {}
+            try {
+                const response = await fetch('/api/sl1e/authorization-code/exchange', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        code,
+                        client_id: 'meanly.reference',
+                        redirect_uri: window.location.origin + window.location.pathname,
+                        intent_type: 'meanly.login',
+                    }),
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || 'Could not receive identity proof.');
+                try { window.sessionStorage?.removeItem('meanly.reference.state'); } catch (error) {}
+                renderSuccess(payload);
+            } catch (error) {
+                renderError(error.message || 'Could not receive identity proof.');
+            }
+        };
+        finish();
+    </script>
+</body>
+</html>`;
+
+const renderMarketplaceSellerLaunchPage = () => `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Marketplace Sellers</title>
+    <style>
+        :root { color-scheme:light; --bg:#f6f4ee; --panel:#fff; --ink:#090909; --muted:#5f5b55; --line:#111; --accent:#8b3dff; --ok:#168039; --warn:#b56b00; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:linear-gradient(180deg,#faf8f1,#eee9dd); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,sans-serif; padding:24px; }
+        main { width:min(1080px,100%); margin:0 auto; }
+        .hero,.panel { background:var(--panel); border:3px solid var(--line); box-shadow:8px 8px 0 var(--line); border-radius:18px; padding:22px; }
+        .hero { display:flex; justify-content:space-between; gap:20px; align-items:flex-end; margin-bottom:18px; }
+        .brand { font-size:12px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+        h1 { margin:8px 0 0; font-size:46px; line-height:.95; letter-spacing:-.07em; }
+        h2 { margin:0 0 12px; font-size:21px; letter-spacing:-.04em; }
+        p { margin:0; color:var(--muted); font-weight:720; line-height:1.45; }
+        .grid { display:grid; grid-template-columns:360px minmax(0,1fr); gap:18px; }
+        form { display:grid; gap:10px; }
+        label { display:grid; gap:5px; font-size:11px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+        input { width:100%; min-height:42px; padding:10px 12px; border:2px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:inherit; font-weight:760; }
+        button,.button { display:inline-flex; justify-content:center; align-items:center; min-height:42px; padding:11px 14px; border:2px solid var(--line); border-radius:10px; background:var(--ink); color:#fff; font-weight:900; cursor:pointer; text-decoration:none; }
+        button.secondary { background:#fff; color:var(--ink); }
+        .list { display:grid; gap:12px; }
+        .seller { border:2px solid var(--line); border-radius:14px; padding:14px; background:#fffdf7; }
+        .seller-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+        .badge { padding:5px 8px; border:2px solid var(--line); border-radius:999px; font-size:11px; font-weight:950; text-transform:uppercase; }
+        .badge.active,.badge.ready { color:var(--ok); }
+        .badge.draft,.badge.needs_setup { color:var(--warn); }
+        .meta { margin-top:9px; display:grid; gap:6px; color:var(--muted); font-size:13px; font-weight:720; }
+        .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+        .status { min-height:20px; margin-top:12px; color:var(--muted); font-size:13px; font-weight:800; }
+        @media (max-width:820px) { .hero,.grid { grid-template-columns:1fr; display:grid; } h1 { font-size:36px; } }
+    </style>
+</head>
+<body>
+    <main>
+        <section class="hero">
+            <div>
+                <div class="brand">Meanly Marketplace</div>
+                <h1>Seller Launch</h1>
+                <p>Fast seller activation for the marketplace. App-layer launch records only; protocol semantics stay frozen.</p>
+            </div>
+            <a class="button" href="/identity">Meanly One</a>
+        </section>
+        <div class="grid">
+            <section class="panel">
+                <h2>Add seller</h2>
+                <form id="seller-form">
+                    <label>Store name<input name="display_name" placeholder="Seller store" required></label>
+                    <label>SL1 identity<input name="entity_l1_address" placeholder="sl1e_..."></label>
+                    <label>Contact<input name="contact" placeholder="seller@example.com"></label>
+                    <label>Payout hint<input name="payout_hint" placeholder="Stripe / bank / manual"></label>
+                    <button type="submit">Create Seller</button>
+                </form>
+                <div class="status" id="status"></div>
+            </section>
+            <section class="panel">
+                <h2>Launch queue</h2>
+                <div id="seller-list" class="list"></div>
+            </section>
+        </div>
+    </main>
+    <script>
+        const statusNode = document.getElementById('status');
+        const listNode = document.getElementById('seller-list');
+        const sellerForm = document.getElementById('seller-form');
+        const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+        const setStatus = (message) => { statusNode.textContent = message; };
+        const api = async (url, options = {}) => {
+            const response = await fetch(url, { ...options, headers: { 'Content-Type':'application/json', 'Accept':'application/json', ...(options.headers || {}) } });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || 'Request failed');
+            return payload;
+        };
+        const refresh = async () => {
+            const payload = await api('/api/marketplace/sellers');
+            const sellers = payload.sellers || [];
+            listNode.innerHTML = sellers.length ? sellers.map((seller) => {
+                const checklist = seller.activation?.checklist || {};
+                return '<div class="seller"><div class="seller-head"><div><strong>' + escapeHtml(seller.display_name) + '</strong><p>@' + escapeHtml(seller.slug) + '</p></div><span class="badge ' + escapeHtml(seller.status) + '">' + escapeHtml(seller.status) + '</span></div><div class="meta"><span>Identity: ' + escapeHtml(seller.entity_l1_address || 'not linked') + '</span><span>Listings: ' + escapeHtml(seller.listing_count || 0) + '</span><span>Ready: identity ' + (checklist.identity_ready ? 'yes' : 'no') + ', listing ' + (checklist.listing_ready ? 'yes' : 'no') + ', payout ' + (checklist.payout_ready ? 'yes' : 'no') + '</span></div><div class="actions"><button class="secondary" type="button" data-add-listing="' + escapeHtml(seller.seller_id) + '">Add sample listing</button><button type="button" data-activate="' + escapeHtml(seller.seller_id) + '">Activate</button></div></div>';
+            }).join('') : '<p>No sellers yet. Add the first one to start launch.</p>';
+            listNode.querySelectorAll('[data-add-listing]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    button.disabled = true;
+                    try {
+                        await api('/api/marketplace/sellers/' + encodeURIComponent(button.dataset.addListing) + '/listings', { method:'POST', body:JSON.stringify({ title:'Digital product launch item', description:'First seller listing for marketplace launch.', category:'digital', price:'25.00', currency:'USD', delivery_mode:'manual' }) });
+                        setStatus('Listing added.');
+                        await refresh();
+                    } catch (error) {
+                        setStatus(error.message || 'Could not add listing.');
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
+            listNode.querySelectorAll('[data-activate]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    button.disabled = true;
+                    try {
+                        await api('/api/marketplace/sellers/' + encodeURIComponent(button.dataset.activate) + '/activate', { method:'POST', body:'{}' });
+                        setStatus('Seller activated.');
+                        await refresh();
+                    } catch (error) {
+                        setStatus(error.message || 'Seller is not ready yet.');
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
+        };
+        sellerForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            try {
+                await api('/api/marketplace/sellers', { method:'POST', body:JSON.stringify(Object.fromEntries(new FormData(sellerForm).entries())) });
+                sellerForm.reset();
+                setStatus('Seller created.');
+                await refresh();
+            } catch (error) {
+                setStatus(error.message || 'Could not create seller.');
+            }
+        });
+        refresh().catch((error) => setStatus(error.message || 'Could not load sellers.'));
+    </script>
+</body>
+</html>`;
+
+const renderSl1eDevicePairingPage = (pairingId, token, pairing, issuerHost = 'connect.simplelayer.one') => {
+    const identityLabel = pairing.identity_label || shortAddress(pairing.entityAddress);
+    return `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Device</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
+    <style>
+        :root { color-scheme:dark; --bg:#080808; --panel:#101011; --line:#28282b; --text:#f4f4f5; --muted:#8d8d93; --button:#f4f4f5; --good:#b9f6ca; --warn:#ffe0a3; }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.08),transparent 26rem),#080808; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; display:grid; place-items:center; padding:22px; }
+        main { width:min(520px,100%); border:1px solid var(--line); border-radius:24px; background:linear-gradient(180deg,#121213,#0c0c0d); box-shadow:0 28px 90px rgba(0,0,0,.55); padding:24px; }
+        .brand { color:var(--muted); font-size:11px; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
+        h1 { margin:10px 0 8px; font-size:38px; line-height:1; letter-spacing:-.06em; }
+        p { margin:0; color:var(--muted); line-height:1.55; font-weight:650; }
+        label { display:block; margin:18px 0 7px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+        input { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:#111113; color:var(--text); font:inherit; font-weight:720; }
+        button { display:inline-flex; justify-content:center; align-items:center; width:100%; min-height:44px; margin-top:14px; padding:11px 14px; border:1px solid var(--button); border-radius:12px; background:var(--button); color:#09090a; font-weight:820; cursor:pointer; }
+        button:disabled { opacity:.55; cursor:wait; }
+        .card { margin-top:18px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#141416; }
+        .status { min-height:18px; margin-top:12px; color:var(--muted); font-size:13px; font-weight:720; }
+        .badge { display:inline-flex; margin-bottom:10px; padding:5px 9px; border-radius:999px; border:1px solid rgba(255,224,163,.28); background:rgba(255,224,163,.08); color:var(--warn); font-size:12px; font-weight:820; }
+        .badge.ready { border-color:rgba(185,246,202,.28); background:rgba(185,246,202,.08); color:var(--good); }
+    </style>
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+</head>
+<body>
+    <main>
+        <div class="brand">Meanly One pairing</div>
+        <h1>Add this device</h1>
+        <p>This phone will request access to <strong>${htmlEscape(identityLabel)}</strong>. It becomes trusted only after you approve it on your existing device.</p>
+        <div class="card">
+            <span class="badge">Waiting for approval after setup</span>
+            <p>Create a passkey on this device. Your existing trusted device will see a new device request.</p>
+            <label for="device-label">Device name</label>
+            <input id="device-label" autocomplete="off" value="Google phone">
+            <button id="pair-button" type="button">Create device request</button>
+            <div id="status" class="status">Issued by ${htmlEscape(issuerHost)}.</div>
+        </div>
+    </main>
+    <script>
+        const pairingId = ${JSON.stringify(String(pairingId))};
+        const token = ${JSON.stringify(String(token))};
+        const button = document.getElementById('pair-button');
+        const statusNode = document.getElementById('status');
+        const labelInput = document.getElementById('device-label');
+        const setStatus = (message) => { statusNode.textContent = message; };
+        const pair = async () => {
+            button.disabled = true;
+            setStatus('Preparing this device...');
+            try {
+                const optionsResponse = await fetch('/api/sl1e/device-pairings/' + encodeURIComponent(pairingId) + '/registration/options?token=' + encodeURIComponent(token), {
+                    headers: { 'Accept': 'application/json' },
+                });
+                const optionsPayload = await optionsResponse.json();
+                if (!optionsResponse.ok) throw new Error(optionsPayload.error || 'Could not prepare this device.');
+                const attestation = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: optionsPayload.publicKey });
+                setStatus('Sending device request...');
+                const completeResponse = await fetch('/api/sl1e/device-pairings/' + encodeURIComponent(pairingId) + '/registration/complete?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        registration_request_id: optionsPayload.registration_request_id,
+                        attestation,
+                        device_label: labelInput.value || 'Google phone',
+                    }),
+                });
+                const completePayload = await completeResponse.json();
+                if (!completeResponse.ok) throw new Error(completePayload.error || 'Could not create device request.');
+                document.querySelector('.badge').classList.add('ready');
+                document.querySelector('.badge').textContent = 'Request sent';
+                button.textContent = 'Request sent';
+                setStatus('Now approve this device on your existing trusted device.');
+            } catch (error) {
+                setStatus(error.message || 'Could not add this device.');
+                button.disabled = false;
+            }
+        };
+        button.addEventListener('click', pair);
     </script>
 </body>
 </html>`;
@@ -3007,8 +4940,475 @@ setInterval(() => {
 
 // --- API ROUTES ---
 
+fastify.addHook('onRequest', async (request, reply) => {
+    const hostname = String(request.hostname || '').split(':')[0].toLowerCase();
+    if (request.method !== 'GET' || (hostname !== '127.0.0.1' && hostname !== '::1')) return;
+    const hostHeader = String(request.headers.host || 'localhost:3000');
+    const port = hostHeader.includes(':') ? hostHeader.split(':').pop() : String(RUNTIME_PORT || 3000);
+    return reply.redirect(`http://localhost:${port}${request.url}`, 302);
+});
+
 fastify.get('/healthcheck', async () => {
     return { status: 'ok', service: 'simple-layer-one', node_id: NODE_ID };
+});
+
+fastify.get('/api/sl1e/runtime/status', async () => {
+    const address = fastify.server.address();
+    const boundPort = typeof address === 'object' && address ? address.port : RUNTIME_PORT;
+    const host = RUNTIME_HOST === '0.0.0.0' ? '127.0.0.1' : RUNTIME_HOST;
+    return {
+        status: 'ready',
+        service: 'simple-layer-one',
+        embedded: EMBEDDED_RUNTIME,
+        node_id: NODE_ID,
+        host,
+        port: boundPort,
+        base_url: `http://${host}:${boundPort}`,
+        data_dir: DATA_DIR,
+        runtime_version: NODE_VERSION,
+        protocol_version: IDENTITY_PROTOCOL_VERSION,
+    };
+});
+
+fastify.post('/api/sl1e/native/bootstrap', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const body = request.body || {};
+    const entityAddress = identityKernel.normalizeEntityAddress(body.entity_l1_address || body.entityAddress);
+    const keyAddress = identityKernel.normalizeKeyAddress(body.key_l1_address || body.keyAddress);
+    const publicKey = String(body.public_key || body.publicKey || '');
+    if (!entityAddress || !keyAddress || !publicKey) {
+        return reply.code(422).send({ error: 'native_identity_bootstrap_incomplete' });
+    }
+
+    const account = accountByEntityAddress(entityAddress);
+    const allowRootBootstrap = truthyEnv(process.env.SL1_ALLOW_NATIVE_ROOT_BOOTSTRAP)
+        || body.allow_native_root_bootstrap === true
+        || body.allowNativeRootBootstrap === true;
+    if (!account && !allowRootBootstrap) {
+        return reply.code(409).send({
+            error: 'native_root_identity_bootstrap_disabled',
+            invariant: 'identity_address_must_never_change',
+            required_flow: 'link_native_controller_to_existing_identity',
+            message: 'Native app must link a controller to an existing web-created sl1e identity instead of creating a second root identity.',
+        });
+    }
+    const alreadyBound = (ledger.controller_bindings || []).some((binding) =>
+        String(binding.entity_l1_address || '') === entityAddress
+        && String(binding.key_l1_address || binding.controller_l1_address || '') === keyAddress
+        && String(binding.status || 'active') === 'active'
+    );
+    if (!account || !alreadyBound) {
+        applyEvent({
+            id: `native_bootstrap_${crypto.randomBytes(8).toString('hex')}`,
+            type: 'NATIVE_CONTROLLER_BOOTSTRAPPED',
+            payload: {
+                entity_l1_address: entityAddress,
+                key_l1_address: keyAddress,
+                publicKey,
+                label: body.label || body.device_name || 'Meanly One',
+            },
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    const updated = accountByEntityAddress(entityAddress);
+    return {
+        success: true,
+        identity: identityProfile(updated),
+        identity_session_token: identitySessionToken(entityAddress),
+        state_proof: currentIdentityStateProof('native-wallet-bootstrap'),
+    };
+});
+
+fastify.post('/api/sl1e/identity/:entityAddress/native-session', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    const keyAddress = String(request.body?.key_l1_address || request.body?.keyAddress || '');
+    const account = accountByEntityAddress(entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    const binding = (ledger.controller_bindings || []).find((candidate) =>
+        String(candidate.entity_l1_address || '') === entityAddress
+        && String(candidate.key_l1_address || candidate.controller_l1_address || '') === keyAddress
+        && String(candidate.controller_type || '') === 'native_macos_p256'
+        && String(candidate.status || 'active') === 'active'
+    );
+    if (!binding) return reply.code(403).send({ error: 'native_controller_not_bound' });
+
+    return {
+        success: true,
+        identity_session_token: identitySessionToken(entityAddress),
+        expires_in: 600,
+        identity: identityProfile(account),
+    };
+});
+
+fastify.get('/api/sl1e/identity/:entityAddress/mesh/state', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    const account = accountByEntityAddress(entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+    const deviceKeyAddress = String(request.query.device_key_l1_address || account.key_l1_address || '');
+    if (!identityKernel.normalizeKeyAddress(deviceKeyAddress)) {
+        return reply.code(422).send({ error: 'device_key_l1_address_required' });
+    }
+
+    return {
+        success: true,
+        envelope: createIdentityStateEnvelope({
+            ledger,
+            entityAddress,
+            deviceKeyAddress,
+            sequence: Number(request.query.sequence || Date.now()),
+            previousStateHash: request.query.previous_state_hash || null,
+            observedEpoch: Number(ledger.governance?.current_epoch || 0),
+            providerStateProof: currentIdentityStateProof('local-ledger'),
+        }),
+    };
+});
+
+fastify.post('/api/sl1e/identity/:entityAddress/controller-bindings/proposals', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    const session = requireIdentitySession(request, reply, entityAddress);
+    if (!session) return reply;
+    const account = accountByEntityAddress(entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    const proposedKeyAddress = identityKernel.normalizeKeyAddress(request.body?.proposed_controller_key_l1_address || request.body?.key_l1_address);
+    if (!proposedKeyAddress) return reply.code(422).send({ error: 'proposed_controller_key_l1_address_required' });
+    const proposalId = `cbp_${crypto.randomBytes(16).toString('hex')}`;
+    const proposalHash = `sha256:${crypto.createHash('sha256').update(stableStringify({
+        entity_l1_address: entityAddress,
+        proposed_controller_key_l1_address: proposedKeyAddress,
+        controller_type: request.body?.controller_type || 'unknown',
+    })).digest('hex')}`;
+    applyEvent({
+        id: `proposal_${crypto.randomBytes(8).toString('hex')}`,
+        type: 'CONTROLLER_BINDING_PROPOSED',
+        payload: {
+            proposal_id: proposalId,
+            entity_l1_address: entityAddress,
+            proposed_controller_key_l1_address: proposedKeyAddress,
+            controller_type: request.body?.controller_type || 'unknown',
+            proposal_hash: proposalHash,
+        },
+        timestamp: new Date().toISOString(),
+    });
+
+    return {
+        success: true,
+        proposal: (ledger.controller_binding_proposals || []).find((proposal) => proposal.proposal_id === proposalId),
+    };
+});
+
+fastify.post('/api/sl1e/identity/:entityAddress/controller-bindings/proposals/:proposalId/approve', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    const session = requireIdentitySession(request, reply, entityAddress);
+    if (!session) return reply;
+    const proposal = (ledger.controller_binding_proposals || []).find((candidate) =>
+        candidate.proposal_id === String(request.params.proposalId || '')
+        && candidate.entity_l1_address === entityAddress
+    );
+    if (!proposal) return reply.code(404).send({ error: 'controller_binding_proposal_not_found' });
+
+    applyEvent({
+        id: `proposal_approval_${crypto.randomBytes(8).toString('hex')}`,
+        type: 'CONTROLLER_BINDING_APPROVED',
+        payload: {
+            proposal_id: proposal.proposal_id,
+            approved_by_key_l1_address: request.body?.approved_by_key_l1_address || accountByEntityAddress(entityAddress)?.key_l1_address,
+            approval_hash: `sha256:${crypto.createHash('sha256').update(stableStringify(proposal)).digest('hex')}`,
+        },
+        timestamp: new Date().toISOString(),
+    });
+
+    return {
+        success: true,
+        proposal: (ledger.controller_binding_proposals || []).find((candidate) => candidate.proposal_id === proposal.proposal_id),
+    };
+});
+
+fastify.post('/api/sl1e/mesh/mailbox/:entityAddress', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    if (!identityKernel.normalizeEntityAddress(entityAddress)) return reply.code(422).send({ error: 'invalid_entity_l1_address' });
+    const payload = request.body || {};
+    try {
+        assertRelayPayloadIsObservationOnly(payload);
+        if (payload.envelope) {
+            const verification = verifyIdentityStateEnvelope(payload.envelope, { requireTrustedSignature: false, now: new Date() });
+            const boundary = assertNoIdentityMeshAuthorityLeak(verification);
+            if (boundary.reason_codes.length > 0) return reply.code(422).send({ error: 'relay_payload_authority_leak', reason_codes: boundary.reason_codes });
+        }
+    } catch (error) {
+        return reply.code(error.statusCode || 422).send({ error: error.message, marker: error.marker || null });
+    }
+
+    const store = loadMeshMailboxStore();
+    const message = {
+        message_id: `meshmsg_${crypto.randomBytes(12).toString('hex')}`,
+        entity_l1_address: entityAddress,
+        payload,
+        received_at: new Date().toISOString(),
+    };
+    store.messages[entityAddress] = [...(store.messages[entityAddress] || []), message].slice(-100);
+    saveMeshMailboxStore(store);
+    return { success: true, message_id: message.message_id };
+});
+
+fastify.get('/api/sl1e/mesh/mailbox/:entityAddress', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    if (!identityKernel.normalizeEntityAddress(entityAddress)) return reply.code(422).send({ error: 'invalid_entity_l1_address' });
+    const store = loadMeshMailboxStore();
+    return {
+        success: true,
+        messages: store.messages[entityAddress] || [],
+    };
+});
+
+fastify.post('/api/sl1e/identity/:entityAddress/device-pairings', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    if (!checkRateLimit(request, reply, 'device-pairing:create', 20, 60 * 1000)) return reply;
+
+    const entityAddress = String(request.params.entityAddress || '');
+    const session = requireIdentitySession(request, reply, entityAddress);
+    if (!session) return reply;
+    const account = accountByEntityAddress(entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    const pairingId = crypto.randomBytes(12).toString('base64url');
+    const desktopToken = crypto.randomBytes(18).toString('base64url');
+    const mobileToken = crypto.randomBytes(18).toString('base64url');
+    const origin = originForHost(request.hostname);
+    const mobileUrl = `${origin}/device-pairing/${encodeURIComponent(pairingId)}?token=${encodeURIComponent(mobileToken)}`;
+    const expiresAtMs = Date.now() + 10 * 60 * 1000;
+    const identityLabel = accountDisplayName(account) || accountVisibleAlias(account) || shortAddress(entityAddress);
+
+    sl1eRuntimeStore.set('devicePairings', pairingId, {
+        entityAddress,
+        identity_label: identityLabel,
+        desktopToken,
+        mobileToken,
+        mobileUrl,
+        status: 'pending',
+        proposalId: null,
+        proposedKeyAddress: null,
+        expiresAtMs,
+        createdAt: new Date().toISOString(),
+    });
+
+    return {
+        pairing_id: pairingId,
+        expires_at: new Date(expiresAtMs).toISOString(),
+        mobile_url: mobileUrl,
+        qr_svg_url: `/api/sl1e/identity/${encodeURIComponent(entityAddress)}/device-pairings/${encodeURIComponent(pairingId)}/qr.svg?token=${encodeURIComponent(desktopToken)}`,
+        poll_url: `/api/sl1e/identity/${encodeURIComponent(entityAddress)}/device-pairings/${encodeURIComponent(pairingId)}/status?token=${encodeURIComponent(desktopToken)}`,
+    };
+});
+
+fastify.get('/api/sl1e/identity/:entityAddress/device-pairings/:pairingId/qr.svg', async (request, reply) => {
+    cleanupSl1eArtifacts();
+
+    const entityAddress = String(request.params.entityAddress || '');
+    const pairing = sl1eRuntimeStore.get('devicePairings', String(request.params.pairingId || ''));
+    if (!pairing || pairing.entityAddress !== entityAddress || pairing.desktopToken !== String(request.query.token || '')) {
+        return reply.code(404).type('image/svg+xml').send('');
+    }
+
+    const svg = await QRCode.toString(pairing.mobileUrl, {
+        type: 'svg',
+        margin: 1,
+        width: 260,
+        color: { dark: '#090a0f', light: '#ffffff' },
+    });
+
+    return reply
+        .header('Cache-Control', 'no-store')
+        .type('image/svg+xml')
+        .send(svg);
+});
+
+fastify.get('/api/sl1e/identity/:entityAddress/device-pairings/:pairingId/status', async (request, reply) => {
+    cleanupSl1eArtifacts();
+
+    const entityAddress = String(request.params.entityAddress || '');
+    const pairing = sl1eRuntimeStore.get('devicePairings', String(request.params.pairingId || ''));
+    if (!pairing || pairing.entityAddress !== entityAddress || pairing.desktopToken !== String(request.query.token || '')) {
+        return reply.code(404).send({ error: 'device_pairing_not_found' });
+    }
+
+    const proposal = pairing.proposalId
+        ? (ledger.controller_binding_proposals || []).find((candidate) => candidate.proposal_id === pairing.proposalId)
+        : null;
+    const status = proposal?.status || pairing.status || 'pending';
+    return {
+        success: true,
+        status,
+        proposal: proposal || null,
+        identity: identityProfile(accountByEntityAddress(entityAddress)),
+    };
+});
+
+fastify.get('/device-pairing/:pairingId', async (request, reply) => {
+    cleanupSl1eArtifacts();
+
+    const pairingId = String(request.params.pairingId || '');
+    const token = String(request.query.token || '');
+    const pairing = sl1eRuntimeStore.get('devicePairings', pairingId);
+    if (!pairing || pairing.mobileToken !== token) {
+        return reply.code(404).type('text/html; charset=utf-8').send('<!doctype html><title>Expired pairing</title><p>This device pairing expired or was not found.</p>');
+    }
+
+    return reply
+        .header('Cache-Control', 'no-store')
+        .type('text/html; charset=utf-8')
+        .send(renderSl1eDevicePairingPage(pairingId, token, pairing, request.hostname));
+});
+
+fastify.get('/api/sl1e/device-pairings/:pairingId/registration/options', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    if (!checkRateLimit(request, reply, 'device-pairing:registration-options', 20, 60 * 1000)) return reply;
+
+    const pairing = sl1eRuntimeStore.get('devicePairings', String(request.params.pairingId || ''));
+    if (!pairing || pairing.mobileToken !== String(request.query.token || '')) {
+        return reply.code(404).send({ error: 'device_pairing_not_found' });
+    }
+    const account = accountByEntityAddress(pairing.entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    const registrationRequestId = `sl1pair_${crypto.randomBytes(18).toString('hex')}`;
+    const rpId = rpIdForHost(request.hostname);
+    const activeCredentials = accountCredentials(account);
+    const userLabel = passkeyAccountLabel({
+        alias: account.alias,
+        displayAlias: account.display_alias || account.displayAlias,
+        handle: account.handle,
+        fallback: pairing.entityAddress,
+    });
+    const publicKey = await generateRegistrationOptions({
+        rpName: 'Meanly One',
+        rpID: rpId,
+        userID: crypto.randomBytes(16),
+        userName: userLabel,
+        userDisplayName: userLabel,
+        timeout: 60000,
+        attestationType: 'none',
+        authenticatorSelection: {
+            residentKey: 'preferred',
+            userVerification: 'preferred',
+        },
+        excludeCredentials: activeCredentials.map((credential) => ({
+            id: String(credential.credentialId || credential.credential_id),
+            type: 'public-key',
+            transports: credential.transports || ['internal', 'hybrid', 'usb', 'nfc', 'ble'],
+        })),
+        supportedAlgorithmIDs: [-7, -257],
+    });
+    const expiresAtMs = Date.now() + 5 * 60 * 1000;
+    sl1eRuntimeStore.set('registrationChallenges', registrationRequestId, {
+        purpose: 'device_pairing',
+        challenge: publicKey.challenge,
+        pairingId: String(request.params.pairingId || ''),
+        rpId,
+        origin: originForHost(request.hostname),
+        entityAddress: pairing.entityAddress,
+        userHandle: account.alias || account.handle || pairing.entityAddress,
+        expiresAtMs,
+    });
+
+    return {
+        registration_request_id: registrationRequestId,
+        expires_at: new Date(expiresAtMs).toISOString(),
+        publicKey,
+    };
+});
+
+fastify.post('/api/sl1e/device-pairings/:pairingId/registration/complete', async (request, reply) => {
+    cleanupSl1eArtifacts();
+
+    const pairingId = String(request.params.pairingId || '');
+    const pairing = sl1eRuntimeStore.get('devicePairings', pairingId);
+    if (!pairing || pairing.mobileToken !== String(request.query.token || '')) {
+        return reply.code(404).send({ error: 'device_pairing_not_found' });
+    }
+    const account = accountByEntityAddress(pairing.entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    const registrationRequestId = String(request.body?.registration_request_id || '');
+    const challengeRecord = sl1eRuntimeStore.get('registrationChallenges', registrationRequestId);
+    if (!challengeRecord || challengeRecord.purpose !== 'device_pairing' || challengeRecord.pairingId !== pairingId || challengeRecord.entityAddress !== pairing.entityAddress) {
+        return reply.code(404).send({ error: 'registration_challenge_not_found' });
+    }
+
+    try {
+        const verification = await verifyRegistrationResponse({
+            response: request.body?.attestation,
+            expectedChallenge: challengeRecord.challenge,
+            expectedOrigin: challengeRecord.origin,
+            expectedRPID: challengeRecord.rpId,
+            requireUserVerification: false,
+        });
+        if (!verification.verified) return reply.code(403).send({ error: 'device_registration_failed' });
+
+        const registrationInfo = verification.registrationInfo || {};
+        const credential = registrationInfo.credential || {};
+        const credentialId = base64UrlFromUnknown(
+            credential.id || registrationInfo.credentialID || request.body?.attestation?.id || request.body?.attestation?.rawId
+        );
+        const credentialPublicKey = base64UrlFromUnknown(credential.publicKey || registrationInfo.credentialPublicKey);
+        const counter = Number(credential.counter ?? registrationInfo.counter ?? 0);
+        const transports = request.body?.attestation?.response?.transports || credential.transports || ['internal', 'hybrid'];
+        if (!credentialId || !credentialPublicKey) return reply.code(422).send({ error: 'registration_missing_credential_material' });
+        if (findCredentialOwner(credentialId)) return reply.code(409).send({ error: 'device_already_registered' });
+
+        const keyAddress = identityKernel.keyAddressFromPublicKey(credentialPublicKey);
+        const deviceLabel = String(request.body?.device_label || '').trim().slice(0, 80) || 'Google phone';
+        const proposalId = `cbp_${crypto.randomBytes(16).toString('hex')}`;
+        const proposalHash = `sha256:${crypto.createHash('sha256').update(stableStringify({
+            entity_l1_address: pairing.entityAddress,
+            proposed_controller_key_l1_address: keyAddress,
+            controller_type: 'webauthn_passkey',
+            credential_id: credentialId,
+        })).digest('hex')}`;
+        applyEvent({
+            id: `proposal_${crypto.randomBytes(8).toString('hex')}`,
+            type: 'CONTROLLER_BINDING_PROPOSED',
+            payload: {
+                proposal_id: proposalId,
+                entity_l1_address: pairing.entityAddress,
+                proposed_controller_key_l1_address: keyAddress,
+                controller_type: 'webauthn_passkey',
+                proposal_hash: proposalHash,
+                credential_id: credentialId,
+                credential_public_key: credentialPublicKey,
+                credentialPublicKey,
+                counter,
+                transports,
+                rp_id: challengeRecord.rpId,
+                label: deviceLabel,
+                pairing_id: pairingId,
+            },
+            timestamp: new Date().toISOString(),
+        });
+        broadcast('/api/network/broadcast', { type: 'EVENT', data: ledger.event_log[ledger.event_log.length - 1] });
+        sl1eRuntimeStore.delete('registrationChallenges', registrationRequestId);
+        pairing.status = 'proposal_submitted';
+        pairing.proposalId = proposalId;
+        pairing.proposedKeyAddress = keyAddress;
+        pairing.deviceLabel = deviceLabel;
+
+        return {
+            success: true,
+            status: 'waiting_for_approval',
+            proposal: (ledger.controller_binding_proposals || []).find((proposal) => proposal.proposal_id === proposalId),
+        };
+    } catch (error) {
+        sl1eRuntimeStore.delete('registrationChallenges', registrationRequestId);
+        return reply.code(403).send({ error: 'device_registration_failed', detail: error.message });
+    }
 });
 
 fastify.get('/connect', async (request, reply) => {
@@ -3016,7 +5416,19 @@ fastify.get('/connect', async (request, reply) => {
 });
 
 fastify.get('/identity', async (request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderSl1IdentityPage(request.query, request.hostname));
+    return reply.type('text/html; charset=utf-8').send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/identity' }, request.hostname));
+});
+
+fastify.get('/wallet', async (request, reply) => {
+    return reply.type('text/html; charset=utf-8').send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/wallet' }, request.hostname));
+});
+
+fastify.get('/meanly/identity-proof/callback', async (request, reply) => {
+    return reply.type('text/html; charset=utf-8').send(renderMeanlyIdentityProofCallbackPage(request.hostname));
+});
+
+fastify.get('/marketplace/sellers', async (request, reply) => {
+    return reply.type('text/html; charset=utf-8').send(renderMarketplaceSellerLaunchPage());
 });
 
 fastify.get('/authorize', async (request, reply) => {
@@ -3031,7 +5443,7 @@ fastify.get('/authorize', async (request, reply) => {
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderSl1eAuthorizePage(request.query, request.hostname));
+        .send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/authorize' }, request.hostname));
 });
 
 fastify.get('/api/sl1e/authorize', async (request, reply) => {
@@ -3046,7 +5458,24 @@ fastify.get('/api/sl1e/authorize', async (request, reply) => {
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderSl1eAuthorizePage(request.query, request.hostname));
+        .send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/authorize' }, request.hostname));
+});
+
+fastify.get('/api/sl1e/authorize/bootstrap', async (request, reply) => {
+    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
+    const missing = required.filter(key => !request.query[key]);
+    if (missing.length > 0) {
+        return reply.code(422).send({
+            error: 'missing_required_query',
+            missing,
+        });
+    }
+
+    return authorizeBootstrapState(request.query, request.hostname);
+});
+
+fastify.get('/api/sl1e/wallet/bootstrap', async (request) => {
+    return walletBootstrapState(request.query, request.hostname);
 });
 
 fastify.get('/api/sl1e/connect/status', async (request) => {
@@ -3054,12 +5483,25 @@ fastify.get('/api/sl1e/connect/status', async (request) => {
 
     const accounts = Object.values(ledger.accounts || {});
     const verifiableAccounts = accounts.filter((account) => verifiableAccountCredentials(account).length > 0);
+    const rebuiltFromCapsule = verifiableAccounts.filter((account) => account.identity_source === 'rebuilt_from_capsule');
 
     return {
         issuer: originForHost(request.hostname),
         rp_id: rpIdForHost(request.hostname),
+        runtime_version: NODE_VERSION,
+        protocol_version: IDENTITY_PROTOCOL_VERSION,
         has_verifiable_identity: verifiableAccounts.length > 0,
         verifiable_identity_count: verifiableAccounts.length,
+        identity_source: rebuiltFromCapsule.length > 0 ? 'rebuilt_from_capsule' : (verifiableAccounts.length > 0 ? 'local-ledger' : 'none'),
+        rebuilt_from_capsule_count: rebuiltFromCapsule.length,
+        identity_capsules_enabled: String(process.env.SL1_IDENTITY_CAPSULES_ENABLED || 'true') !== 'false',
+        storage_role: process.env.SL1_STORAGE_ROLE || 'cache',
+        identity_authority: 'identity_capsule+state_proof+webauthn_assertion',
+        default_assurance_level: process.env.SL1_DEFAULT_ASSURANCE_LEVEL || 'AL1',
+        resolvers: {
+            evidence: String(process.env.SL1_EVIDENCE_RESOLVERS || 'local-cache,client-capsule,peer,signed-export').split(',').map((item) => item.trim()).filter(Boolean),
+            state: String(process.env.SL1_STATE_RESOLVERS || 'local-cache,peer,anchor,quorum,signed-export').split(',').map((item) => item.trim()).filter(Boolean),
+        },
         note: 'Browser privacy does not allow silent per-person passkey enumeration; this is issuer-side registration status.',
     };
 });
@@ -3069,6 +5511,24 @@ fastify.get('/api/sl1e/identity/:entityAddress', async (request, reply) => {
     const profile = identityProfile(account);
     if (!profile) return reply.code(404).send({ error: 'identity_not_found' });
     return { protocol: 'simple-l1', identity: profile };
+});
+
+fastify.get('/api/sl1e/identity/:entityAddress/capsule', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    const entityAddress = String(request.params.entityAddress || '');
+    const session = requireIdentitySession(request, reply, entityAddress);
+    if (!session) return reply;
+    const account = accountByEntityAddress(entityAddress);
+    if (!account) return reply.code(404).send({ error: 'identity_not_found' });
+
+    return {
+        protocol: 'simple-l1',
+        identity: identityProfile(account),
+        ...identityPortabilityPayload(account, {
+            purpose: 'web_wallet_capsule_export',
+            requested_at: new Date().toISOString(),
+        }),
+    };
 });
 
 fastify.get('/api/sl1e/identity/:entityAddress/authentication/options', async (request, reply) => {
@@ -3233,7 +5693,18 @@ fastify.post('/api/sl1e/identity/:entityAddress/passkeys/registration/complete',
         applyEvent(event);
         broadcast('/api/network/broadcast', { type: 'EVENT', data: event });
         sl1eRuntimeStore.delete('registrationChallenges', registrationRequestId);
-        return { success: true, identity: identityProfile(accountByEntityAddress(entityAddress)) };
+        const updatedAccount = accountByEntityAddress(entityAddress);
+        return {
+            success: true,
+            identity: identityProfile(updatedAccount),
+            identity_capsule: identityCapsuleForAccount(updatedAccount, {
+                purpose: 'passkey_enrollment',
+                registration_request_id: registrationRequestId,
+                challenge: challengeRecord.challenge,
+                origin: challengeRecord.origin,
+            }),
+            state_proof: currentIdentityStateProof('local-ledger'),
+        };
     } catch (error) {
         sl1eRuntimeStore.delete('registrationChallenges', registrationRequestId);
         return reply.code(403).send({ error: 'passkey_registration_failed', detail: error.message });
@@ -3292,7 +5763,7 @@ fastify.post('/api/sl1e/device-handoff', async (request, reply) => {
         return reply.code(422).send({ error: 'device_handoff_requires_redirect_mode' });
     }
 
-    if (!String(query.redirect_uri).startsWith('http')) {
+    if (!isAllowedSl1eRedirectUri(query.redirect_uri, query.client_id)) {
         return reply.code(422).send({ error: 'invalid_redirect_uri' });
     }
 
@@ -3570,7 +6041,7 @@ fastify.post('/api/sl1e/registration/:registrationRequestId/release', async (req
 fastify.get('/api/sl1e/authorize/complete', async (request, reply) => {
     const { redirect_uri: redirectUri, state, response_mode: responseMode } = request.query;
 
-    if (!redirectUri || !state || !String(redirectUri).startsWith('http')) {
+    if (!redirectUri || !state || !isAllowedSl1eRedirectUri(redirectUri, request.query.client_id)) {
         return reply.code(422).send({ error: 'redirect_uri and state are required' });
     }
 
@@ -3675,6 +6146,12 @@ fastify.post('/api/sl1e/registration/complete', async (request, reply) => {
             challenge: challengeRecord.challenge,
             controllerCredential: account.keys?.[0] || account,
         });
+        const portability = identityPortabilityPayload(account, {
+            purpose: 'web_wallet_genesis',
+            registration_request_id: registrationRequestId,
+            challenge: challengeRecord.challenge,
+            origin: challengeRecord.origin,
+        });
 
         if (responseMode === 'form_post') {
             return {
@@ -3696,6 +6173,7 @@ fastify.post('/api/sl1e/registration/complete', async (request, reply) => {
                 alias,
                 display_alias: displayAlias,
             },
+            ...portability,
         };
     } catch (error) {
         releaseAliasReservation(challengeRecord.alias, challengeRecord.aliasReservationOwner);
@@ -3720,6 +6198,12 @@ fastify.post('/api/sl1e/authorize/complete', async (request, reply) => {
             challenge: owner.challengeRecord.challenge,
             controllerCredential: owner.credential,
         });
+        const portability = identityPortabilityPayload(owner.account, {
+            purpose: 'web_wallet_authorization',
+            authorization_request_id: authorizationRequestId,
+            challenge: owner.challengeRecord.challenge,
+            origin: owner.challengeRecord.origin,
+        });
 
         if (responseMode === 'form_post') {
             return {
@@ -3741,6 +6225,7 @@ fastify.post('/api/sl1e/authorize/complete', async (request, reply) => {
                 alias: publicAlias(owner.account.alias) || null,
                 display_alias: accountDisplayName(owner.account) || null,
             },
+            ...portability,
         };
     } catch (error) {
         return reply.code(error.statusCode || 403).send({
@@ -3757,15 +6242,41 @@ fastify.post('/api/sl1e/authorization-code/exchange', async (request, reply) => 
     const record = sl1eRuntimeStore.get('authorizationCodes', String(code || ''));
 
     if (!record) {
-        return reply.code(404).send({ success: false, active: false, error: 'authorization_code_not_found' });
+        return reply.code(404).send({ success: false, active: false, error: 'invalid_authorization_code' });
     }
 
     if (record.clientId !== String(clientId || '') || record.redirectUri !== String(redirectUri || '')) {
         return reply.code(403).send({ success: false, active: false, error: 'authorization_code_context_mismatch' });
     }
 
+    const requestedIntentType = String(request.body?.intent_type || request.body?.intent?.type || '').trim();
+    if (requestedIntentType && record.intent?.type && requestedIntentType !== String(record.intent.type)) {
+        return reply.code(403).send({ success: false, active: false, error: 'authorization_code_intent_mismatch' });
+    }
+
     sl1eRuntimeStore.delete('authorizationCodes', String(code));
-    return record.response;
+    const issuerProto = String(request.headers['x-forwarded-proto'] || request.protocol || 'http').split(',')[0].trim();
+    const issuerHost = String(request.headers['x-forwarded-host'] || request.headers.host || 'simplel1.local').split(',')[0].trim();
+    const identityProofEnvelope = createIdentityProofEnvelope({
+        proof: record.response?.proof,
+        issuer: {
+            issuer_id: NODE_ID,
+            issuer_url: `${issuerProto}://${issuerHost}`,
+            key_id: `sl1-connect:${NODE_ID}`,
+        },
+        secret: SL1_CONNECT_SECRET,
+    });
+
+    return {
+        ...record.response,
+        protocol: 'simple-l1',
+        success: true,
+        active: true,
+        proof_token: record.proofToken || record.response?.proof_token || '',
+        proof: record.response?.proof || null,
+        identity: record.response?.identity || null,
+        identity_proof_envelope: identityProofEnvelope,
+    };
 });
 
 fastify.post('/api/sl1e/proofs/introspect', async (request, reply) => {
@@ -3816,6 +6327,8 @@ fastify.get('/api/status', async (request, reply) => {
         node_id: NODE_ID,
         node_name: NODE_NAME,
         version: NODE_VERSION,
+        runtime_version: NODE_VERSION,
+        protocol_version: IDENTITY_PROTOCOL_VERSION,
         state_root: ledger.state_root || "genesis", // The Proof of Correctness
         capabilities: NODE_CAPABILITIES,
         peers_count: PEERS.length,
@@ -4378,6 +6891,79 @@ fastify.post('/api/external-proofs', async (request, reply) => {
 fastify.get('/api/external-proofs/:external_proof_id/verify', async (request, reply) => {
     const result = verifyExternalProof(ledger, request.params.external_proof_id);
     return reply.code(result.ok ? 200 : 422).send(result);
+});
+
+fastify.get('/api/marketplace/sellers', async () => {
+    ensureSellerStores(ledger);
+    return {
+        protocol: 'meanly.marketplace.seller-launch.v0',
+        status: 'ok',
+        sellers: sellerSummary(ledger),
+        listings: ledger.marketplace_listings || [],
+        boundary: 'seller_launch_records_are_app_layer_not_protocol_authority',
+    };
+});
+
+fastify.post('/api/marketplace/sellers', async (request, reply) => {
+    try {
+        const event = {
+            id: crypto.randomBytes(8).toString('hex'),
+            type: 'MARKETPLACE_SELLER_UPSERTED',
+            payload: request.body || {},
+            timestamp: new Date().toISOString(),
+        };
+        applyEvent(event);
+        const seller = ledger.marketplace_sellers[ledger.marketplace_sellers.length - 1];
+        return reply.code(201).send({
+            success: true,
+            seller,
+            boundary: 'seller_profile != protocol_authority',
+        });
+    } catch (err) {
+        return reply.code(err.statusCode || 422).send({ error: err.message });
+    }
+});
+
+fastify.post('/api/marketplace/sellers/:sellerId/listings', async (request, reply) => {
+    try {
+        const event = {
+            id: crypto.randomBytes(8).toString('hex'),
+            type: 'MARKETPLACE_LISTING_UPSERTED',
+            payload: {
+                ...(request.body || {}),
+                seller_id: request.params.sellerId,
+                status: request.body?.status || 'draft',
+            },
+            timestamp: new Date().toISOString(),
+        };
+        applyEvent(event);
+        const listing = ledger.marketplace_listings[ledger.marketplace_listings.length - 1];
+        const seller = ledger.marketplace_sellers.find((candidate) => candidate.seller_id === request.params.sellerId);
+        return reply.code(201).send({
+            success: true,
+            seller,
+            listing,
+            boundary: 'listing_publication != settlement_or_ownership_event',
+        });
+    } catch (err) {
+        return reply.code(err.statusCode || 422).send({ error: err.message, activation: err.activation });
+    }
+});
+
+fastify.post('/api/marketplace/sellers/:sellerId/activate', async (request, reply) => {
+    try {
+        const event = {
+            id: crypto.randomBytes(8).toString('hex'),
+            type: 'MARKETPLACE_SELLER_ACTIVATED',
+            payload: { seller_id: request.params.sellerId },
+            timestamp: new Date().toISOString(),
+        };
+        applyEvent(event);
+        const seller = ledger.marketplace_sellers.find((candidate) => candidate.seller_id === request.params.sellerId);
+        return { success: true, seller };
+    } catch (err) {
+        return reply.code(err.statusCode || 422).send({ error: err.message, activation: err.activation });
+    }
 });
 
 fastify.post('/api/marketplace/reference-flow/settle', async (request, reply) => {

@@ -259,6 +259,71 @@ class EVMAdapter {
     }
 
     /**
+     * Observe EVM evidence and return canonicalizer input only.
+     * This does not verify deposits, compute settlement, sign, or project state.
+     *
+     * @param {string} txHash
+     * @returns {Promise<{found: boolean, input?: object, txHash: string, error?: string}>}
+     */
+    async observeEvidence(txHash) {
+        try {
+            const [tx, receipt] = await Promise.all([
+                this.provider.getTransaction(txHash),
+                this.provider.getTransactionReceipt(txHash),
+            ]);
+
+            if (!tx || !receipt) {
+                return { found: false, txHash };
+            }
+
+            const block = receipt.blockNumber ? await this.provider.getBlock(receipt.blockNumber) : null;
+
+            return {
+                found: true,
+                txHash,
+                input: {
+                    chain_id: String(this.config.chainId),
+                    source: `evm-rpc:${this.networkKey}`,
+                    observed_at: new Date().toISOString(),
+                    block: {
+                        timestamp: block?.timestamp === undefined || block?.timestamp === null
+                            ? null
+                            : String(block.timestamp),
+                    },
+                    transaction: {
+                        hash: tx.hash,
+                        from: tx.from,
+                        to: tx.to,
+                        value: tx.value.toString(),
+                        input: tx.data || '0x',
+                        nonce: String(tx.nonce),
+                    },
+                    receipt: {
+                        transactionHash: receipt.hash,
+                        blockHash: receipt.blockHash,
+                        blockNumber: String(receipt.blockNumber),
+                        transactionIndex: String(receipt.index ?? receipt.transactionIndex ?? tx.index ?? 0),
+                        status: String(receipt.status),
+                        from: receipt.from,
+                        to: receipt.to,
+                        logs: receipt.logs.map((log, index) => ({
+                            address: log.address,
+                            transactionHash: log.transactionHash || receipt.hash,
+                            logIndex: String(log.index ?? log.logIndex ?? index),
+                            topics: [...log.topics],
+                            data: log.data || '0x',
+                        })),
+                        gasUsed: receipt.gasUsed.toString(),
+                        effectiveGasPrice: receipt.gasPrice?.toString() || receipt.effectiveGasPrice?.toString() || tx.gasPrice?.toString() || '0',
+                    },
+                },
+            };
+        } catch (err) {
+            return { found: false, txHash, error: err.message };
+        }
+    }
+
+    /**
      * Prepare a withdrawal settlement request.
      * Does NOT sign or broadcast — returns the structured request
      * for the Simple L1 treasury to execute.

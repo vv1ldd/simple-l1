@@ -1,0 +1,95 @@
+{
+  "schema_version": "simple-l1.evm_unknown_event_fixture.v1",
+  "fixture_id": "evm_unknown_event_signature_v1",
+  "description": "FrozenGraphV5 coverage extension: unknown event signature is preserved as raw EVM_LOG_NODE with no semantic decode node.",
+  "input": {
+    "chain_id": "0x1",
+    "source": "fixture:unknown-event-v1",
+    "observed_at": "2026-05-30T14:45:00.000Z",
+    "block": {
+      "timestamp": "0x6553f290"
+    },
+    "transaction": {
+      "hash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x7777777777777777777777777777777777777777",
+      "value": "0x0",
+      "input": "0x12345678",
+      "nonce": "0x2e"
+    },
+    "receipt": {
+      "transactionHash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+      "blockHash": "0x7878787878787878787878787878787878787878787878787878787878787878",
+      "blockNumber": "0x0121eac4",
+      "transactionIndex": "0xb",
+      "status": "0x1",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x7777777777777777777777777777777777777777",
+      "logs": [
+        {
+          "address": "0x7777777777777777777777777777777777777777",
+          "transactionHash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+          "logIndex": "0x0",
+          "topics": [
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "data": "0x1234"
+        }
+      ],
+      "gasUsed": "0x7530",
+      "effectiveGasPrice": "0x3b9aca00"
+    }
+  },
+  "expected": {
+    "fact_id": "sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6",
+    "canonical_fact": {
+      "fact_id": "sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6",
+      "fact_type": "EVM_TX",
+      "chain_id": "1",
+      "block_number": "19000004",
+      "block_hash": "0x7878787878787878787878787878787878787878787878787878787878787878",
+      "tx_hash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+      "transaction_index": "11",
+      "receipt_status": "1",
+      "log_index": null,
+      "emitter_address": null,
+      "event_signature": null,
+      "topics": [],
+      "raw_data": {
+        "effective_gas_price": "1000000000",
+        "from": "0x1111111111111111111111111111111111111111",
+        "gas_used": "30000",
+        "input": "0x12345678",
+        "to": "0x7777777777777777777777777777777777777777",
+        "value": "0"
+      },
+      "observed_at": "2026-05-30T14:45:00.000Z",
+      "source": "fixture:unknown-event-v1",
+      "timestamp": "1700000400"
+    },
+    "canonical_fact_json": "{\"block_hash\":\"0x7878787878787878787878787878787878787878787878787878787878787878\",\"block_number\":\"19000004\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T14:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"30000\",\"input\":\"0x12345678\",\"to\":\"0x7777777777777777777777777777777777777777\",\"value\":\"0\"},\"receipt_status\":\"1\",\"source\":\"fixture:unknown-event-v1\",\"timestamp\":\"1700000400\",\"topics\":[],\"transaction_index\":\"11\",\"tx_hash\":\"0x7777777777777777777777777777777777777777777777777777777777777777\"}",
+    "graph_json_sha256": "sha256:89d02d8656e226f60f377152386c59b9cbf0cd17cf487c8a32de144b4cfdacab",
+    "ordered_fact_ids": [
+      "sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6",
+      "sha256:4ff253eaeab7f5cd15f31ab55871eb29a1ade508a241ab6816e9e8868f5acd05"
+    ],
+    "ordered_node_ids": [
+      "evm_tx:sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6",
+      "evm_log:sha256:4ff253eaeab7f5cd15f31ab55871eb29a1ade508a241ab6816e9e8868f5acd05"
+    ],
+    "ordered_edges": [
+      [
+        "evm_tx:sha256:b11acb9fc112104fdbc784eb9505704cb1daadfb16aeb3baffc5a7668ee2b6c6",
+        "evm_log:sha256:4ff253eaeab7f5cd15f31ab55871eb29a1ade508a241ab6816e9e8868f5acd05",
+        "after"
+      ]
+    ],
+    "forbidden_node_types": [
+      "ERC20_TRANSFER_NODE"
+    ]
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Unknown event signatures must preserve raw log evidence and must not create semantic decoded nodes without a versioned protocol change."
+  }
+}

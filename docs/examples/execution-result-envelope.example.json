@@ -1,0 +1,31 @@
+{
+  "schema_version": "simple-l1.execution_result_envelope.v1",
+  "artifact_type": "execution_result_envelope",
+  "kernel_contract": "EKC_v0",
+  "sdga_hash": "sha256:4ae9776e6d0897a39963705ca29557f3358813ad0c71df7e9ddc3f4ed56e1d9f",
+  "guard_artifact_hash": "sha256:57be1a5122aa9c8aa633e7dab02bc7a8168de63139b95eff57a7d130b8cd51b0",
+  "execution_status": "completed",
+  "completion_state": "deterministic_complete",
+  "semantic_capability": {
+    "reads_truth_spec": false,
+    "evaluates_policy": false,
+    "evaluates_guards": false,
+    "branches_on_conditions": false,
+    "infers_meaning": false,
+    "modifies_graph": false
+  },
+  "node_results": [
+    {
+      "node_id": "emit_guard_artifact",
+      "operation": "emit_guard_artifact",
+      "status": "completed",
+      "output_ref": "guard_artifact"
+    },
+    {
+      "node_id": "emit_invariant_report",
+      "operation": "emit_invariant_report",
+      "status": "completed",
+      "output_ref": "invariant_report"
+    }
+  ]
+}

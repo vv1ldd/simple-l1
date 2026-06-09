@@ -6,7 +6,25 @@
   "scripts": {
     "start": "node server.js",
     "conformance": "node ../conformance/run.js",
-    "contracts:validate": "node scripts/validate-contracts.js"
+    "contracts:validate": "node scripts/validate-contracts.js",
+    "truth:compile": "node scripts/compile-truth-spec.js",
+    "truth:check": "node scripts/compile-truth-spec.js --check",
+    "truth:hash": "node scripts/compile-truth-spec.js --hash-only",
+    "truth:release-bundle": "node scripts/compile-truth-spec.js --release-bundle",
+    "truth:decision-graph": "node scripts/compile-truth-spec.js --decision-graph",
+    "evm:canonicalization:test": "node scripts/test-evm-canonicalization.js",
+    "fpl:test": "node scripts/test-fpl-v0.js",
+    "reconciliation:test": "node scripts/test-reconciliation-v0.js",
+    "identity-proof:runtime:test": "node scripts/test-identity-proof-runtime.js",
+    "identity-portability:test": "node scripts/test-web-wallet-portability.js",
+    "identity-proof:check": "node scripts/test-identity-proof-conformance.js",
+    "identity-mesh:runtime:test": "node scripts/test-identity-mesh-runtime.js",
+    "identity-mesh:check": "node scripts/test-identity-mesh-conformance.js",
+    "sl1-wire:check": "node scripts/test-sl1-wire-conformance.js",
+    "marketplace:seller:test": "node scripts/test-marketplace-seller-launch.js",
+    "evm:slice:test": "node scripts/run-evm-slice.js",
+    "kernel:test": "node scripts/test-execution-kernel.js",
+    "shadow:test": "node scripts/test-shadow-validation.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

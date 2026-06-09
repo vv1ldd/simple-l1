@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/signed-decision-graph.schema.json",
+  "title": "SL1 Signed Decision Graph Artifact",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "release_boundary",
+    "guard_artifact_hash",
+    "decision_graph_hash",
+    "execution_model",
+    "graph",
+    "provenance",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.signed_decision_graph.v1"
+    },
+    "artifact_type": {
+      "const": "signed_decision_graph"
+    },
+    "release_boundary": {
+      "const": "SDGA_v0"
+    },
+    "guard_artifact_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "decision_graph_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "execution_model": {
+      "type": "object",
+      "required": [
+        "runtime_role",
+        "semantic_interpretation_allowed",
+        "conditional_logic_allowed",
+        "policy_evaluation_allowed",
+        "spec_reference_allowed",
+        "ordering"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runtime_role": {
+          "const": "non_semantic_executor"
+        },
+        "semantic_interpretation_allowed": {
+          "const": false
+        },
+        "conditional_logic_allowed": {
+          "const": false
+        },
+        "policy_evaluation_allowed": {
+          "const": false
+        },
+        "spec_reference_allowed": {
+          "const": false
+        },
+        "ordering": {
+          "const": "topological"
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "uniqueItems": true
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/edge"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["issued_at", "issuer", "source", "guard_artifact_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "const": "pre_runtime_semantic_resolver"
+        },
+        "guard_artifact_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "key_id", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["release-attestation-placeholder-v0", "ed25519"]
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "operation", "inputs", "outputs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.:-]+$"
+        },
+        "operation": {
+          "type": "string",
+          "enum": ["emit_guard_artifact", "emit_invariant_report", "emit_projection_report", "noop"]
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null", "array", "object"]
+          },
+          "not": {
+            "anyOf": [
+              { "required": ["if"] },
+              { "required": ["condition"] },
+              { "required": ["policy"] },
+              { "required": ["spec_ref"] }
+            ]
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null", "array", "object"]
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "null", "array", "object"]
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "ordering": {
+          "const": "after"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": "simple-l1.evm_duplicate_log_replay_fixture.v1",
+  "fixture_id": "evm_duplicate_log_replay_v1",
+  "description": "FrozenGraphV6 coverage extension: duplicate observation of the same (chain_id, tx_hash, log_index) preserves fact and graph identity; replay is not a new fact identity.",
+  "observations": [
+    {
+      "chain_id": "0x1",
+      "source": "fixture:duplicate-log-replay-v1",
+      "observed_at": "2026-05-30T15:15:00.000Z",
+      "block": {
+        "timestamp": "0x6553f2f4"
+      },
+      "transaction": {
+        "hash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x3333333333333333333333333333333333333333",
+        "value": "0x0",
+        "input": "0xa9059cbb",
+        "nonce": "0x2f"
+      },
+      "receipt": {
+        "transactionHash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "blockHash": "0xabababababababababababababababababababababababababababababababab",
+        "blockNumber": "0x0121eac5",
+        "transactionIndex": "0xc",
+        "status": "0x1",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x3333333333333333333333333333333333333333",
+        "logs": [
+          {
+            "address": "0x3333333333333333333333333333333333333333",
+            "transactionHash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+            "logIndex": "0x0",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x0000000000000000000000001111111111111111111111111111111111111111",
+              "0x0000000000000000000000002222222222222222222222222222222222222222"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000000000000000c8"
+          }
+        ],
+        "gasUsed": "0xc350",
+        "effectiveGasPrice": "0x3b9aca00"
+      }
+    },
+    {
+      "chain_id": "0x1",
+      "source": "fixture:duplicate-log-replay-v1",
+      "observed_at": "2026-05-30T15:15:00.000Z",
+      "block": {
+        "timestamp": "0x6553f2f4"
+      },
+      "transaction": {
+        "hash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x3333333333333333333333333333333333333333",
+        "value": "0x0",
+        "input": "0xa9059cbb",
+        "nonce": "0x2f"
+      },
+      "receipt": {
+        "transactionHash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "blockHash": "0xabababababababababababababababababababababababababababababababab",
+        "blockNumber": "0x0121eac5",
+        "transactionIndex": "0xc",
+        "status": "0x1",
+        "from": "0x1111111111111111111111111111111111111111",
+        "to": "0x3333333333333333333333333333333333333333",
+        "logs": [
+          {
+            "address": "0x3333333333333333333333333333333333333333",
+            "transactionHash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+            "logIndex": "0x0",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x0000000000000000000000001111111111111111111111111111111111111111",
+              "0x0000000000000000000000002222222222222222222222222222222222222222"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000000000000000c8"
+          }
+        ],
+        "gasUsed": "0xc350",
+        "effectiveGasPrice": "0x3b9aca00"
+      }
+    }
+  ],
+  "expected": {
+    "first_fact_id": "sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+    "replay_fact_id": "sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+    "first_graph_json_sha256": "sha256:a226b41b2e0f411d0536480f9dea54ac962912ff0526fae834e78f27f9444066",
+    "replay_graph_json_sha256": "sha256:a226b41b2e0f411d0536480f9dea54ac962912ff0526fae834e78f27f9444066",
+    "ordered_fact_ids": [
+      "sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+      "sha256:0a57b5903b2da119d1143601349205e8394f596448000cf6b1af6c41a28d7a62"
+    ],
+    "ordered_node_ids": [
+      "evm_tx:sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+      "evm_log:sha256:0a57b5903b2da119d1143601349205e8394f596448000cf6b1af6c41a28d7a62",
+      "erc20_transfer:sha256:0a57b5903b2da119d1143601349205e8394f596448000cf6b1af6c41a28d7a62"
+    ],
+    "identity_equal": true,
+    "new_fact_count": 0
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Re-observing the same chain_id, tx_hash, and log_index must produce the same fact IDs and graph identity; handling repeated observation is outside this fixture."
+  }
+}

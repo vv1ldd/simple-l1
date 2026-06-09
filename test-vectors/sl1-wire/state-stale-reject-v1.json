@@ -1,0 +1,92 @@
+{
+  "type": "sl1.conformance.vector.v1",
+  "id": "state-stale-reject-v1",
+  "layer": "verifier",
+  "description": "Strict freshness rejects a proof that references a non-latest state root.",
+  "input": {
+    "request": {
+      "type": "sl1.request.v1",
+      "context": {
+        "client_id": "meanly.marketplace",
+        "request_host": "marketplace.meanly.one"
+      },
+      "intent_type": "marketplace.checkout",
+      "resource": "order:ord_123",
+      "nonce": "req_nonce_001"
+    },
+    "proof": {
+      "type": "sl1.proof.v1",
+      "proof_id": "prf_checkout_001",
+      "identity": "sl1e_51c73d5f1e070dc8153eec313c0834599e6e7b3",
+      "key": "sl1_fb9a5839eb923e73640263e9bd4ce0e3e3698b47",
+      "state_root": "sha256:state-root-valid-001",
+      "capability_id": "cap_checkout_001",
+      "intent_id": "int_checkout_001",
+      "request_hash": "sha256:38bd99af1801a4a35733abf821c42ff3a0be8d2a2ad61cc85eacd5c258eb4436",
+      "nonce": "proof_nonce_001",
+      "issued_at": "2026-06-06T22:50:00Z",
+      "expires_at": "2026-06-06T22:55:00Z",
+      "ruleset_hash": "sha256:ruleset-v0-rc",
+      "canonicalization_hash": "sha256:canonical-json-v0-rc",
+      "witness": {
+        "device": "fixture-device-witness",
+        "capability": "fixture-capability-witness",
+        "policy": "fixture-policy-witness",
+        "revocation": "fixture-revocation-witness"
+      },
+      "signature": "fixture:sha256:0654a8034ad6304ae7543b586afcf763fcdb68f6bbfe7bc0476c462415eb8849"
+    },
+    "state": {
+      "root": "sha256:state-root-valid-001",
+      "observed_at": "2026-06-06T22:50:30Z",
+      "forked": false,
+      "devices": {
+        "sl1_fb9a5839eb923e73640263e9bd4ce0e3e3698b47": {
+          "identity": "sl1e_51c73d5f1e070dc8153eec313c0834599e6e7b3",
+          "state": "active"
+        }
+      },
+      "revocations": {},
+      "capabilities": {
+        "cap_checkout_001": {
+          "id": "cap_checkout_001",
+          "subject": "sl1_fb9a5839eb923e73640263e9bd4ce0e3e3698b47",
+          "client_id": "meanly.marketplace",
+          "request_host": "marketplace.meanly.one",
+          "intent_type": "marketplace.checkout",
+          "resource": "order:ord_123",
+          "policy_id": "policy_checkout_001",
+          "state": "active"
+        }
+      },
+      "policies": {
+        "policy_checkout_001": {
+          "operator": "BOUND",
+          "capability_id": "cap_checkout_001",
+          "constraints": {
+            "request_host": "marketplace.meanly.one",
+            "intent_type": "marketplace.checkout"
+          },
+          "state": "active"
+        }
+      }
+    },
+    "verifier_context": {
+      "trusted_rulesets": [
+        "sha256:ruleset-v0-rc"
+      ],
+      "trusted_canonicalizations": [
+        "sha256:canonical-json-v0-rc"
+      ],
+      "latest_state_root": "sha256:state-root-newer-002",
+      "freshness_mode": "strict",
+      "now": "2026-06-06T22:51:00Z",
+      "clock_skew_seconds": 30,
+      "max_proof_ttl_seconds": 300
+    }
+  },
+  "expected": {
+    "outcome": "REJECT",
+    "code": "STATE_STALE"
+  }
+}

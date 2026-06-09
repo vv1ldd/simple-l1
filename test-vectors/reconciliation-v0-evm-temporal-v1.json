@@ -1,0 +1,333 @@
+{
+  "schema_version": "simple-l1.reconciliation-fixtures.v0",
+  "fixture_id": "reconciliation_v0_evm_temporal_ordering_replay",
+  "description": "EVM Slice 3 reconciliation fixtures. Temporal, ordering, partial-observation, reorg, and replay cases stress FPL-to-reconciliation boundaries without adding ownership, balances, custody, settlement, or protocol state mutation.",
+  "cases": [
+    {
+      "id": "N11_reorg_block_hash_mismatch_not_eligible",
+      "graph_fixture": "evm-reorg-observation-v1.json",
+      "graph_observation_index": 1,
+      "fpl_context": {
+        "context_id": "reconcile-reorg-block-mismatch-v1",
+        "observed_block_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "invalidated",
+        "reason_codes": [
+          "BLOCK_HASH_MISMATCH"
+        ],
+        "fact_id": "sha256:55df46a5d9cc76d02b398438b9bbbf78536389ab1bfeb67ad3351d3acce8d0e5",
+        "chain_id": "1",
+        "tx_hash": "0x4545454545454545454545454545454545454545454545454545454545454545",
+        "confirmations": null,
+        "required_confirmations": null,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-reorg-block-mismatch-v1"
+      },
+      "intent": {
+        "intent_id": "intent_reorg_native_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "sender": "0x1111111111111111111111111111111111111111",
+        "recipient": "0x9999999999999999999999999999999999999999",
+        "amount_raw": "1"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "NOT_ELIGIBLE",
+        "reason_codes": [
+          "FPL_VERDICT_NOT_FINALIZED"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N12_partial_logs_required_evidence_missing",
+      "graph_fixture": "evm-partial-logs-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-partial-logs-v1",
+        "required_confirmations": 0,
+        "current_block": 19000006
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "challenged",
+        "reason_codes": [
+          "REQUIRED_EVIDENCE_MISSING"
+        ],
+        "fact_id": "sha256:93cf1a64b907ad48336d1957a738f8e9c2b03243b2f8552b72c41e6011889daf",
+        "chain_id": "1",
+        "tx_hash": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "confirmations": null,
+        "required_confirmations": null,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-partial-logs-v1"
+      },
+      "intent": {
+        "intent_id": "intent_partial_logs_erc20_v1",
+        "intent_type": "ERC20_TRANSFER",
+        "chain_id": "1",
+        "sender": "0x1111111111111111111111111111111111111111",
+        "token_contract": "0x3333333333333333333333333333333333333333",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "1"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "NOT_ELIGIBLE",
+        "reason_codes": [
+          "FPL_VERDICT_NOT_FINALIZED"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N13a_candidate_same_intent_not_eligible",
+      "graph_fixture": "evm-eth-transfer-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-native-candidate-transition-v1",
+        "required_confirmations": 12,
+        "current_block": 19000005
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "candidate",
+        "reason_codes": [
+          "INSUFFICIENT_CONFIRMATIONS"
+        ],
+        "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "chain_id": "1",
+        "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "confirmations": 5,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-native-candidate-transition-v1"
+      },
+      "intent": {
+        "intent_id": "intent_temporal_native_eth_to_bob_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "1000000000000000000"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "NOT_ELIGIBLE",
+        "reason_codes": [
+          "FPL_VERDICT_NOT_FINALIZED"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N13b_finalized_same_intent_matched",
+      "graph_fixture": "evm-eth-transfer-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-native-finalized-transition-v1",
+        "required_confirmations": 12,
+        "current_block": 19000012
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "chain_id": "1",
+        "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-native-finalized-transition-v1"
+      },
+      "intent": {
+        "intent_id": "intent_temporal_native_eth_to_bob_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "1000000000000000000"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "MATCHED",
+        "reason_codes": [
+          "EVM_NATIVE_TRANSFER_INTENT_MATCHED"
+        ],
+        "matched_fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N14_multilog_order_preserved_ambiguous",
+      "graph_fixture": "evm-multi-log-transaction-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-multilog-order-v1",
+        "required_confirmations": 12,
+        "current_block": 19000015
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+        "chain_id": "1",
+        "tx_hash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-multilog-order-v1"
+      },
+      "intent": {
+        "intent_id": "intent_multilog_order_erc20_v1",
+        "intent_type": "ERC20_TRANSFER",
+        "chain_id": "1",
+        "sender": "0x1111111111111111111111111111111111111111",
+        "token_contract": "0x3333333333333333333333333333333333333333",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "100"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "AMBIGUOUS",
+        "reason_codes": [
+          "COMPOSITE_TRANSACTION_REQUIRES_FACT_SELECTOR"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N15a_replay_first_observation_matched",
+      "graph_fixture": "evm-duplicate-log-replay-v1.json",
+      "graph_observation_index": 0,
+      "fpl_context": {
+        "context_id": "reconcile-replay-first-v1",
+        "required_confirmations": 12,
+        "current_block": 19000017
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+        "chain_id": "1",
+        "tx_hash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-replay-first-v1"
+      },
+      "intent": {
+        "intent_id": "intent_replay_erc20_v1",
+        "intent_type": "ERC20_TRANSFER",
+        "chain_id": "1",
+        "sender": "0x1111111111111111111111111111111111111111",
+        "token_contract": "0x3333333333333333333333333333333333333333",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "200"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "MATCHED",
+        "reason_codes": [
+          "ERC20_TRANSFER_INTENT_MATCHED"
+        ],
+        "matched_fact_id": "sha256:0a57b5903b2da119d1143601349205e8394f596448000cf6b1af6c41a28d7a62",
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N15b_replay_duplicate_observation_stable",
+      "graph_fixture": "evm-duplicate-log-replay-v1.json",
+      "graph_observation_index": 1,
+      "fpl_context": {
+        "context_id": "reconcile-replay-duplicate-v1",
+        "required_confirmations": 12,
+        "current_block": 19000017
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:839ca8d3ff6905236d847d387962c5f8e8e72242a5d673cb6da353022f5ed98a",
+        "chain_id": "1",
+        "tx_hash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-replay-duplicate-v1"
+      },
+      "intent": {
+        "intent_id": "intent_replay_erc20_v1",
+        "intent_type": "ERC20_TRANSFER",
+        "chain_id": "1",
+        "sender": "0x1111111111111111111111111111111111111111",
+        "token_contract": "0x3333333333333333333333333333333333333333",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "200"
+      },
+      "expected_same_as": {
+        "case_id": "N15a_replay_first_observation_matched"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "MATCHED",
+        "reason_codes": [
+          "ERC20_TRANSFER_INTENT_MATCHED"
+        ],
+        "matched_fact_id": "sha256:0a57b5903b2da119d1143601349205e8394f596448000cf6b1af6c41a28d7a62",
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    }
+  ],
+  "lock": {
+    "status": "frozen",
+    "rule": "Temporal, partial, ordering, and replay reconciliation fixtures may stress observation timing only; they must not add ownership, balances, custody, settlement, account state, protocol mutation, or new verdict classes."
+  }
+}

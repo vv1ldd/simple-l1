@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/identity-mesh/schema/identity-state-envelope.schema.json",
+  "title": "SL1 Identity State Envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "envelope_id",
+    "entity_l1_address",
+    "device_key_l1_address",
+    "sequence",
+    "previous_state_hash",
+    "state_hash",
+    "issued_at",
+    "expires_at",
+    "observed_epoch",
+    "controller_bindings",
+    "controller_binding_proposals",
+    "revocation_observations",
+    "provider_state_proof",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.identity_state_envelope.v1"
+    },
+    "envelope_id": {
+      "type": "string",
+      "pattern": "^ise_[a-z0-9_\\-]{12,80}$"
+    },
+    "entity_l1_address": {
+      "$ref": "#/$defs/entityAddress"
+    },
+    "device_key_l1_address": {
+      "$ref": "#/$defs/keyAddress"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "previous_state_hash": {
+      "anyOf": [
+        { "$ref": "#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "state_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "controller_bindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/controllerBinding" }
+    },
+    "controller_binding_proposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/controllerBindingProposal" }
+    },
+    "revocation_observations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/revocationObservation" }
+    },
+    "provider_state_proof": {
+      "anyOf": [
+        { "$ref": "#/$defs/providerStateProof" },
+        { "type": "null" }
+      ]
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    }
+  },
+  "$defs": {
+    "entityAddress": {
+      "type": "string",
+      "pattern": "^sl1e_[a-f0-9]{39,64}$"
+    },
+    "keyAddress": {
+      "type": "string",
+      "pattern": "^sl1_[a-f0-9]{32,64}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "controllerBinding": {
+      "type": "object",
+      "required": [
+        "binding_id",
+        "entity_l1_address",
+        "controller_key_l1_address",
+        "status",
+        "observed_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "pattern": "^cb_[a-z0-9_\\-]{8,80}$"
+        },
+        "entity_l1_address": {
+          "$ref": "#/$defs/entityAddress"
+        },
+        "controller_key_l1_address": {
+          "$ref": "#/$defs/keyAddress"
+        },
+        "status": {
+          "enum": ["active", "revoked", "unknown"]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "provider_evidence_hash": {
+          "anyOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "controllerBindingProposal": {
+      "type": "object",
+      "required": [
+        "proposal_id",
+        "entity_l1_address",
+        "proposed_controller_key_l1_address",
+        "controller_type",
+        "status",
+        "proposed_at",
+        "proposal_hash"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "proposal_id": {
+          "type": "string",
+          "pattern": "^cbp_[a-z0-9_\\-]{8,80}$"
+        },
+        "entity_l1_address": {
+          "$ref": "#/$defs/entityAddress"
+        },
+        "proposed_controller_key_l1_address": {
+          "$ref": "#/$defs/keyAddress"
+        },
+        "controller_type": {
+          "enum": ["native_macos_p256", "webauthn_passkey", "mobile_device", "unknown"]
+        },
+        "status": {
+          "enum": ["pending", "approved", "rejected", "expired"]
+        },
+        "proposed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "approved_by_key_l1_address": {
+          "anyOf": [
+            { "$ref": "#/$defs/keyAddress" },
+            { "type": "null" }
+          ]
+        },
+        "approved_at": {
+          "anyOf": [
+            { "type": "string", "format": "date-time" },
+            { "type": "null" }
+          ]
+        },
+        "proposal_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "revocationObservation": {
+      "type": "object",
+      "required": [
+        "revocation_id",
+        "binding_id",
+        "controller_key_l1_address",
+        "observed_at",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "revocation_id": {
+          "type": "string",
+          "pattern": "^rev_[a-z0-9_\\-]{8,80}$"
+        },
+        "binding_id": {
+          "type": "string",
+          "pattern": "^cb_[a-z0-9_\\-]{8,80}$"
+        },
+        "controller_key_l1_address": {
+          "$ref": "#/$defs/keyAddress"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "enum": ["provider", "quorum", "peer", "local"]
+        }
+      }
+    },
+    "providerStateProof": {
+      "type": "object",
+      "required": [
+        "provider",
+        "epoch",
+        "state_hash",
+        "issued_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "signed_by_key_l1_address",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "enum": ["p256-sha256-der", "ed25519"]
+        },
+        "signed_by_key_l1_address": {
+          "$ref": "#/$defs/keyAddress"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_\\-]{32,4096}$"
+        }
+      }
+    }
+  }
+}

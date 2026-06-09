@@ -9,6 +9,7 @@ class MemoryConnectRuntimeStore {
             authChallenges: new Map(),
             registrationChallenges: new Map(),
             deviceHandoffs: new Map(),
+            devicePairings: new Map(),
             aliasReservations: new Map(),
             rateLimits: new Map(),
             consumedProofs: new Map(),

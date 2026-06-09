@@ -1,0 +1,143 @@
+{
+  "schema_version": "simple-l1.reconciliation-fixtures.v0",
+  "fixture_id": "reconciliation_v0_evm_native_intent_matching",
+  "description": "Reconciliation v0 native EVM fixtures. Native transfer matching consumes finalized EVM_TX facts plus intent and returns MATCHED/NOT_MATCHED/NOT_ELIGIBLE without ownership or state mutation.",
+  "cases": [
+    {
+      "id": "N1_finalized_native_matching_receive",
+      "graph_fixture": "evm-eth-transfer-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-finalized-native-eth-v1",
+        "required_confirmations": 12,
+        "current_block": 19000012
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "chain_id": "1",
+        "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-finalized-native-eth-v1"
+      },
+      "intent": {
+        "intent_id": "intent_native_eth_to_bob_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "1000000000000000000"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "MATCHED",
+        "reason_codes": [
+          "EVM_NATIVE_TRANSFER_INTENT_MATCHED"
+        ],
+        "matched_fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N2_finalized_native_wrong_recipient",
+      "graph_fixture": "evm-eth-transfer-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-finalized-native-eth-v1",
+        "required_confirmations": 12,
+        "current_block": 19000012
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "finalized",
+        "reason_codes": [
+          "FPL_ELIGIBILITY_SATISFIED"
+        ],
+        "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "chain_id": "1",
+        "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "confirmations": 12,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-finalized-native-eth-v1"
+      },
+      "intent": {
+        "intent_id": "intent_native_eth_wrong_recipient_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "recipient": "0x9999999999999999999999999999999999999999",
+        "amount_raw": "1000000000000000000"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "NOT_MATCHED",
+        "reason_codes": [
+          "EVM_NATIVE_TRANSFER_INTENT_NOT_MATCHED"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    },
+    {
+      "id": "N3_candidate_native_matching_intent_not_eligible",
+      "graph_fixture": "evm-eth-transfer-v1.json",
+      "fpl_context": {
+        "context_id": "reconcile-candidate-native-eth-v1",
+        "required_confirmations": 12,
+        "current_block": 19000005
+      },
+      "fpl_verdict": {
+        "object_type": "FPLVerdict",
+        "fpl_version": "FPL_v0",
+        "verdict": "candidate",
+        "reason_codes": [
+          "INSUFFICIENT_CONFIRMATIONS"
+        ],
+        "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+        "chain_id": "1",
+        "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "confirmations": 5,
+        "required_confirmations": 12,
+        "semantic_interpretation_allowed": false,
+        "ownership_verdict": null,
+        "reconciliation_output": null,
+        "context_id": "reconcile-candidate-native-eth-v1"
+      },
+      "intent": {
+        "intent_id": "intent_native_eth_to_bob_v1",
+        "intent_type": "EVM_NATIVE_TRANSFER",
+        "chain_id": "1",
+        "recipient": "0x2222222222222222222222222222222222222222",
+        "amount_raw": "1000000000000000000"
+      },
+      "expected": {
+        "object_type": "ReconciliationResult",
+        "reconciliation_version": "RECONCILIATION_v0",
+        "status": "NOT_ELIGIBLE",
+        "reason_codes": [
+          "FPL_VERDICT_NOT_FINALIZED"
+        ],
+        "matched_fact_id": null,
+        "ownership_verdict": null,
+        "state_mutation": null
+      }
+    }
+  ],
+  "lock": {
+    "status": "frozen",
+    "rule": "Native EVM reconciliation may match finalized EVM_TX facts to intents only; it must not compute ownership, balances, custody, or protocol state mutation."
+  }
+}

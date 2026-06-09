@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simplel1.online/contracts/shadow-divergence-record.schema.json",
+  "title": "SL1 Shadow Divergence Record",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "phase",
+    "correlation_id",
+    "sdga_hash",
+    "guard_artifact_hash",
+    "kernel_result_hash",
+    "runtime_result_hash",
+    "divergence_type",
+    "severity",
+    "observed_at",
+    "production_effect"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "simple-l1.shadow_divergence_record.v1"
+    },
+    "artifact_type": {
+      "const": "shadow_divergence_record"
+    },
+    "phase": {
+      "const": "SEVP_v0"
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sdga_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "guard_artifact_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "kernel_result_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "runtime_result_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "divergence_type": {
+      "type": "string",
+      "enum": ["missing_field", "unexpected_field", "value_mismatch", "order_mismatch", "failure_mismatch"]
+    },
+    "field": {
+      "type": "string"
+    },
+    "expected": {
+      "type": ["string", "number", "boolean", "null", "array", "object"]
+    },
+    "observed": {
+      "type": ["string", "number", "boolean", "null", "array", "object"]
+    },
+    "node_level_diff": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "diff_type"],
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "diff_type": {
+            "type": "string",
+            "enum": ["missing_node", "unexpected_node", "status_mismatch", "output_ref_mismatch"]
+          }
+        }
+      }
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warn", "blocker"]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "production_effect": {
+      "const": "none"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

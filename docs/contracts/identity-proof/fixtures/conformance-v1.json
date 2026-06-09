@@ -1,0 +1,211 @@
+{
+  "schema_version": "simple-l1.identity_proof_conformance.v1",
+  "contract_pack": "identity-proof",
+  "ruleset_version": "identity-proof-v1",
+  "ruleset_status": "frozen",
+  "deterministic_runner": {
+    "seed": "identity-proof-v1:0000000000000001",
+    "case_order": "fixture_order"
+  },
+  "issuer_trust_snapshot": {
+    "simplel1.local": {
+      "issuer_id": "simplel1.local",
+      "issuer_url": "https://simplel1.local",
+      "key_id": "identity-proof-test-key-v1",
+      "secret": "identity-proof-test-secret-v1"
+    }
+  },
+  "base_input": {
+    "issuer": {
+      "issuer_id": "simplel1.local",
+      "issuer_url": "https://simplel1.local",
+      "key_id": "identity-proof-test-key-v1"
+    },
+    "subject": {
+      "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+      "key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "client_id": "marketplace",
+    "redirect_uri": "https://marketplace.example/sl1/callback",
+    "intent": {
+      "type": "meanly.login",
+      "resource": "marketplace",
+      "nonce": "intent-nonce-001"
+    },
+    "state": "state-001",
+    "nonce": "nonce-001",
+    "issued_at": "2026-06-06T16:00:00Z",
+    "expires_at": "2026-06-06T16:10:00Z",
+    "assurance_level": "AL2",
+    "claims": {
+      "alias": "alice",
+      "display_alias": "Alice"
+    }
+  },
+  "semantic_cases": [
+    {
+      "name": "valid envelope verifies",
+      "mutate": {},
+      "expected": {
+        "ok": true,
+        "reason_codes": []
+      }
+    },
+    {
+      "name": "wrong client fails",
+      "expected_context": {
+        "client_id": "merchant-console"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["CLIENT_MISMATCH"]
+      }
+    },
+    {
+      "name": "wrong redirect fails",
+      "expected_context": {
+        "redirect_uri": "https://marketplace.example/wrong"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["REDIRECT_URI_MISMATCH"]
+      }
+    },
+    {
+      "name": "wrong intent fails",
+      "expected_context": {
+        "intent": {
+          "type": "meanly.offer.sign",
+          "resource": "marketplace",
+          "nonce": "intent-nonce-001"
+        }
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["INTENT_MISMATCH"]
+      }
+    },
+    {
+      "name": "unknown issuer fails",
+      "trust_snapshot": {},
+      "expected": {
+        "ok": false,
+        "reason_codes": ["UNTRUSTED_ISSUER"]
+      }
+    },
+    {
+      "name": "expired envelope fails",
+      "now": "2026-06-06T16:11:00Z",
+      "expected": {
+        "ok": false,
+        "reason_codes": ["PROOF_EXPIRED"]
+      }
+    },
+    {
+      "name": "tampered signature fails",
+      "tamper_after_sign": {
+        "client_id": "marketplace-tampered"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["PROOF_VERIFICATION_FAILED"]
+      }
+    }
+  ],
+  "boundary_cases": [
+    {
+      "name": "credential_id is forbidden",
+      "inject": {
+        "credential_id": "raw-credential-id"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "authenticator_data is forbidden",
+      "inject": {
+        "authenticator_data": "raw-authenticator-data"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "client_data_json is forbidden",
+      "inject": {
+        "client_data_json": "raw-client-data-json"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "webauthn_sign_count is forbidden",
+      "inject": {
+        "webauthn_sign_count": 7
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "attestation_object is forbidden",
+      "inject": {
+        "attestation_object": "raw-attestation"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "transports is forbidden",
+      "inject": {
+        "transports": ["internal"]
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "raw_assertion_signature is forbidden",
+      "inject": {
+        "raw_assertion_signature": "raw-signature"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "assertion is forbidden",
+      "inject": {
+        "assertion": {
+          "id": "raw-assertion"
+        }
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    },
+    {
+      "name": "authenticator is forbidden",
+      "inject": {
+        "authenticator": {
+          "type": "platform"
+        }
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["NO_RAW_CREDENTIAL_LEAK"]
+      }
+    }
+  ]
+}

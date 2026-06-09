@@ -1,0 +1,132 @@
+{
+  "schema_version": "simple-l1.evm_multi_log_fixture.v1",
+  "fixture_id": "evm_multi_log_transaction_v1",
+  "description": "FrozenGraphV4 coverage extension: successful transaction with three logs preserving log order, node order, and edge order.",
+  "input": {
+    "chain_id": "0x1",
+    "source": "fixture:multi-log-transaction-v1",
+    "observed_at": "2026-05-30T14:15:00.000Z",
+    "block": {
+      "timestamp": "0x6553f22c"
+    },
+    "transaction": {
+      "hash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x5555555555555555555555555555555555555555",
+      "value": "0x0",
+      "input": "0xabcdef01",
+      "nonce": "0x2d"
+    },
+    "receipt": {
+      "transactionHash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+      "blockHash": "0x3434343434343434343434343434343434343434343434343434343434343434",
+      "blockNumber": "0x0121eac3",
+      "transactionIndex": "0xa",
+      "status": "0x1",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x5555555555555555555555555555555555555555",
+      "logs": [
+        {
+          "address": "0x5555555555555555555555555555555555555555",
+          "transactionHash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+          "logIndex": "0x0",
+          "topics": [
+            "0x9999999999999999999999999999999999999999999999999999999999999999"
+          ],
+          "data": "0x01"
+        },
+        {
+          "address": "0x3333333333333333333333333333333333333333",
+          "transactionHash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+          "logIndex": "0x1",
+          "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000001111111111111111111111111111111111111111",
+            "0x0000000000000000000000002222222222222222222222222222222222222222"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000064"
+        },
+        {
+          "address": "0x6666666666666666666666666666666666666666",
+          "transactionHash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+          "logIndex": "0x2",
+          "topics": [
+            "0x8888888888888888888888888888888888888888888888888888888888888888"
+          ],
+          "data": "0x02"
+        }
+      ],
+      "gasUsed": "0x186a0",
+      "effectiveGasPrice": "0x3b9aca00"
+    }
+  },
+  "expected": {
+    "fact_id": "sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+    "canonical_fact": {
+      "fact_id": "sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+      "fact_type": "EVM_TX",
+      "chain_id": "1",
+      "block_number": "19000003",
+      "block_hash": "0x3434343434343434343434343434343434343434343434343434343434343434",
+      "tx_hash": "0x1212121212121212121212121212121212121212121212121212121212121212",
+      "transaction_index": "10",
+      "receipt_status": "1",
+      "log_index": null,
+      "emitter_address": null,
+      "event_signature": null,
+      "topics": [],
+      "raw_data": {
+        "effective_gas_price": "1000000000",
+        "from": "0x1111111111111111111111111111111111111111",
+        "gas_used": "100000",
+        "input": "0xabcdef01",
+        "to": "0x5555555555555555555555555555555555555555",
+        "value": "0"
+      },
+      "observed_at": "2026-05-30T14:15:00.000Z",
+      "source": "fixture:multi-log-transaction-v1",
+      "timestamp": "1700000300"
+    },
+    "canonical_fact_json": "{\"block_hash\":\"0x3434343434343434343434343434343434343434343434343434343434343434\",\"block_number\":\"19000003\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T14:15:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"100000\",\"input\":\"0xabcdef01\",\"to\":\"0x5555555555555555555555555555555555555555\",\"value\":\"0\"},\"receipt_status\":\"1\",\"source\":\"fixture:multi-log-transaction-v1\",\"timestamp\":\"1700000300\",\"topics\":[],\"transaction_index\":\"10\",\"tx_hash\":\"0x1212121212121212121212121212121212121212121212121212121212121212\"}",
+    "graph_json_sha256": "sha256:b9db04e3dd3e370bb23fbf098ec3bea42b4f8415a9642bc9c1e7a2c4bf8672b0",
+    "ordered_fact_ids": [
+      "sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+      "sha256:6c286b7cad408c732293404a9c9dd2b0f8be7f48ba9c3dd059068d314197229b",
+      "sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+      "sha256:73b5f66246d8506bb84582f76e357df22baf24c26120563121cdcb1e0e1f275d"
+    ],
+    "ordered_node_ids": [
+      "evm_tx:sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+      "evm_log:sha256:6c286b7cad408c732293404a9c9dd2b0f8be7f48ba9c3dd059068d314197229b",
+      "evm_log:sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+      "erc20_transfer:sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+      "evm_log:sha256:73b5f66246d8506bb84582f76e357df22baf24c26120563121cdcb1e0e1f275d"
+    ],
+    "ordered_edges": [
+      [
+        "evm_tx:sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+        "evm_log:sha256:6c286b7cad408c732293404a9c9dd2b0f8be7f48ba9c3dd059068d314197229b",
+        "after"
+      ],
+      [
+        "evm_tx:sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+        "evm_log:sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+        "after"
+      ],
+      [
+        "evm_log:sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+        "erc20_transfer:sha256:151bc0c6da7eb94e6e2a542acf3305c8a06727b9d12a0521357c1c28ddf9e504",
+        "after"
+      ],
+      [
+        "evm_tx:sha256:741e3a37918bf51ec30d442af1d812896268cc9ac055e625c1b38332585200f3",
+        "evm_log:sha256:73b5f66246d8506bb84582f76e357df22baf24c26120563121cdcb1e0e1f275d",
+        "after"
+      ]
+    ]
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Any change to input, canonical output, fact_id, node shape, edge shape, or ordering is either a versioned protocol change or a violation."
+  }
+}

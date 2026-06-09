@@ -1,0 +1,250 @@
+{
+  "schema_version": "simple-l1.truth_spec.v1",
+  "spec_id": "sl1_truth_spec_v1",
+  "status": "draft",
+  "compiler": {
+    "deterministic": true,
+    "stateless": true,
+    "side_effect_free": true,
+    "may_introduce_semantics": false,
+    "derived_artifacts": [
+      "lintable_invariants",
+      "positive_tests",
+      "negative_tests",
+      "runtime_guard_stubs"
+    ]
+  },
+  "entities": [
+    {
+      "id": "join_request",
+      "source": "bridge",
+      "owner": "bridge",
+      "persistence": "evidence_store",
+      "authority_status": "non_authoritative",
+      "description": "Observed network discovery signal. It is evidence only and never mesh membership."
+    },
+    {
+      "id": "verified_candidate",
+      "source": "runtime_validation",
+      "owner": "runtime_validation_layer",
+      "persistence": "ephemeral",
+      "authority_status": "non_authoritative",
+      "description": "Join request plus validation evidence. It may inform admission but is not admitted."
+    },
+    {
+      "id": "admitted_peer",
+      "source": "host_authority",
+      "owner": "host",
+      "persistence": "local_peer_registry",
+      "authority_status": "exclusive_authority",
+      "description": "Local host authority decision. This is the only source of mesh membership truth."
+    },
+    {
+      "id": "visible_mesh_node",
+      "source": "ui_projection",
+      "owner": "ui_projection_layer",
+      "persistence": "read_model",
+      "authority_status": "projection_only",
+      "description": "Read-model projection derived from admitted peers or explicitly labeled candidate views."
+    },
+    {
+      "id": "tls_state",
+      "source": "postflight_observer",
+      "owner": "postflight_observer",
+      "persistence": "derived_observation",
+      "authority_status": "observability_only",
+      "description": "Derived TLS lifecycle observation. It must not gate converge or admission."
+    }
+  ],
+  "authority_boundaries": [
+    {
+      "domain": "network_discovery",
+      "owner": "bridge",
+      "allowed_authority": "store and replay discovery evidence",
+      "forbidden": [
+        "admit peers",
+        "override admission",
+        "define mesh membership"
+      ]
+    },
+    {
+      "domain": "runtime_validation",
+      "owner": "runtime_validation_layer",
+      "allowed_authority": "produce non-authoritative candidate evidence",
+      "forbidden": [
+        "write admitted_peer",
+        "override host admission"
+      ]
+    },
+    {
+      "domain": "peer_admission",
+      "owner": "host",
+      "allowed_authority": "exclusive write authority for admitted_peer",
+      "forbidden": [
+        "delegate admission to bridge",
+        "delegate admission to UI"
+      ]
+    },
+    {
+      "domain": "visibility",
+      "owner": "ui_projection_layer",
+      "allowed_authority": "render labeled read models",
+      "forbidden": [
+        "write peer state",
+        "drive admission decisions"
+      ]
+    },
+    {
+      "domain": "tls_status",
+      "owner": "postflight_observer",
+      "allowed_authority": "report derived TLS lifecycle state",
+      "forbidden": [
+        "mutate converge state",
+        "fail admission"
+      ]
+    },
+    {
+      "domain": "state_execution",
+      "owner": "runtime_converge_owner",
+      "allowed_authority": "execute deterministic converge mutations",
+      "forbidden": [
+        "depend on DNS propagation",
+        "depend on TLS issuance",
+        "depend on HTTP endpoint availability"
+      ]
+    }
+  ],
+  "allowed_transitions": [
+    {
+      "from": "join_request",
+      "to": "verified_candidate",
+      "actor": "runtime_validation_layer",
+      "requires": ["validation_evidence"]
+    },
+    {
+      "from": "verified_candidate",
+      "to": "admitted_peer",
+      "actor": "host",
+      "requires": ["explicit_local_admission"]
+    },
+    {
+      "from": "verified_candidate",
+      "to": "rejected",
+      "actor": "host",
+      "requires": ["explicit_local_rejection"]
+    },
+    {
+      "from": "admitted_peer",
+      "to": "visible_mesh_node",
+      "actor": "ui_projection_layer",
+      "requires": ["read_model_projection"]
+    },
+    {
+      "from": "postflight_observation",
+      "to": "tls_state",
+      "actor": "postflight_observer",
+      "requires": ["derived_observation"]
+    }
+  ],
+  "forbidden_transitions": [
+    {
+      "from": "join_request",
+      "to": "admitted_peer",
+      "actor": "bridge",
+      "reason": "Discovery evidence is not admission."
+    },
+    {
+      "from": "bridge",
+      "to": "admitted_peer",
+      "actor": "bridge",
+      "reason": "Bridge is evidence transport, not authority."
+    },
+    {
+      "from": "ui_projection_layer",
+      "to": "admitted_peer",
+      "actor": "ui_projection_layer",
+      "reason": "UI is a read model, not admission authority."
+    },
+    {
+      "from": "runtime_validation_layer",
+      "to": "admitted_peer",
+      "actor": "runtime_validation_layer",
+      "reason": "Validation evidence cannot override host admission."
+    },
+    {
+      "from": "tls_state",
+      "to": "converge",
+      "actor": "postflight_observer",
+      "reason": "TLS is postflight observability only."
+    },
+    {
+      "from": "tls_state",
+      "to": "admitted_peer",
+      "actor": "postflight_observer",
+      "reason": "TLS state does not grant peer admission."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "ADMITTED_PEER_HOST_AUTHORITY",
+      "statement": "admitted_peer must originate from host authority only.",
+      "violation_code": "ADMISSION_AUTHORITY_VIOLATION",
+      "guards": ["requireHostAdmissionActor"]
+    },
+    {
+      "id": "BRIDGE_NO_ADMISSION",
+      "statement": "Bridge-originated data must never create or mutate admitted_peer.",
+      "violation_code": "BRIDGE_AUTHORITY_VIOLATION",
+      "guards": ["rejectBridgeAdmissionWrites"]
+    },
+    {
+      "id": "UI_NO_PEER_MUTATION",
+      "statement": "UI projections must not write peer state or drive admission decisions.",
+      "violation_code": "UI_AUTHORITY_VIOLATION",
+      "guards": ["rejectUiPeerMutation"]
+    },
+    {
+      "id": "RUNTIME_NO_ADMISSION_OVERRIDE",
+      "statement": "Runtime validation may create candidate evidence but must not override host admission.",
+      "violation_code": "RUNTIME_AUTHORITY_VIOLATION",
+      "guards": ["rejectRuntimeAdmissionOverride"]
+    },
+    {
+      "id": "POSTFLIGHT_NO_CONVERGE_MUTATION",
+      "statement": "Postflight observers must not mutate converge state.",
+      "violation_code": "POSTFLIGHT_MUTATION_VIOLATION",
+      "guards": ["rejectPostflightConvergeMutation"]
+    },
+    {
+      "id": "TLS_NO_CONVERGE_GATE",
+      "statement": "TLS state must not fail converge execution or peer admission.",
+      "violation_code": "TLS_CONVERGE_GATE_VIOLATION",
+      "guards": ["classifyTlsAsPostflightOnly"]
+    },
+    {
+      "id": "DISCOVERY_NOT_MEMBERSHIP",
+      "statement": "join_request and discovery artifacts are not mesh membership.",
+      "violation_code": "DISCOVERY_MEMBERSHIP_VIOLATION",
+      "guards": ["rejectDiscoveryAsMembership"]
+    },
+    {
+      "id": "VISIBLE_NODE_IS_PROJECTION",
+      "statement": "visible_mesh_node must be derived from admitted_peer or explicitly labeled discovery/candidate read models.",
+      "violation_code": "VISIBILITY_PROJECTION_VIOLATION",
+      "guards": ["requireProjectionLabel"]
+    }
+  ],
+  "tls_states": [
+    "trusted",
+    "pending_acme",
+    "fallback_self_signed",
+    "unreachable"
+  ],
+  "converge_independence": {
+    "must_not_depend_on": [
+      "dns_propagation",
+      "tls_issuance",
+      "http_endpoint_availability"
+    ]
+  }
+}

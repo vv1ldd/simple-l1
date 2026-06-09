@@ -1,0 +1,243 @@
+{
+  "schema_version": "simple-l1.identity_mesh_conformance.v1",
+  "contract_pack": "identity-mesh",
+  "ruleset_version": "identity-mesh-v1",
+  "ruleset_status": "frozen",
+  "deterministic_runner": {
+    "seed": "identity-mesh-v1:0000000000000001",
+    "case_order": "fixture_order"
+  },
+  "description": "Identity mesh conformance vectors for local identity nodes, state envelopes, and bounded authority modes.",
+  "valid_envelopes": [
+    {
+      "schema_version": "simple-l1.identity_state_envelope.v1",
+      "envelope_id": "ise_device_a_epoch_7",
+      "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+      "device_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sequence": 7,
+      "previous_state_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "state_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "issued_at": "2026-06-06T16:00:00Z",
+      "expires_at": "2026-06-06T16:10:00Z",
+      "observed_epoch": 7,
+      "controller_bindings": [
+        {
+          "binding_id": "cb_device_a_primary",
+          "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+          "controller_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "status": "active",
+          "observed_at": "2026-06-06T16:00:00Z",
+          "provider_evidence_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "controller_binding_proposals": [],
+      "revocation_observations": [],
+      "provider_state_proof": {
+        "provider": "simplel1.online",
+        "epoch": 7,
+        "state_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "issued_at": "2026-06-06T16:00:00Z"
+      },
+      "signature": {
+        "algorithm": "p256-sha256-der",
+        "signed_by_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "value": "MEUCIQDaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  ],
+  "merge_cases": [
+    {
+      "name": "monotonic sequence wins for same device",
+      "invariant_id": "IMESH_V1_MONOTONIC_SEQUENCE",
+      "input": [
+        {
+          "device_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sequence": 7,
+          "state_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+        },
+        {
+          "device_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sequence": 8,
+          "state_hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        }
+      ],
+      "expected": {
+        "selected_state_hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "authority_grant_created": false
+      }
+    },
+    {
+      "name": "revocation overrides stale active binding",
+      "invariant_id": "IMESH_V1_REVOCATION_PRECEDENCE",
+      "input": [
+        {
+          "binding_id": "cb_device_a_primary",
+          "status": "active",
+          "observed_at": "2026-06-06T16:00:00Z"
+        },
+        {
+          "revocation_id": "rev_device_a_primary",
+          "binding_id": "cb_device_a_primary",
+          "source": "provider",
+          "observed_at": "2026-06-06T16:03:00Z"
+        }
+      ],
+      "expected": {
+        "binding_status": "revoked",
+        "authority_grant_created": false
+      }
+    },
+    {
+      "name": "provider state dominates local cache",
+      "invariant_id": "IMESH_V1_PROVIDER_DOMINANCE",
+      "input": [
+        {
+          "source": "peer",
+          "observed_epoch": 8,
+          "state_hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        {
+          "source": "provider",
+          "observed_epoch": 7,
+          "state_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ],
+      "expected": {
+        "selected_state_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "authority_grant_created": false
+      }
+    },
+    {
+      "name": "conflict creates uncertainty not permission escalation",
+      "invariant_id": "IMESH_V1_CONFLICT_UNCERTAINTY",
+      "input": [
+        {
+          "source": "peer",
+          "binding_id": "cb_conflict",
+          "status": "active"
+        },
+        {
+          "source": "peer",
+          "binding_id": "cb_conflict",
+          "status": "unknown"
+        }
+      ],
+      "expected": {
+        "conflict": true,
+        "authority_grant_created": false
+      }
+    },
+    {
+      "name": "valid controller binding proposal remains observation",
+      "invariant_id": "IMESH_V1_BINDING_PROPOSAL_OBSERVATION_ONLY",
+      "input": [
+        {
+          "proposal_id": "cbp_add_device_b",
+          "entity_l1_address": "sl1e_f690252733b20004bda7916074403f4259206a4",
+          "proposed_controller_key_l1_address": "sl1_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controller_type": "webauthn_passkey",
+          "status": "approved",
+          "proposed_at": "2026-06-06T16:04:00Z",
+          "approved_by_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approved_at": "2026-06-06T16:05:00Z",
+          "proposal_hash": "sha256:1212121212121212121212121212121212121212121212121212121212121212"
+        }
+      ],
+      "expected": {
+        "proposal_status": "approved",
+        "authority_grant_created": false
+      }
+    },
+    {
+      "name": "replayed controller binding proposal rejected as stale observation",
+      "invariant_id": "IMESH_V1_BINDING_PROPOSAL_REPLAY",
+      "input": [
+        {
+          "proposal_id": "cbp_replayed_device",
+          "sequence": 2,
+          "status": "approved"
+        },
+        {
+          "proposal_id": "cbp_replayed_device",
+          "sequence": 1,
+          "status": "approved"
+        }
+      ],
+      "expected": {
+        "replay_detected": true,
+        "authority_grant_created": false
+      }
+    }
+  ],
+  "authority_boundary_cases": [
+    {
+      "name": "identity state envelope cannot be consumed as grant",
+      "invariant_id": "IMESH_V1_OBSERVATION_NOT_GRANT",
+      "input_type": "IdentityStateEnvelope",
+      "expected_output_type": "mesh_observation",
+      "forbidden_output_types": ["authority_grant", "authorization_code", "application_session"]
+    },
+    {
+      "name": "single device cannot mint local authority",
+      "invariant_id": "IMESH_V1_QUORUM_CARDINALITY",
+      "authority_mode": "local_quorum",
+      "signatures": [
+        {
+          "device_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "intent_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "policy": {
+        "required_quorum": 2,
+        "allowed": true
+      },
+      "expected": {
+        "authority_grant_created": false,
+        "reason": "quorum_not_met"
+      }
+    },
+    {
+      "name": "local quorum requires exact same intent hash",
+      "invariant_id": "IMESH_V1_QUORUM_INTENT_HASH",
+      "authority_mode": "local_quorum",
+      "signatures": [
+        {
+          "device_key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "intent_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "device_key_l1_address": "sl1_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "intent_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "policy": {
+        "required_quorum": 2,
+        "allowed": true
+      },
+      "expected": {
+        "authority_grant_created": false,
+        "reason": "intent_hash_mismatch"
+      }
+    },
+    {
+      "name": "provider-only intent rejects local quorum",
+      "invariant_id": "IMESH_V1_PROVIDER_ONLY_INTENT",
+      "authority_mode": "local_quorum",
+      "intent_type": "meanly.ops.admin",
+      "policy": {
+        "provider_required": true
+      },
+      "expected": {
+        "authority_grant_created": false,
+        "reason": "provider_required"
+      }
+    },
+    {
+      "name": "relay payload cannot create authority",
+      "invariant_id": "IMESH_V1_RELAY_PAYLOAD_OBSERVATION_ONLY",
+      "input_type": "RelayMailboxPayload",
+      "expected_output_type": "mesh_observation",
+      "forbidden_output_types": ["authority_grant", "authorization_code", "application_session"]
+    }
+  ]
+}

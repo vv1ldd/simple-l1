@@ -1,0 +1,93 @@
+{
+  "schema_version": "simple-l1.identity_proof_ruleset.v1",
+  "contract_pack": "identity-proof",
+  "ruleset_version": "identity-proof-v1",
+  "ruleset_status": "frozen",
+  "description": "Frozen v1 invariant set for application-facing identity proof envelopes.",
+  "domains": [
+    {
+      "id": "STRUCTURAL_VALIDITY",
+      "meaning": "Envelope shape conforms to JSON Schema and required fields are present."
+    },
+    {
+      "id": "SEMANTIC_VALIDITY",
+      "meaning": "Envelope matches the expected client, redirect URI, intent, nonce, and expiry context."
+    },
+    {
+      "id": "TRUST_VALIDITY",
+      "meaning": "Envelope is signed by a trusted issuer snapshot and has not been tampered with."
+    },
+    {
+      "id": "BOUNDARY_INTEGRITY",
+      "meaning": "No WebAuthn, credential, or internal authentication runtime artifacts cross into application space."
+    }
+  ],
+  "failure_taxonomy": [
+    {
+      "code": "SCHEMA_ERROR",
+      "domain": "STRUCTURAL_VALIDITY",
+      "meaning": "Envelope violates its JSON Schema shape."
+    },
+    {
+      "code": "CLIENT_MISMATCH",
+      "domain": "SEMANTIC_VALIDITY",
+      "meaning": "Envelope client_id does not match expected application client."
+    },
+    {
+      "code": "REDIRECT_URI_MISMATCH",
+      "domain": "SEMANTIC_VALIDITY",
+      "meaning": "Envelope redirect_uri does not match the authorization-code context."
+    },
+    {
+      "code": "INTENT_MISMATCH",
+      "domain": "SEMANTIC_VALIDITY",
+      "meaning": "Envelope intent does not match expected application intent."
+    },
+    {
+      "code": "PROOF_EXPIRED",
+      "domain": "TRUST_VALIDITY",
+      "meaning": "Envelope is expired at verification time."
+    },
+    {
+      "code": "UNTRUSTED_ISSUER",
+      "domain": "TRUST_VALIDITY",
+      "meaning": "Issuer or signing key is missing from the trust snapshot."
+    },
+    {
+      "code": "PROOF_VERIFICATION_FAILED",
+      "domain": "TRUST_VALIDITY",
+      "meaning": "Envelope signature does not verify against issuer trust material."
+    },
+    {
+      "code": "NO_RAW_CREDENTIAL_LEAK",
+      "domain": "BOUNDARY_INTEGRITY",
+      "meaning": "Envelope contains WebAuthn, credential, or internal authentication runtime artifacts."
+    },
+    {
+      "code": "RULESET_VERSION_ERROR",
+      "domain": "STRUCTURAL_VALIDITY",
+      "meaning": "Fixture or runner targets an unexpected ruleset version."
+    }
+  ],
+  "axioms": [
+    "authorization_code is a transient rendezvous capability",
+    "authorization_code carries no identity semantics",
+    "IdentityProofEnvelope is the first trustable application identity artifact",
+    "WebAuthn assertion is strictly internal identity runtime input",
+    "WebAuthn assertion MUST NOT be observable outside Identity Layer",
+    "Internal authentication state MUST NOT cross the exchange boundary",
+    "Applications trust IdentityProofEnvelope, not authentication mechanisms",
+    "Application trust is derived from proof semantics, not proof provenance"
+  ],
+  "forbidden_fields": [
+    "credential_id",
+    "authenticator_data",
+    "client_data_json",
+    "webauthn_sign_count",
+    "attestation_object",
+    "transports",
+    "raw_assertion_signature",
+    "assertion",
+    "authenticator"
+  ]
+}

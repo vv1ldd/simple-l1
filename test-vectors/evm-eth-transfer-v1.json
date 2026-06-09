@@ -1,0 +1,122 @@
+{
+  "schema_version": "simple-l1.evm_eth_transfer_fixture.v1",
+  "fixture_id": "evm_eth_transfer_success_v1",
+  "description": "First executable SL1 truth function fixture: successful native ETH transfer receipt to deterministic EVM_TX_NODE graph.",
+  "input": {
+    "chain_id": "0x1",
+    "source": "fixture:eth-transfer-v1",
+    "observed_at": "2026-05-30T12:45:00.000Z",
+    "block": {
+      "timestamp": "0x6553f100"
+    },
+    "transaction": {
+      "hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x2222222222222222222222222222222222222222",
+      "value": "0xde0b6b3a7640000",
+      "input": "0x",
+      "nonce": "0x2a"
+    },
+    "receipt": {
+      "transactionHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "blockHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "blockNumber": "0x0121eac0",
+      "transactionIndex": "0x7",
+      "status": "0x1",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x2222222222222222222222222222222222222222",
+      "logs": [],
+      "gasUsed": "0x5208",
+      "effectiveGasPrice": "0x3b9aca00"
+    }
+  },
+  "expected": {
+    "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+    "canonical_fact": {
+      "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+      "fact_type": "EVM_TX",
+      "chain_id": "1",
+      "block_number": "19000000",
+      "block_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "transaction_index": "7",
+      "receipt_status": "1",
+      "log_index": null,
+      "emitter_address": null,
+      "event_signature": null,
+      "topics": [],
+      "raw_data": {
+        "effective_gas_price": "1000000000",
+        "from": "0x1111111111111111111111111111111111111111",
+        "gas_used": "21000",
+        "input": "0x",
+        "to": "0x2222222222222222222222222222222222222222",
+        "value": "1000000000000000000"
+      },
+      "observed_at": "2026-05-30T12:45:00.000Z",
+      "source": "fixture:eth-transfer-v1",
+      "timestamp": "1700000000"
+    },
+    "canonical_fact_json": "{\"block_hash\":\"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"block_number\":\"19000000\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T12:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"21000\",\"input\":\"0x\",\"to\":\"0x2222222222222222222222222222222222222222\",\"value\":\"1000000000000000000\"},\"receipt_status\":\"1\",\"source\":\"fixture:eth-transfer-v1\",\"timestamp\":\"1700000000\",\"topics\":[],\"transaction_index\":\"7\",\"tx_hash\":\"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "graph": {
+      "schema_version": "simple-l1.evm_fact_graph.v1",
+      "graph_type": "deterministic_sdga_fact_graph",
+      "facts": [
+        {
+          "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+          "fact_type": "EVM_TX",
+          "chain_id": "1",
+          "block_number": "19000000",
+          "block_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "transaction_index": "7",
+          "receipt_status": "1",
+          "log_index": null,
+          "emitter_address": null,
+          "event_signature": null,
+          "topics": [],
+          "raw_data": {
+            "effective_gas_price": "1000000000",
+            "from": "0x1111111111111111111111111111111111111111",
+            "gas_used": "21000",
+            "input": "0x",
+            "to": "0x2222222222222222222222222222222222222222",
+            "value": "1000000000000000000"
+          },
+          "observed_at": "2026-05-30T12:45:00.000Z",
+          "source": "fixture:eth-transfer-v1",
+          "timestamp": "1700000000"
+        }
+      ],
+      "sdga_projection": {
+        "nodes": [
+          {
+            "id": "evm_tx:sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+            "node_type": "EVM_TX_NODE",
+            "fact_id": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f",
+            "inputs": {
+              "block_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "chain_id": "1",
+              "receipt_status": "1",
+              "transaction_index": "7",
+              "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "outputs": {
+              "fact_ref": "sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "canonical_evm_receipt"
+            }
+          }
+        ],
+        "edges": []
+      }
+    },
+    "graph_json": "{\"facts\":[{\"block_hash\":\"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"block_number\":\"19000000\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T12:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"21000\",\"input\":\"0x\",\"to\":\"0x2222222222222222222222222222222222222222\",\"value\":\"1000000000000000000\"},\"receipt_status\":\"1\",\"source\":\"fixture:eth-transfer-v1\",\"timestamp\":\"1700000000\",\"topics\":[],\"transaction_index\":\"7\",\"tx_hash\":\"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}],\"graph_type\":\"deterministic_sdga_fact_graph\",\"schema_version\":\"simple-l1.evm_fact_graph.v1\",\"sdga_projection\":{\"edges\":[],\"nodes\":[{\"fact_id\":\"sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f\",\"id\":\"evm_tx:sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f\",\"inputs\":{\"block_hash\":\"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"chain_id\":\"1\",\"receipt_status\":\"1\",\"transaction_index\":\"7\",\"tx_hash\":\"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"canonical_evm_receipt\"},\"node_type\":\"EVM_TX_NODE\",\"outputs\":{\"fact_ref\":\"sha256:3bf81d105a26755b71863a667acff0eb96cc0be3b95805378ea477ab14e8ec5f\"}}]}}"
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Any change to input, canonical output, fact_id, node shape, or edge shape is either a versioned protocol change or a violation."
+  }
+}

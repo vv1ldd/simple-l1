@@ -1,0 +1,175 @@
+{
+  "schema_version": "simple-l1.evm_reverted_transaction_fixture.v1",
+  "fixture_id": "evm_reverted_transaction_v1",
+  "description": "FrozenGraphV3 coverage extension: reverted EVM transaction receipt to EVM_TX_NODE + REVERT_NODE graph.",
+  "input": {
+    "chain_id": "0x1",
+    "source": "fixture:reverted-transaction-v1",
+    "observed_at": "2026-05-30T13:45:00.000Z",
+    "block": {
+      "timestamp": "0x6553f1c8"
+    },
+    "transaction": {
+      "hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x4444444444444444444444444444444444444444",
+      "value": "0x0",
+      "input": "0xdeadbeef",
+      "nonce": "0x2c"
+    },
+    "receipt": {
+      "transactionHash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "blockHash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "blockNumber": "0x0121eac2",
+      "transactionIndex": "0x9",
+      "status": "0x0",
+      "from": "0x1111111111111111111111111111111111111111",
+      "to": "0x4444444444444444444444444444444444444444",
+      "logs": [],
+      "gasUsed": "0x11170",
+      "effectiveGasPrice": "0x3b9aca00"
+    }
+  },
+  "expected": {
+    "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+    "canonical_fact": {
+      "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+      "fact_type": "EVM_TX",
+      "chain_id": "1",
+      "block_number": "19000002",
+      "block_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "tx_hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transaction_index": "9",
+      "receipt_status": "0",
+      "log_index": null,
+      "emitter_address": null,
+      "event_signature": null,
+      "topics": [],
+      "raw_data": {
+        "effective_gas_price": "1000000000",
+        "from": "0x1111111111111111111111111111111111111111",
+        "gas_used": "70000",
+        "input": "0xdeadbeef",
+        "to": "0x4444444444444444444444444444444444444444",
+        "value": "0"
+      },
+      "observed_at": "2026-05-30T13:45:00.000Z",
+      "source": "fixture:reverted-transaction-v1",
+      "timestamp": "1700000200"
+    },
+    "canonical_fact_json": "{\"block_hash\":\"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"block_number\":\"19000002\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"70000\",\"input\":\"0xdeadbeef\",\"to\":\"0x4444444444444444444444444444444444444444\",\"value\":\"0\"},\"receipt_status\":\"0\",\"source\":\"fixture:reverted-transaction-v1\",\"timestamp\":\"1700000200\",\"topics\":[],\"transaction_index\":\"9\",\"tx_hash\":\"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}",
+    "facts": [
+      {
+        "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+        "fact_type": "EVM_TX",
+        "chain_id": "1",
+        "block_number": "19000002",
+        "block_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "tx_hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "transaction_index": "9",
+        "receipt_status": "0",
+        "log_index": null,
+        "emitter_address": null,
+        "event_signature": null,
+        "topics": [],
+        "raw_data": {
+          "effective_gas_price": "1000000000",
+          "from": "0x1111111111111111111111111111111111111111",
+          "gas_used": "70000",
+          "input": "0xdeadbeef",
+          "to": "0x4444444444444444444444444444444444444444",
+          "value": "0"
+        },
+        "observed_at": "2026-05-30T13:45:00.000Z",
+        "source": "fixture:reverted-transaction-v1",
+        "timestamp": "1700000200"
+      }
+    ],
+    "facts_json": [
+      "{\"block_hash\":\"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"block_number\":\"19000002\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"70000\",\"input\":\"0xdeadbeef\",\"to\":\"0x4444444444444444444444444444444444444444\",\"value\":\"0\"},\"receipt_status\":\"0\",\"source\":\"fixture:reverted-transaction-v1\",\"timestamp\":\"1700000200\",\"topics\":[],\"transaction_index\":\"9\",\"tx_hash\":\"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}"
+    ],
+    "graph": {
+      "schema_version": "simple-l1.evm_fact_graph.v1",
+      "graph_type": "deterministic_sdga_fact_graph",
+      "facts": [
+        {
+          "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+          "fact_type": "EVM_TX",
+          "chain_id": "1",
+          "block_number": "19000002",
+          "block_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "tx_hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "transaction_index": "9",
+          "receipt_status": "0",
+          "log_index": null,
+          "emitter_address": null,
+          "event_signature": null,
+          "topics": [],
+          "raw_data": {
+            "effective_gas_price": "1000000000",
+            "from": "0x1111111111111111111111111111111111111111",
+            "gas_used": "70000",
+            "input": "0xdeadbeef",
+            "to": "0x4444444444444444444444444444444444444444",
+            "value": "0"
+          },
+          "observed_at": "2026-05-30T13:45:00.000Z",
+          "source": "fixture:reverted-transaction-v1",
+          "timestamp": "1700000200"
+        }
+      ],
+      "sdga_projection": {
+        "nodes": [
+          {
+            "id": "evm_tx:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "node_type": "EVM_TX_NODE",
+            "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "inputs": {
+              "block_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "chain_id": "1",
+              "receipt_status": "0",
+              "transaction_index": "9",
+              "tx_hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "outputs": {
+              "fact_ref": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "canonical_evm_receipt"
+            }
+          },
+          {
+            "id": "evm_revert:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "node_type": "REVERT_NODE",
+            "fact_id": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "inputs": {
+              "chain_id": "1",
+              "receipt_status": "0",
+              "tx_hash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "outputs": {
+              "fact_ref": "sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1"
+            },
+            "metadata": {
+              "semantic_interpretation_allowed": false,
+              "trace": "canonical_evm_revert"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "from": "evm_tx:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "to": "evm_revert:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1",
+            "ordering": "after"
+          }
+        ]
+      }
+    },
+    "graph_json": "{\"facts\":[{\"block_hash\":\"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"block_number\":\"19000002\",\"chain_id\":\"1\",\"emitter_address\":null,\"event_signature\":null,\"fact_id\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"fact_type\":\"EVM_TX\",\"log_index\":null,\"observed_at\":\"2026-05-30T13:45:00.000Z\",\"raw_data\":{\"effective_gas_price\":\"1000000000\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_used\":\"70000\",\"input\":\"0xdeadbeef\",\"to\":\"0x4444444444444444444444444444444444444444\",\"value\":\"0\"},\"receipt_status\":\"0\",\"source\":\"fixture:reverted-transaction-v1\",\"timestamp\":\"1700000200\",\"topics\":[],\"transaction_index\":\"9\",\"tx_hash\":\"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}],\"graph_type\":\"deterministic_sdga_fact_graph\",\"schema_version\":\"simple-l1.evm_fact_graph.v1\",\"sdga_projection\":{\"edges\":[{\"from\":\"evm_tx:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"ordering\":\"after\",\"to\":\"evm_revert:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\"}],\"nodes\":[{\"fact_id\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"id\":\"evm_tx:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"inputs\":{\"block_hash\":\"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"chain_id\":\"1\",\"receipt_status\":\"0\",\"transaction_index\":\"9\",\"tx_hash\":\"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"canonical_evm_receipt\"},\"node_type\":\"EVM_TX_NODE\",\"outputs\":{\"fact_ref\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\"}},{\"fact_id\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"id\":\"evm_revert:sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\",\"inputs\":{\"chain_id\":\"1\",\"receipt_status\":\"0\",\"tx_hash\":\"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"metadata\":{\"semantic_interpretation_allowed\":false,\"trace\":\"canonical_evm_revert\"},\"node_type\":\"REVERT_NODE\",\"outputs\":{\"fact_ref\":\"sha256:851b5e13072014fd7871726dd120df91f93e978429f95282b360193f729f33b1\"}}]}}"
+  },
+  "lock": {
+    "status": "frozen",
+    "rule": "Any change to input, canonical output, fact_id, node shape, or edge shape is either a versioned protocol change or a violation."
+  }
+}

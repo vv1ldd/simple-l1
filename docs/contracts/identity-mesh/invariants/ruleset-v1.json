@@ -1,0 +1,87 @@
+{
+  "schema_version": "simple-l1.identity_mesh_ruleset.v1",
+  "contract_pack": "identity-mesh",
+  "ruleset_version": "identity-mesh-v1",
+  "ruleset_status": "frozen",
+  "description": "Frozen v1 invariant set for distributed identity mesh authority boundaries.",
+  "authority_creation_policy": "deny_only_until_authority_grant_artifact_is_specified",
+  "failure_taxonomy": [
+    {
+      "code": "SCHEMA_ERROR",
+      "meaning": "A contract artifact or envelope violates its JSON Schema shape."
+    },
+    {
+      "code": "INVARIANT_VIOLATION",
+      "meaning": "A deterministic protocol invariant does not match expected semantics."
+    },
+    {
+      "code": "QUORUM_MISMATCH",
+      "meaning": "A local quorum case has insufficient signatures or non-identical intent hashes."
+    },
+    {
+      "code": "AUTHORITY_LEAK_DETECTED",
+      "meaning": "An observation, state envelope, cache entry, or binding is consumed as an authority grant."
+    },
+    {
+      "code": "RULESET_VERSION_ERROR",
+      "meaning": "A fixture or runner targets an unexpected or unfrozen ruleset version."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "IMESH_V1_OBSERVATION_NOT_GRANT",
+      "failure_code": "AUTHORITY_LEAK_DETECTED",
+      "rule": "IdentityStateEnvelope is a mesh observation and must not produce authority_grant, authorization_code, or application_session."
+    },
+    {
+      "id": "IMESH_V1_MONOTONIC_SEQUENCE",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "For the same device key, the highest sequence is the selected local observation."
+    },
+    {
+      "id": "IMESH_V1_REVOCATION_PRECEDENCE",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "Revocation observations override stale active binding observations."
+    },
+    {
+      "id": "IMESH_V1_PROVIDER_DOMINANCE",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "Provider state proof dominates peer or local cache state."
+    },
+    {
+      "id": "IMESH_V1_CONFLICT_UNCERTAINTY",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "Conflicting observations create uncertainty, not permission escalation."
+    },
+    {
+      "id": "IMESH_V1_QUORUM_CARDINALITY",
+      "failure_code": "QUORUM_MISMATCH",
+      "rule": "Local quorum requires the policy-defined number of distinct device signatures."
+    },
+    {
+      "id": "IMESH_V1_QUORUM_INTENT_HASH",
+      "failure_code": "QUORUM_MISMATCH",
+      "rule": "Local quorum signatures must cover the exact same intent hash."
+    },
+    {
+      "id": "IMESH_V1_PROVIDER_ONLY_INTENT",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "Provider-only intent classes reject local quorum authority."
+    },
+    {
+      "id": "IMESH_V1_BINDING_PROPOSAL_OBSERVATION_ONLY",
+      "failure_code": "AUTHORITY_LEAK_DETECTED",
+      "rule": "Controller binding proposals are identity state observations until an approved binding is applied; they must not create authority grants."
+    },
+    {
+      "id": "IMESH_V1_BINDING_PROPOSAL_REPLAY",
+      "failure_code": "INVARIANT_VIOLATION",
+      "rule": "A lower-sequence replay of the same controller binding proposal is stale observation data and must not supersede the newer proposal."
+    },
+    {
+      "id": "IMESH_V1_RELAY_PAYLOAD_OBSERVATION_ONLY",
+      "failure_code": "AUTHORITY_LEAK_DETECTED",
+      "rule": "Relay mailbox payloads transport encrypted or signed observations only and must not produce authority_grant, authorization_code, or application_session."
+    }
+  ]
+}
