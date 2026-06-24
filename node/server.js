@@ -62,6 +62,10 @@ const {
     pushAuthorizeRequest,
     resolveAuthorizeRequestRef,
 } = require('./sl1e-authorize-requests');
+const {
+    parseIssuerCeremonyMap,
+    ceremonyHostForIssuer,
+} = require('./issuer-ceremony-delegation');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -914,6 +918,7 @@ const originForHost = (host) => {
 
 const PROTOCOL_SITE_HOST = String(process.env.SL1_PROTOCOL_SITE_HOST || 'simplelayer.one').split(':')[0].toLowerCase();
 const PASS_ISSUER_HOST = String(process.env.SL1_PASS_ISSUER_HOST || 'pass.simplelayer.one').split(':')[0].toLowerCase();
+const ISSUER_CEREMONY_MAP = parseIssuerCeremonyMap(process.env.SL1_ISSUER_CEREMONY_MAP || '');
 
 const normalizedHost = (host) => String(host || '').split(':')[0].toLowerCase();
 
@@ -979,6 +984,16 @@ const redirectAuthorizeToPassHost = (request, reply) => {
     }
 
     reply.redirect(302, `${passIssuerOrigin()}${request.url}`);
+    return true;
+};
+
+const redirectIssuerToCeremonyHost = (request, reply) => {
+    const ceremonyHost = ceremonyHostForIssuer(request.hostname, ISSUER_CEREMONY_MAP);
+    if (!ceremonyHost) {
+        return false;
+    }
+
+    reply.redirect(`${originForHost(ceremonyHost)}${request.url}`);
     return true;
 };
 
@@ -5594,6 +5609,9 @@ fastify.get('/authorize', async (request, reply) => {
     if (redirectAuthorizeToPassHost(request, reply)) {
         return;
     }
+    if (redirectIssuerToCeremonyHost(request, reply)) {
+        return;
+    }
 
     const prepared = authorizeQueryFromRequest(request);
     if (!prepared.ok) {
@@ -5607,6 +5625,9 @@ fastify.get('/authorize', async (request, reply) => {
 
 fastify.get('/authorize/:clientId', async (request, reply) => {
     if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+    if (redirectIssuerToCeremonyHost(request, reply)) {
         return;
     }
 
@@ -5624,6 +5645,9 @@ fastify.get('/authorize/:clientId', async (request, reply) => {
 
 fastify.get('/r/:requestRef', async (request, reply) => {
     if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+    if (redirectIssuerToCeremonyHost(request, reply)) {
         return;
     }
 
@@ -5663,6 +5687,9 @@ fastify.post('/api/sl1e/authorize/requests', async (request, reply) => {
 
 fastify.get('/api/sl1e/authorize', async (request, reply) => {
     if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+    if (redirectIssuerToCeremonyHost(request, reply)) {
         return;
     }
 
