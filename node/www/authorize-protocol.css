@@ -1,17 +1,28 @@
+body:has(.authorize-page) {
+    overflow: hidden;
+    height: 100dvh;
+}
+
 .authorize-page {
-    min-height: 100vh;
-    padding-bottom: 32px;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
 }
 
 .authorize-nav {
-    margin-bottom: 28px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
 }
 
 .authorize-stage {
+    flex: 1;
+    min-height: 0;
     display: grid;
     place-items: center;
-    min-height: calc(100vh - 140px);
-    padding: 12px 0 40px;
+    padding: 0 0 8px;
 }
 
 .authorize-card {
@@ -49,6 +60,29 @@
 .authorize-orb span {
     color: var(--green);
     font: 900 28px/1 JetBrains Mono, monospace;
+}
+
+.pass-home-card h1 {
+    margin: 0 0 12px;
+    font-size: clamp(28px, 6vw, 40px);
+    line-height: 1;
+    letter-spacing: -0.05em;
+}
+
+.pass-home-card .connect-lead {
+    max-width: 360px;
+    margin: 0 auto 18px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.45;
+    font-weight: 600;
+}
+
+.pass-home-cta {
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
 }
 
 .sl1e-authorize-panel {
@@ -407,13 +441,22 @@
     display: none;
 }
 
-.authorize-page .footer {
-    margin-top: 8px;
+.authorize-page .footer,
+.authorize-page .pass-home-footer {
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 10px 0 max(14px, env(safe-area-inset-bottom));
+    font-size: 11px;
+}
+
+.authorize-page .footer span {
+    max-width: 280px;
+    text-align: right;
+    line-height: 1.35;
 }
 
 @media (max-width: 720px) {
     .authorize-stage {
-        min-height: auto;
         padding-top: 0;
     }
 

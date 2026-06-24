@@ -186,18 +186,23 @@ function configureWalletConnectLink() {
     const link = document.getElementById('wallet-open-passkey');
     if (!link) return;
 
-    const origin = window.location.origin;
+    const hostname = window.location.hostname || 'simplelayer.one';
+    const siteOrigin = window.location.origin;
+    const issuerOrigin = hostname === 'simplelayer.one' || hostname === 'www.simplelayer.one'
+        ? 'https://pass.simplelayer.one'
+        : siteOrigin;
+    const redirectOrigin = hostname.startsWith('pass.') ? 'https://simplelayer.one' : siteOrigin;
     const params = new URLSearchParams({
-        client_id: window.location.hostname || 'simplel1.online',
+        client_id: hostname.startsWith('pass.') ? 'simplelayer.one' : hostname,
         client_name: 'SL1 Wallet',
-        redirect_uri: `${origin}/#wallet`,
+        redirect_uri: `${redirectOrigin}/#wallet`,
         state: 'wallet-demo',
         nonce: 'wallet-demo',
         mode: 'connect',
         flow: 'connect',
     });
 
-    link.href = `/authorize?${params.toString()}`;
+    link.href = `${issuerOrigin}/authorize?${params.toString()}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

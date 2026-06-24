@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Layer One | Prevent Execution From Being Inferred</title>
-    <meta name="description" content="Simple Layer One is a domain-isolated, temporally re-validated execution system for identity, authority, external proofs, and settlement lineage.">
+    <title>Simple Layer One | Sign in without giving away your keys</title>
+    <meta name="description" content="Simple Layer One lets websites verify who you are with a passkey — without taking custody of your wallet or identity.">
     <meta property="og:title" content="Simple Layer One">
-    <meta property="og:description" content="A protocol that separates meaning, authority, execution, and settlement.">
+    <meta property="og:description" content="A neutral identity layer for the web. Passkey sign-in, portable wallet, verifiable proofs.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://simplelayer.one">
     <meta name="theme-color" content="#f6f6f1">
@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/style.css?v=3.0.0">
+    <link rel="stylesheet" href="/style.css?v=3.1.0">
 </head>
 <body>
     <div class="page-shell">
@@ -28,13 +28,10 @@
                 </span>
             </a>
             <div class="nav-links">
-                <a href="#model">Model</a>
-                <a href="#runtime">Runtime</a>
-                <a href="#trace">Trace</a>
+                <a href="#how">How it works</a>
                 <a href="#wallet">Wallet</a>
-                <a href="#closure">Closure</a>
             </div>
-            <a class="nav-cta" href="#connect">Connect</a>
+            <a class="nav-cta" href="https://pass.simplelayer.one">Sign in</a>
         </nav>
 
         <main id="top">
@@ -42,22 +39,21 @@
                 <div class="hero-copy">
                     <div class="eyebrow">
                         <span class="pulse"></span>
-                        Runtime closure phase
+                        Open identity layer
                     </div>
-                    <h1>SL1 prevents execution from being inferred.</h1>
+                    <h1>Prove who you are. Keep what you own.</h1>
                     <p class="hero-lead">
-                        A domain-isolated, temporally re-validated execution system that keeps
-                        identity, trust, authority, execution, and settlement from collapsing
-                        into one wallet-shaped shortcut.
+                        SL1 Connect lets a website ask for a passkey sign-in and receive a verifiable proof —
+                        not your password, not your seed phrase, and not permanent access to your wallet.
                     </p>
                     <div class="hero-actions">
-                        <a class="button primary" href="#trace">See the execution trace</a>
-                        <a class="button secondary" href="#connect">Use simplelayer.one</a>
+                        <a class="button primary" href="https://pass.simplelayer.one">Sign in with passkey</a>
+                        <a class="button secondary" href="#how">See how it works</a>
                     </div>
                     <div class="axiom-strip">
-                        <span>Identity != Authority</span>
-                        <span>Proof != Permission</span>
-                        <span>Graph != Settlement</span>
+                        <span>You stay in control</span>
+                        <span>Sites get proof, not keys</span>
+                        <span>One identity, many apps</span>
                     </div>
                 </div>
 
@@ -93,142 +89,91 @@
 
             <section class="definition">
                 <div class="quote-card">
-                    <p>SL1 is not a system of execution.</p>
-                    <strong>It is a system that prevents execution from being inferred.</strong>
+                    <p>Most apps blur identity, permission, and money into one login button.</p>
+                    <strong>SL1 keeps them separate so each step can be checked.</strong>
                 </div>
                 <div class="definition-grid">
                     <div>
-                        <span class="label">Meaning</span>
-                        <h3>Representation is not reality.</h3>
-                        <p>Facts, proofs, graphs, obligations, and intents describe meaning. They do not mutate state by themselves.</p>
+                        <span class="label">Sign in</span>
+                        <h3>Passkey, not a shared password.</h3>
+                        <p>You approve access with the device you already trust. The site learns who you are — not how to impersonate you later.</p>
                     </div>
                     <div>
-                        <span class="label">Authority</span>
-                        <h3>Authority is explicit lineage.</h3>
-                        <p>Capability, ControlGrant, IntentApproval, and Authorization explain why an action may be honored.</p>
+                        <span class="label">Permission</span>
+                        <h3>Every action has a reason.</h3>
+                        <p>Purchases, payouts, and sensitive changes leave a trail: who approved what, for which app, and when.</p>
                     </div>
                     <div>
-                        <span class="label">Settlement</span>
-                        <h3>Only settlement mutates state.</h3>
-                        <p>Transactions and settlement operations record what actually changed and why it can be verified later.</p>
+                        <span class="label">Wallet</span>
+                        <h3>Balances stay with you.</h3>
+                        <p>Marketplaces can send payment facts without holding buyer funds. Rewards and receipts live in your SL1 wallet.</p>
                     </div>
                 </div>
             </section>
 
-            <section id="model" class="section">
+            <section id="how" class="section">
                 <div class="section-heading">
-                    <span class="kicker">Constitutional pipeline</span>
-                    <h2>Every state change must pass through all layers.</h2>
+                    <span class="kicker">How it works</span>
+                    <h2>Three steps sites and people can actually follow.</h2>
                 </div>
-                <div class="pipeline" aria-label="SL1 constitutional pipeline">
+                <div class="pipeline" aria-label="SL1 sign-in flow">
                     <div class="pipe-node">
                         <small>01</small>
-                        <strong>Representation</strong>
-                        <span>Intent, facts, proofs</span>
+                        <strong>Ask</strong>
+                        <span>A site opens SL1 Connect</span>
                     </div>
                     <div class="pipe-arrow">-></div>
                     <div class="pipe-node">
                         <small>02</small>
-                        <strong>Policy</strong>
-                        <span>Evaluation, decision</span>
+                        <strong>Approve</strong>
+                        <span>You sign in on pass.simplelayer.one</span>
                     </div>
                     <div class="pipe-arrow">-></div>
                     <div class="pipe-node">
                         <small>03</small>
-                        <strong>Authority</strong>
-                        <span>Capability lineage</span>
-                    </div>
-                    <div class="pipe-arrow">-></div>
-                    <div class="pipe-node">
-                        <small>04</small>
-                        <strong>Re-validation</strong>
-                        <span>Current time/state</span>
-                    </div>
-                    <div class="pipe-arrow">-></div>
-                    <div class="pipe-node">
-                        <small>05</small>
-                        <strong>Execution</strong>
-                        <span>Transaction</span>
-                    </div>
-                    <div class="pipe-arrow">-></div>
-                    <div class="pipe-node">
-                        <small>06</small>
-                        <strong>Settlement</strong>
-                        <span>State mutation</span>
+                        <strong>Return</strong>
+                        <span>The site gets a one-time proof</span>
                     </div>
                 </div>
             </section>
 
-            <section id="runtime" class="section split">
+            <section class="section split">
                 <div class="section-heading">
-                    <span class="kicker">Runtime boundaries</span>
-                    <h2>Components may create only their own objects.</h2>
-                    <p>No service gets to quietly become policy, authority, execution, and settlement at once.</p>
+                    <span class="kicker">For developers</span>
+                    <h2>Built for real integrations, not demo logins.</h2>
+                    <p>SL1 Connect uses short authorize links, audience-bound proofs, and a registry of known clients so redirects stay predictable.</p>
                 </div>
                 <div class="boundary-grid">
                     <div class="boundary-card">
-                        <strong>Connect Service</strong>
-                        <span>AuthenticationProof</span>
-                        <span>IdentityProof</span>
+                        <strong>Connect</strong>
+                        <span>Passkey sign-in</span>
+                        <span>Identity proof for your domain</span>
                     </div>
                     <div class="boundary-card">
-                        <strong>Policy Engine</strong>
-                        <span>PolicyEvaluation</span>
-                        <span>PolicyDecision</span>
+                        <strong>Policy</strong>
+                        <span>Checks before money moves</span>
+                        <span>Clear allow / deny decisions</span>
                     </div>
                     <div class="boundary-card">
-                        <strong>Authority Service</strong>
-                        <span>Capability</span>
-                        <span>ControlGrant</span>
-                        <span>Authorization</span>
+                        <strong>Wallet</strong>
+                        <span>Portable balances</span>
+                        <span>Receipts and rewards in one place</span>
                     </div>
                     <div class="boundary-card">
-                        <strong>External Proof Adapter</strong>
-                        <span>ExternalProof</span>
-                        <span>VerificationPath</span>
-                        <span>FinalityClaim</span>
+                        <strong>Settlement</strong>
+                        <span>Recorded state changes</span>
+                        <span>Auditable after the fact</span>
                     </div>
-                    <div class="boundary-card">
-                        <strong>Execution Engine</strong>
-                        <span>IntentApproval</span>
-                        <span>Transaction</span>
-                        <span>ExecutionEnvelope</span>
-                    </div>
-                    <div class="boundary-card">
-                        <strong>Settlement Engine</strong>
-                        <span>SettlementOperation</span>
-                        <span>SettlementProof</span>
-                        <span>Economic state mutation</span>
-                    </div>
-                </div>
-            </section>
-
-            <section id="trace" class="section trace-section">
-                <div class="section-heading">
-                    <span class="kicker">Marketplace reference flow</span>
-                    <h2>Payment receipt is not fulfillment.</h2>
-                    <p>The flow below is the practical test: can a real purchase be explained without shortcuts?</p>
-                </div>
-                <div class="trace">
-                    <div class="trace-step"><b>Buyer</b><span>Purchase Intent</span></div>
-                    <div class="trace-step"><b>Controller</b><span>IntentApproval via WebAuthn</span></div>
-                    <div class="trace-step"><b>PSP</b><span>ExternalPayment receipt</span></div>
-                    <div class="trace-step"><b>Adapter</b><span>ExternalProof normalized</span></div>
-                    <div class="trace-step"><b>Policy</b><span>Payment matches intent</span></div>
-                    <div class="trace-step"><b>Authority</b><span>Fulfillment lineage valid</span></div>
-                    <div class="trace-step"><b>Execution</b><span>Order fulfilled</span></div>
-                    <div class="trace-step"><b>Settlement</b><span>Economic mutation recorded</span></div>
-                    <div class="trace-step"><b>Proof</b><span>SettlementProof issued</span></div>
                 </div>
             </section>
 
             <section id="wallet" class="section wallet-section">
                 <div class="section-heading">
                     <span class="kicker">SL1 Wallet</span>
-                    <h2>A wallet created by identity, not connected as a plugin.</h2>
+                    <h2>Your wallet follows your identity.</h2>
                     <p>
-                        Sites like Meanly should not hold buyer balances. They send bank capture facts,
-                        while SL1 Wallet keeps rewards, operations, receipts, and key control in one portable identity.
+                        Create or open a wallet tied to the same passkey you use to sign in.
+                        Shops can plug into SL1 without becoming your bank.
                     </p>
                 </div>
 
@@ -251,7 +196,7 @@
                         </div>
 
                         <div class="wallet-actions">
-                            <a id="wallet-open-passkey" class="button primary" href="/authorize?client_id=simplelayer.one&client_name=SL1%20Wallet&redirect_uri=https%3A%2F%2Fsimplelayer.one%2F%23wallet&state=wallet-demo&nonce=wallet-demo&mode=connect">Open with Passkey</a>
+                            <a id="wallet-open-passkey" class="button primary" href="https://pass.simplelayer.one/authorize?client_id=simplelayer.one&amp;client_name=SL1%20Wallet&amp;redirect_uri=https%3A%2F%2Fsimplelayer.one%2F%23wallet&amp;state=wallet-demo&amp;nonce=wallet-demo&amp;mode=connect">Open with Passkey</a>
                             <a class="button secondary" href="/identity">Manage identity</a>
                         </div>
                     </article>
@@ -291,55 +236,29 @@
                 </div>
             </section>
 
-            <section id="closure" class="section closure">
-                <div class="section-heading">
-                    <span class="kicker">Runtime closure scorecard</span>
-                    <h2>Now the goal is executable proof, not more RFCs.</h2>
-                </div>
-                <div class="scorecard">
-                    <div><b>RFC-0018 Connect</b><span class="yellow">Runtime partial</span><span class="red">Conformance missing</span></div>
-                    <div><b>RFC-0016 Authority</b><span class="yellow">Runtime partial</span><span class="red">Conformance missing</span></div>
-                    <div><b>RFC-0014 Policy</b><span class="yellow">Runtime partial</span><span class="red">Conformance missing</span></div>
-                    <div><b>RFC-0017 External Proof</b><span class="yellow">Runtime partial</span><span class="red">Conformance missing</span></div>
-                    <div><b>RFC-0026 Marketplace Flow</b><span class="red">Runtime missing</span><span class="red">Conformance missing</span></div>
-                </div>
-                <div class="lineage-card">
-                    <span class="kicker">SL1 v0.1 closing question</span>
-                    <h3>Can every state mutation be explained by lineage?</h3>
-                    <pre>Settlement
-  &lt;- Transaction
-  &lt;- Authorization
-  &lt;- ControlGrant
-  &lt;- Capability
-  &lt;- PolicyDecision
-  &lt;- PolicyEvaluation
-  &lt;- Facts</pre>
-                </div>
-            </section>
-
             <section id="connect" class="section connect">
                 <div>
-                    <span class="kicker">Use it on websites</span>
-                    <h2>SL1 Connect starts with identity proof, not transfers.</h2>
+                    <span class="kicker">For websites</span>
+                    <h2>Send people to pass.simplelayer.one to sign in.</h2>
                     <p>
-                        A site should receive a verifiable fact: this controller authenticated,
-                        it is linked to this entity, and the proof is audience-bound to this domain.
+                        The public site explains the protocol. The pass host handles passkeys only —
+                        so users always know when they are approving access.
                     </p>
                 </div>
                 <div class="connect-card">
-                    <code>simplelayer.one</code>
-                    <p>Valet domain target for the local SL1 landing and Connect runtime.</p>
-                    <a class="button primary" href="https://simplelayer.one">Open domain</a>
+                    <code>pass.simplelayer.one</code>
+                    <p>SL1 Connect issuer — passkey sign-in and short authorize links.</p>
+                    <a class="button primary" href="https://pass.simplelayer.one">Open sign-in</a>
                 </div>
             </section>
         </main>
 
         <footer class="footer">
             <strong>Simple Layer One</strong>
-            <span>Meaning is representational. Authority is relational. Settlement mutates state.</span>
+            <span>Identity you control. Proof sites can verify.</span>
         </footer>
     </div>
 
-    <script src="/app.js?v=3.1.3"></script>
+    <script src="/app.js?v=3.1.4"></script>
 </body>
 </html>

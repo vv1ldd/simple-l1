@@ -912,17 +912,122 @@ const originForHost = (host) => {
     return `https://${hostname}`;
 };
 
-const isProtocolIssuerHost = (host) => {
-    const hostname = String(host || '').split(':')[0].toLowerCase();
+const PROTOCOL_SITE_HOST = String(process.env.SL1_PROTOCOL_SITE_HOST || 'simplelayer.one').split(':')[0].toLowerCase();
+const PASS_ISSUER_HOST = String(process.env.SL1_PASS_ISSUER_HOST || 'pass.simplelayer.one').split(':')[0].toLowerCase();
+
+const normalizedHost = (host) => String(host || '').split(':')[0].toLowerCase();
+
+const isPassIssuerHost = (host) => {
+    const hostname = normalizedHost(host);
     if (!hostname) {
         return false;
     }
 
-    if (hostname === 'simplelayer.one' || hostname === 'simplelayer.test') {
+    if (hostname === PASS_ISSUER_HOST || hostname === 'pass.simplelayer.test') {
         return true;
     }
 
+    return hostname.startsWith('pass.')
+        && (hostname.endsWith('.simplelayer.one') || hostname.endsWith('.simplelayer.test'));
+};
+
+const isProtocolSiteHost = (host) => {
+    const hostname = normalizedHost(host);
+    if (!hostname) {
+        return false;
+    }
+
+    if (hostname === PROTOCOL_SITE_HOST || hostname === 'simplelayer.test' || hostname === 'www.simplelayer.one') {
+        return true;
+    }
+
+    return false;
+};
+
+const isProtocolIssuerHost = (host) => {
+    if (isPassIssuerHost(host) || isProtocolSiteHost(host)) {
+        return true;
+    }
+
+    const hostname = normalizedHost(host);
+    if (!hostname) {
+        return false;
+    }
+
     return hostname.endsWith('.simplelayer.one') || hostname.endsWith('.simplelayer.test');
+};
+
+const passIssuerOrigin = () => {
+    if (PASS_ISSUER_HOST === '127.0.0.1' || PASS_ISSUER_HOST === 'localhost') {
+        return `http://localhost:${RUNTIME_PORT || 3000}`;
+    }
+
+    return `https://${PASS_ISSUER_HOST}`;
+};
+
+const protocolSiteOrigin = () => {
+    if (PROTOCOL_SITE_HOST === '127.0.0.1' || PROTOCOL_SITE_HOST === 'localhost') {
+        return `http://localhost:${RUNTIME_PORT || 3000}`;
+    }
+
+    return `https://${PROTOCOL_SITE_HOST}`;
+};
+
+const redirectAuthorizeToPassHost = (request, reply) => {
+    if (!isProtocolSiteHost(request.hostname) || isPassIssuerHost(request.hostname)) {
+        return false;
+    }
+
+    reply.redirect(302, `${passIssuerOrigin()}${request.url}`);
+    return true;
+};
+
+const renderPassIssuerHome = (issuerHost) => {
+    const hostname = htmlEscape(normalizedHost(issuerHost));
+    const siteUrl = protocolSiteOrigin();
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SL1 Pass | Simple Layer One</title>
+    <meta name="description" content="Sign in with your SL1 passkey. This host only handles identity and authorization.">
+    <meta name="theme-color" content="#090a0f">
+    <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css?v=3.0.0">
+    <link rel="stylesheet" href="/authorize-protocol.css?v=1.1.0">
+</head>
+<body>
+    <div class="page-shell authorize-page pass-home">
+        <nav class="nav authorize-nav">
+            <a class="brand" href="/">
+                <span class="brand-mark">SL1</span>
+                <span>
+                    <strong>Simple Layer One</strong>
+                    <small>${hostname}</small>
+                </span>
+            </a>
+            <a class="nav-cta" href="${htmlEscape(siteUrl)}">About SL1</a>
+        </nav>
+        <section class="authorize-stage">
+            <article class="hero-card authorize-card pass-home-card">
+                <div class="authorize-orb" aria-hidden="true"><span>SL1</span></div>
+                <h1>Identity issuer</h1>
+                <p class="connect-lead">This domain signs you in with a passkey when another site asks for SL1 Connect. It does not host the public protocol site.</p>
+                <a class="button primary pass-home-cta" href="${htmlEscape(siteUrl)}">Go to simplelayer.one</a>
+            </article>
+        </section>
+        <footer class="footer pass-home-footer">
+            <strong>Simple Layer One</strong>
+            <span>Passkey sign-in only on this host.</span>
+        </footer>
+    </div>
+</body>
+</html>`;
 };
 
 const walletSurfaceForHost = (host) => {
@@ -2555,7 +2660,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=3.0.0">
-    <link rel="stylesheet" href="/authorize-protocol.css?v=1.0.0">
+    <link rel="stylesheet" href="/authorize-protocol.css?v=1.1.0">
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
 <body>
@@ -2568,7 +2673,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     <small>${issuerHostname}</small>
                 </span>
             </a>
-            <a class="nav-cta" href="/#connect">Protocol</a>
+            <a class="nav-cta" href="${htmlEscape(protocolSiteOrigin())}">About SL1</a>
         </nav>
         <section class="authorize-stage">
             <article class="hero-card authorize-card">
@@ -5486,6 +5591,10 @@ fastify.get('/marketplace/sellers', async (request, reply) => {
 });
 
 fastify.get('/authorize', async (request, reply) => {
+    if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+
     const prepared = authorizeQueryFromRequest(request);
     if (!prepared.ok) {
         return sendAuthorizeValidationError(reply, prepared);
@@ -5497,6 +5606,10 @@ fastify.get('/authorize', async (request, reply) => {
 });
 
 fastify.get('/authorize/:clientId', async (request, reply) => {
+    if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+
     const prepared = authorizeQueryFromRequest(request, {
         clientIdFromPath: request.params.clientId,
     });
@@ -5510,6 +5623,10 @@ fastify.get('/authorize/:clientId', async (request, reply) => {
 });
 
 fastify.get('/r/:requestRef', async (request, reply) => {
+    if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+
     const prepared = authorizeQueryFromRequest(request, {
         requestRef: request.params.requestRef,
     });
@@ -5545,6 +5662,10 @@ fastify.post('/api/sl1e/authorize/requests', async (request, reply) => {
 });
 
 fastify.get('/api/sl1e/authorize', async (request, reply) => {
+    if (redirectAuthorizeToPassHost(request, reply)) {
+        return;
+    }
+
     const prepared = authorizeQueryFromRequest(request);
     if (!prepared.ok) {
         return reply.code(422).send({
@@ -7247,6 +7368,56 @@ fastify.post('/transactions-legacy', async (request, reply) => {
 
 // --- START SERVER ---
 // (Already handled in the main start() function above)
+
+fastify.addHook('onRequest', async (request, reply) => {
+    if (!isPassIssuerHost(request.hostname)) {
+        return;
+    }
+
+    const pathname = new URL(request.url, 'http://localhost').pathname;
+    const passPaths = [
+        '/api/',
+        '/authorize',
+        '/r/',
+        '/healthcheck',
+        '/manifest',
+        '/identity-icon',
+        '/style.css',
+        '/authorize-protocol.css',
+        '/app.js',
+        '/device-handoff',
+        '/device-pairing',
+        '/sl1',
+    ];
+
+    if (pathname === '/index.html') {
+        return reply.redirect(302, '/');
+    }
+
+    if (pathname === '/') {
+        return;
+    }
+
+    if (passPaths.some((prefix) => pathname === prefix || pathname.startsWith(prefix))) {
+        return;
+    }
+
+    if (/\.(css|js|svg|webmanifest|png|jpe?g|woff2?)$/i.test(pathname)) {
+        return;
+    }
+
+    const query = request.url.includes('?') ? request.url.slice(request.url.indexOf('?')) : '';
+    return reply.redirect(302, `${protocolSiteOrigin()}${pathname}${query}`);
+});
+
+fastify.get('/', async (request, reply) => {
+    if (isPassIssuerHost(request.hostname)) {
+        return reply.type('text/html; charset=utf-8').send(renderPassIssuerHome(request.hostname));
+    }
+
+    const indexPath = path.join(__dirname, 'www', 'index.html');
+    return reply.type('text/html; charset=utf-8').send(fs.readFileSync(indexPath, 'utf8'));
+});
 
 // --- STATIC FILES (Last Resort) ---
 fastify.register(require('@fastify/static'), {
