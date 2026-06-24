@@ -4598,7 +4598,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const identity = state.selected_identity;
             const identities = state.identities || [];
             const isRegister = state.ui?.initial_action === 'register' && !identity;
-            const title = isRegister ? 'Create account' : (state.ui?.mode || request.intent_title || 'Open Meanly Vault');
+            const title = isRegister ? 'Create account' : (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? 'Continue with Meanly' : 'Open Meanly Vault'));
             root.innerHTML = '<section class="card">' +
                 '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>' +
                 '<h1>' + escapeHtml(title) + '</h1>' +
@@ -4746,10 +4746,10 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
                 mode:'connect',
                 flow:'connect',
                 intent_type:'meanly.login',
-                intent_title:'Open Meanly Vault',
+                intent_title: SL1_SURFACE.connectOnly ? 'Continue with Meanly' : 'Open Meanly Vault',
                 intent_description:'Create your Meanly account.',
                 intent_resource:'meanly.reference',
-                intent_cta:'Open Vault',
+                intent_cta: SL1_SURFACE.connectOnly ? 'Continue with Meanly' : 'Open Vault',
             });
             await createAccount(params, 'wallet-alias', false);
         };
@@ -4763,10 +4763,10 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
                 mode:'connect',
                 flow:'connect',
                 intent_type:'meanly.login',
-                intent_title:'Open Meanly Vault',
-                intent_description:'Sign in to open purchases, receipts, safe codes, and saved products.',
+                intent_title: SL1_SURFACE.connectOnly ? 'Sign in to Meanly' : 'Open Meanly Vault',
+                intent_description: SL1_SURFACE.connectOnly ? 'Confirm your Meanly identity to continue.' : 'Sign in to open purchases, receipts, safe codes, and saved products.',
                 intent_resource:'meanly.reference',
-                intent_cta:'Open Vault',
+                intent_cta: SL1_SURFACE.connectOnly ? 'Continue with Meanly' : 'Open Vault',
             };
             if (appState.activeIdentityHint || appState.profile?.entity_l1_address) params.identity_hint = appState.activeIdentityHint || appState.profile.entity_l1_address;
             navigate('/authorize', params);
