@@ -11,6 +11,7 @@ class MemoryConnectRuntimeStore {
             deviceHandoffs: new Map(),
             devicePairings: new Map(),
             aliasReservations: new Map(),
+            authorizeRequests: new Map(),
             rateLimits: new Map(),
             consumedProofs: new Map(),
         };

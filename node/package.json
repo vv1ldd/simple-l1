@@ -21,6 +21,7 @@
     "identity-mesh:runtime:test": "node scripts/test-identity-mesh-runtime.js",
     "identity-mesh:check": "node scripts/test-identity-mesh-conformance.js",
     "sl1-wire:check": "node scripts/test-sl1-wire-conformance.js",
+    "sl1e:authorize:check": "node scripts/test-sl1e-authorize-registry.js",
     "marketplace:seller:test": "node scripts/test-marketplace-seller-launch.js",
     "evm:slice:test": "node scripts/run-evm-slice.js",
     "kernel:test": "node scripts/test-execution-kernel.js",

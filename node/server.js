@@ -54,6 +54,14 @@ const {
     sellerSummary,
     upsertByKey,
 } = require('./marketplace-seller-runtime');
+const {
+    isAllowedSl1eRedirectUri,
+    normalizeAuthorizeQuery,
+} = require('./sl1e-client-registry');
+const {
+    pushAuthorizeRequest,
+    resolveAuthorizeRequestRef,
+} = require('./sl1e-authorize-requests');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -2028,13 +2036,47 @@ const authorizationRedirectUrl = (query, code) => {
     return target.toString();
 };
 
-const isAllowedSl1eRedirectUri = (redirectUri, clientId = '') => {
-    const value = String(redirectUri || '');
-    if (value.startsWith('http')) return true;
-
-    return String(clientId || '') === 'meanly.one.native'
-        && value === 'simplel1://identity-selected';
+const prepareAuthorizeQuery = (rawQuery, options = {}) => {
+    return normalizeAuthorizeQuery(rawQuery, options);
 };
+
+const authorizeQueryFromRequest = (request, options = {}) => {
+    if (options.requestRef || request.query?.request_ref) {
+        const resolved = resolveAuthorizeRequestRef(
+            sl1eRuntimeStore,
+            options.requestRef || request.query.request_ref,
+        );
+        if (!resolved.ok) {
+            return resolved;
+        }
+        return {
+            ok: true,
+            query: {
+                ...resolved.query,
+                __spa_path: '/authorize',
+                request_ref: options.requestRef || request.query.request_ref,
+            },
+        };
+    }
+
+    const normalized = prepareAuthorizeQuery(request.query || {}, options);
+    if (!normalized.ok) {
+        return normalized;
+    }
+
+    return {
+        ok: true,
+        query: {
+            ...normalized.query,
+            __spa_path: '/authorize',
+        },
+    };
+};
+
+const sendAuthorizeValidationError = (reply, result) => reply.code(422).send({
+    error: result.error || 'invalid_authorization_request',
+    missing: result.missing,
+});
 
 const proofIntentFromQuery = (query) => {
     const type = String(query.intent_type || '').trim();
@@ -2487,7 +2529,11 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         : 'Sign in';
     const requestedIdentityHint = normalizeIdentityHint(query.identity_hint || query.login_hint || query.entity_l1_address);
     const connectClass = isConnectMode ? ` connect-mode${hasIntent ? ' has-intent' : ''}${lockToExistingIdentity ? '' : ' no-identity'}${initialAction === 'register' ? ' register-ready' : (initialAction === 'login' ? ' login-ready' : '')}` : '';
+    const clientAuthorizeQuery = Object.fromEntries(
+        Object.entries(query).filter(([key, value]) => !key.startsWith('__') && value != null && String(value) !== ''),
+    );
     const hiddenFields = Object.entries(query)
+        .filter(([key]) => !key.startsWith('__'))
         .map(([key, value]) => `<input type="hidden" name="${htmlEscape(key)}" value="${htmlEscape(value)}">`)
         .join('\n');
 
@@ -2644,6 +2690,20 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         </section>
     </main>
     <script>
+        const authorizeQuerySeed = ${JSON.stringify(clientAuthorizeQuery)};
+        const buildAuthorizeParams = () => {
+            const params = new URLSearchParams();
+            Object.entries(authorizeQuerySeed).forEach(([key, value]) => params.set(key, String(value)));
+            const urlParams = new URLSearchParams(window.location.search);
+            ['identity_hint', 'login_hint', 'entity_l1_address', 'browser_identity_hint', 'sl1e_switch', 'alias', 'display_alias', 'alias_reservation_owner'].forEach((key) => {
+                if (urlParams.has(key)) params.set(key, urlParams.get(key));
+            });
+            if (!params.has('identity_hint') && !params.has('login_hint') && !params.has('entity_l1_address')) {
+                const rememberedIdentity = window.localStorage?.getItem('sl1e.identity_hint');
+                if (rememberedIdentity) params.set('browser_identity_hint', rememberedIdentity);
+            }
+            return params;
+        };
         const form = document.getElementById('sl1e-form');
         const button = document.getElementById('sl1e-approve');
         const approveWithPasskeyLabel = ${JSON.stringify(approveWithPasskeyLabel)};
@@ -2946,7 +3006,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             handoffButton.disabled = true;
             setStatus('Preparing QR handoff...');
             try {
-                const handoffQuery = new URLSearchParams(window.location.search);
+                const handoffQuery = buildAuthorizeParams();
                 if (selectedAction === 'register') {
                     const alias = aliasLabelFromInput();
                     if (!alias) {
@@ -3080,7 +3140,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const hydrateAuthorizeState = async () => {
             if (!isConnectMode) return;
             try {
-                const query = new URLSearchParams(window.location.search);
+                const query = buildAuthorizeParams();
                 if (!query.has('identity_hint') && !query.has('login_hint') && !query.has('entity_l1_address')) {
                     const rememberedIdentity = window.localStorage?.getItem('sl1e.identity_hint');
                     if (rememberedIdentity) query.set('browser_identity_hint', rememberedIdentity);
@@ -3307,7 +3367,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             setStatus('Getting your passkey ready...');
 
             try {
-                const query = new URLSearchParams(window.location.search);
+                const query = buildAuthorizeParams();
                 const completePayload = selectedAction === 'register'
                     ? await completeRegistration(query)
                     : await completeLogin(query);
@@ -5490,46 +5550,88 @@ fastify.get('/marketplace/sellers', async (request, reply) => {
 });
 
 fastify.get('/authorize', async (request, reply) => {
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !request.query[key]);
-    if (missing.length > 0) {
-        return reply.code(422).send({
-            error: 'invalid_authorization_request',
-            missing,
+    const prepared = authorizeQueryFromRequest(request);
+    if (!prepared.ok) {
+        return sendAuthorizeValidationError(reply, prepared);
+    }
+
+    return reply
+        .type('text/html; charset=utf-8')
+        .send(renderAuthorizePageForHost(prepared.query, request.hostname));
+});
+
+fastify.get('/authorize/:clientId', async (request, reply) => {
+    const prepared = authorizeQueryFromRequest(request, {
+        clientIdFromPath: request.params.clientId,
+    });
+    if (!prepared.ok) {
+        return sendAuthorizeValidationError(reply, prepared);
+    }
+
+    return reply
+        .type('text/html; charset=utf-8')
+        .send(renderAuthorizePageForHost(prepared.query, request.hostname));
+});
+
+fastify.get('/r/:requestRef', async (request, reply) => {
+    const prepared = authorizeQueryFromRequest(request, {
+        requestRef: request.params.requestRef,
+    });
+    if (!prepared.ok) {
+        const statusCode = prepared.error === 'authorization_request_not_found' ? 404 : 422;
+        return reply.code(statusCode).send({
+            error: prepared.error || 'invalid_authorization_request',
         });
     }
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderAuthorizePageForHost({ ...request.query, __spa_path: '/authorize' }, request.hostname));
+        .send(renderAuthorizePageForHost(prepared.query, request.hostname));
+});
+
+fastify.post('/api/sl1e/authorize/requests', async (request, reply) => {
+    cleanupSl1eArtifacts();
+    if (!checkRateLimit(request, reply, 'authorize-request:push', 40, 60 * 1000)) return reply;
+
+    const result = pushAuthorizeRequest(sl1eRuntimeStore, request);
+    const issuerProto = String(request.headers['x-forwarded-proto'] || request.protocol || 'http').split(',')[0].trim();
+    const issuerHost = String(request.headers['x-forwarded-host'] || request.headers.host || 'simplel1.local').split(',')[0].trim();
+    const issuerOrigin = `${issuerProto}://${issuerHost}`;
+
+    if (result.statusCode === 201) {
+        return reply.code(201).send({
+            ...result.payload,
+            authorize_url: `${issuerOrigin}${result.payload.request_uri}`,
+        });
+    }
+
+    return reply.code(result.statusCode).send(result.payload);
 });
 
 fastify.get('/api/sl1e/authorize', async (request, reply) => {
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !request.query[key]);
-    if (missing.length > 0) {
+    const prepared = authorizeQueryFromRequest(request);
+    if (!prepared.ok) {
         return reply.code(422).send({
             error: 'missing_required_query',
-            missing,
+            missing: prepared.missing,
         });
     }
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderAuthorizePageForHost({ ...request.query, __spa_path: '/authorize' }, request.hostname));
+        .send(renderAuthorizePageForHost(prepared.query, request.hostname));
 });
 
 fastify.get('/api/sl1e/authorize/bootstrap', async (request, reply) => {
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !request.query[key]);
-    if (missing.length > 0) {
+    const prepared = authorizeQueryFromRequest(request);
+    if (!prepared.ok) {
         return reply.code(422).send({
             error: 'missing_required_query',
-            missing,
+            missing: prepared.missing,
         });
     }
 
-    return authorizeBootstrapState(request.query, request.hostname);
+    return authorizeBootstrapState(prepared.query, request.hostname);
 });
 
 fastify.get('/api/sl1e/wallet/bootstrap', async (request) => {
@@ -5808,14 +5910,18 @@ fastify.post('/api/sl1e/device-handoff', async (request, reply) => {
     if (!checkRateLimit(request, reply, 'device-handoff:create', 20, 60 * 1000)) return reply;
 
     const rawQuery = request.body?.query || {};
-    const query = typeof rawQuery === 'string'
+    const queryInput = typeof rawQuery === 'string'
         ? Object.fromEntries(new URLSearchParams(rawQuery.startsWith('?') ? rawQuery.slice(1) : rawQuery))
         : Object.fromEntries(Object.entries(rawQuery).map(([key, value]) => [key, String(value ?? '')]));
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !query[key]);
-    if (missing.length > 0) {
-        return reply.code(422).send({ error: 'invalid_handoff_request', missing });
+    const prepared = prepareAuthorizeQuery(queryInput);
+    if (!prepared.ok) {
+        return reply.code(422).send({
+            error: 'invalid_handoff_request',
+            missing: prepared.missing,
+            detail: prepared.error,
+        });
     }
+    const query = prepared.query;
 
     if (String(query.response_mode || '') === 'form_post') {
         return reply.code(422).send({ error: 'device_handoff_requires_redirect_mode' });
@@ -5994,16 +6100,15 @@ fastify.get('/api/sl1e/authentication/options', async (request, reply) => {
     cleanupSl1eArtifacts();
     if (!checkRateLimit(request, reply, 'authentication-options', 30, 60 * 1000)) return reply;
 
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !request.query[key]);
-    if (missing.length > 0) {
+    const prepared = authorizeQueryFromRequest(request);
+    if (!prepared.ok) {
         return reply.code(422).send({
-            error: 'invalid_authorization_request',
-            missing,
+            error: prepared.error || 'invalid_authorization_request',
+            missing: prepared.missing,
         });
     }
 
-    const result = createSl1eAuthenticationOptions(request.query, request.hostname);
+    const result = createSl1eAuthenticationOptions(prepared.query, request.hostname);
     return reply.code(result.statusCode).send(result.payload);
 });
 
@@ -6011,20 +6116,20 @@ fastify.get('/api/sl1e/registration/options', async (request, reply) => {
     cleanupSl1eArtifacts();
     if (!checkRateLimit(request, reply, 'registration-options', 20, 60 * 1000)) return reply;
 
-    const required = ['client_id', 'redirect_uri', 'state', 'nonce'];
-    const missing = required.filter(key => !request.query[key]);
-    if (missing.length > 0) {
+    const prepared = authorizeQueryFromRequest(request);
+    if (!prepared.ok) {
         return reply.code(422).send({
-            error: 'invalid_registration_request',
-            missing,
+            error: prepared.error || 'invalid_registration_request',
+            missing: prepared.missing,
         });
     }
 
     const registrationRequestId = `sl1rr_${crypto.randomBytes(18).toString('hex')}`;
     const rpId = rpIdForHost(request.hostname);
-    const requestedAlias = normalizeAlias(request.query.alias);
-    const requestedDisplayAlias = normalizeDisplayAlias(request.query.display_alias || request.query.alias);
-    const aliasError = aliasValidationError(request.query.alias);
+    const authorizeQuery = prepared.query;
+    const requestedAlias = normalizeAlias(authorizeQuery.alias);
+    const requestedDisplayAlias = normalizeDisplayAlias(authorizeQuery.display_alias || authorizeQuery.alias);
+    const aliasError = aliasValidationError(authorizeQuery.alias);
     if (aliasError) {
         return reply.code(422).send({ error: aliasError, message: aliasValidationMessage(aliasError) });
     }
@@ -6061,7 +6166,7 @@ fastify.get('/api/sl1e/registration/options', async (request, reply) => {
 
     sl1eRuntimeStore.set('registrationChallenges', registrationRequestId, {
         challenge: publicKey.challenge,
-        query: { ...request.query },
+        query: { ...authorizeQuery },
         rpId,
         origin: originForHost(request.hostname),
         userHandle,
