@@ -904,6 +904,49 @@ const originForHost = (host) => {
     return `https://${hostname}`;
 };
 
+const isProtocolIssuerHost = (host) => {
+    const hostname = String(host || '').split(':')[0].toLowerCase();
+    if (!hostname) {
+        return false;
+    }
+
+    if (hostname === 'simplelayer.one' || hostname === 'simplelayer.test') {
+        return true;
+    }
+
+    return hostname.endsWith('.simplelayer.one') || hostname.endsWith('.simplelayer.test');
+};
+
+const walletSurfaceForHost = (host) => {
+    if (isProtocolIssuerHost(host)) {
+        return {
+            mode: 'protocol',
+            title: 'Simple Layer One',
+            brand: 'Simple Layer One',
+            footer: 'Simple Layer',
+            identityLabel: 'identity',
+            showCommerceNav: false,
+        };
+    }
+
+    return {
+        mode: 'commerce',
+        title: 'Meanly One Web Wallet',
+        brand: 'Meanly One Web Wallet',
+        footer: 'Meanly',
+        identityLabel: 'Meanly ID',
+        showCommerceNav: true,
+    };
+};
+
+const renderAuthorizePageForHost = (query, issuerHost) => {
+    if (isProtocolIssuerHost(issuerHost)) {
+        return renderSl1eAuthorizePage(query, issuerHost);
+    }
+
+    return renderMeanlyWalletSpaPage({ ...query, __spa_path: '/authorize' }, issuerHost);
+};
+
 const stableStringify = (value) => {
     if (Array.isArray(value)) {
         return `[${value.map(stableStringify).join(',')}]`;
@@ -2384,6 +2427,8 @@ const walletBootstrapState = (query = {}, issuerHost = 'connect.simplelayer.one'
 };
 
 const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') => {
+    const surface = walletSurfaceForHost(issuerHost);
+    const identityLabel = surface.identityLabel;
     const clientName = htmlEscape(query.client_name || query.client_id || 'External app');
     const isMeanlyReference = String(query.client_id || '') === 'meanly.reference';
     const isConnectMode = query.flow === 'connect' || query.mode === 'connect';
@@ -2451,10 +2496,10 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Meanly One Web Wallet</title>
-    <meta name="application-name" content="Meanly One Web Wallet">
+    <title>${htmlEscape(surface.title)}</title>
+    <meta name="application-name" content="${htmlEscape(surface.title)}">
     <meta name="theme-color" content="#f6f6f1">
-    <meta name="apple-mobile-web-app-title" content="Meanly One Web Wallet">
+    <meta name="apple-mobile-web-app-title" content="${htmlEscape(surface.title)}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
@@ -2558,17 +2603,17 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
 </head>
 <body>
     <main class="${connectClass}">
-        <div class="brand"><span class="dot"></span>Meanly One Web Wallet</div>
+        <div class="brand"><span class="dot"></span>${htmlEscape(surface.brand)}</div>
         <h1 id="sl1e-title">${mode}</h1>
         <p id="sl1e-lead" class="connect-lead">${htmlEscape(lead)}</p>
-        ${wantsIdentitySwitch && identitySwitchButtons ? `<div class="identity-switch-panel" aria-label="Choose Meanly ID">${identitySwitchButtons}</div>` : ''}
+        ${wantsIdentitySwitch && identitySwitchButtons ? `<div class="identity-switch-panel" aria-label="Choose ${htmlEscape(identityLabel)}">${identitySwitchButtons}</div>` : ''}
         ${displayIdentity ? `<div class="identity-menu">
             <button id="sl1e-identity-pill" class="identity-pill" type="button" aria-haspopup="true" aria-expanded="false">${htmlEscape(displayIdentity)}</button>
             <div id="sl1e-identity-actions" class="identity-actions" role="menu">
-                <button id="sl1e-manage-identity" type="button" role="menuitem">Manage Meanly ID</button>
+                <button id="sl1e-manage-identity" type="button" role="menuitem">Manage ${htmlEscape(identityLabel)}</button>
                 ${identitySwitchButtons ? `<div class="identity-action-divider" aria-hidden="true"></div>${identitySwitchButtons}` : ''}
                 <button id="sl1e-forget-identity" type="button" role="menuitem">Sign out / choose another</button>
-                <button id="sl1e-replace-identity" type="button" role="menuitem">Create new Meanly ID</button>
+                <button id="sl1e-replace-identity" type="button" role="menuitem">Create new ${htmlEscape(identityLabel)}</button>
             </div>
         </div>` : ''}
         <section id="approval-step" class="approval-step${isConnectMode ? ' active' : ''}">
@@ -4235,18 +4280,29 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
 };
 
 const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
+    const surface = walletSurfaceForHost(issuerHost);
     const initialRoute = {
         path: String(query.__spa_path || '/wallet'),
         query: Object.fromEntries(Object.entries(query).filter(([key]) => key !== '__spa_path')),
     };
+    const topbarMarkup = surface.showCommerceNav
+        ? `<nav class="topbar" aria-label="Meanly navigation">
+            <a href="/">Shop</a>
+            <a href="/catalog">Categories</a>
+            <button type="button" data-nav="/wallet">Vault</button>
+        </nav>`
+        : `<header class="protocol-shell" aria-label="Simple Layer protocol"><span class="brand">${htmlEscape(surface.brand)}</span></header>`;
+    const footMarkup = surface.showCommerceNav
+        ? `<div class="foot"><span class="brand">${htmlEscape(surface.footer)}</span><span>2026</span></div>`
+        : `<div class="protocol-foot"><span>${htmlEscape(surface.footer)}</span></div>`;
 
     return `<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Meanly One Web Wallet</title>
-    <meta name="application-name" content="Meanly One Web Wallet">
+    <title>${htmlEscape(surface.title)}</title>
+    <meta name="application-name" content="${htmlEscape(surface.title)}">
     <meta name="theme-color" content="#eef0fc">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
@@ -4256,6 +4312,11 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         body { margin:0; min-height:100vh; background:linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.035) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.18),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; color:var(--text); font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; }
         .app { min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; padding:28px; }
         .topbar, .foot { justify-self:center; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:3px solid var(--border); border-radius:999px; background:#fff; box-shadow:4px 4px 0 var(--border); font-size:12px; font-weight:950; }
+        .protocol-shell { justify-self:center; display:inline-flex; align-items:center; padding:10px 14px; border:2px solid var(--border); border-radius:999px; background:rgba(255,255,255,.92); box-shadow:3px 3px 0 var(--border); }
+        .protocol-foot { justify-self:center; color:var(--muted); font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+        body.protocol-surface { background:radial-gradient(circle at 50% -120px,rgba(15,23,42,.08),transparent 38rem),#f6f6f1; background-size:auto,auto; }
+        body.protocol-surface .card { border-radius:18px; box-shadow:0 24px 80px rgba(15,23,42,.12); }
+        body.protocol-surface .brand::before { background:#111827; transform:none; }
         .topbar a, .topbar button { min-height:30px; padding:6px 13px; border:0; border-radius:999px; background:transparent; box-shadow:none; color:var(--text); text-decoration:none; font:inherit; cursor:pointer; }
         .topbar a.active, .topbar button.active { background:var(--accent); color:#fff; border:2px solid var(--border); }
         main { display:grid; place-items:center; padding:60px 0; }
@@ -4290,17 +4351,14 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
     </style>
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
-<body>
+<body class="${surface.mode === 'protocol' ? 'protocol-surface' : ''}">
     <div class="app">
-        <nav class="topbar" aria-label="Meanly navigation">
-            <a href="/">Shop</a>
-            <a href="/catalog">Categories</a>
-            <button type="button" data-nav="/wallet">Vault</button>
-        </nav>
+        ${topbarMarkup}
         <main id="app-root"></main>
-        <div class="foot"><span class="brand">Meanly</span><span>2026</span></div>
+        ${footMarkup}
     </div>
     <script>
+        const SL1_SURFACE = ${JSON.stringify(surface)};
         const initialRoute = ${JSON.stringify(initialRoute)};
         const root = document.getElementById('app-root');
         const navButtons = Array.from(document.querySelectorAll('[data-nav]'));
@@ -4375,7 +4433,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             if (payload.selected_identity?.entity_l1_address) rememberIdentity(payload.selected_identity.entity_l1_address);
         };
         const renderLoading = () => {
-            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Loading</h1><p>Preparing your wallet...</p></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Loading</h1><p>Preparing your wallet...</p></section>';
         };
         const renderIdentityList = (identities, current) => {
             if (!identities?.length) return '';
@@ -4389,7 +4447,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const isRegister = state.ui?.initial_action === 'register' && !identity;
             const title = isRegister ? 'Create account' : (state.ui?.mode || request.intent_title || 'Open Meanly Vault');
             root.innerHTML = '<section class="card">' +
-                '<div class="brand">Meanly One Web Wallet</div>' +
+                '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>' +
                 '<h1>' + escapeHtml(title) + '</h1>' +
                 '<p>' + escapeHtml(isRegister ? 'Choose a name and continue with your passkey.' : 'Use your passkey to continue.') + '</p>' +
                 (identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
@@ -4427,12 +4485,12 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const profile = wallet.profile;
             const identities = wallet.identities || [];
             if (!profile) {
-                root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Create account</h1><p>Choose a name and continue with your passkey.</p><div class="panel"><label for="wallet-alias">Username</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="@username"></div><div class="actions"><button id="wallet-create" type="button">Create account</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">Sign in</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Create account</h1><p>Choose a name and continue with your passkey.</p><div class="panel"><label for="wallet-alias">Username</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="@username"></div><div class="actions"><button id="wallet-create" type="button">Create account</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">Sign in</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
                 document.getElementById('wallet-create')?.addEventListener('click', createAccountForWallet);
                 document.getElementById('wallet-existing')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
                 return;
             }
-            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Your Vault</h1><p>Saved items and orders are ready here.</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">Open Vault</button><button id="switch-wallet" class="secondary" type="button">Switch account</button><button id="lock-wallet" class="secondary" type="button">Sign out</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Your Vault</h1><p>Saved items and orders are ready here.</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">Open Vault</button><button id="switch-wallet" class="secondary" type="button">Switch account</button><button id="lock-wallet" class="secondary" type="button">Sign out</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             document.getElementById('open-vault')?.addEventListener('click', openVaultAuthorize);
             document.getElementById('switch-wallet')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
             document.getElementById('lock-wallet')?.addEventListener('click', () => {
@@ -4447,7 +4505,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         };
         const renderSwitch = () => {
             const wallet = appState.wallet || {};
-            root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Sign in</h1><p>Choose the account you want to use here.</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">Create account</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Sign in</h1><p>Choose the account you want to use here.</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">Create account</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
                 rememberIdentity(button.dataset.switchIdentity);
                 navigate('/wallet', { identity_hint: button.dataset.switchIdentity });
@@ -4467,7 +4525,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
                 if (appState.route.query?.sl1e_switch === '1') renderSwitch();
                 else renderWallet();
             } catch (error) {
-                root.innerHTML = '<section class="card"><div class="brand">Meanly One Web Wallet</div><h1>Try again</h1><p>' + escapeHtml(error.message || 'Could not load wallet.') + '</p><div class="actions"><button type="button" onclick="window.location.reload()">Reload</button></div></section>';
+                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Try again</h1><p>' + escapeHtml(error.message || 'Could not load wallet.') + '</p><div class="actions"><button type="button" onclick="window.location.reload()">Reload</button></div></section>';
             }
         };
         const authorizeQueryWithIdentity = () => {
@@ -5443,7 +5501,7 @@ fastify.get('/authorize', async (request, reply) => {
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/authorize' }, request.hostname));
+        .send(renderAuthorizePageForHost({ ...request.query, __spa_path: '/authorize' }, request.hostname));
 });
 
 fastify.get('/api/sl1e/authorize', async (request, reply) => {
@@ -5458,7 +5516,7 @@ fastify.get('/api/sl1e/authorize', async (request, reply) => {
 
     return reply
         .type('text/html; charset=utf-8')
-        .send(renderMeanlyWalletSpaPage({ ...request.query, __spa_path: '/authorize' }, request.hostname));
+        .send(renderAuthorizePageForHost({ ...request.query, __spa_path: '/authorize' }, request.hostname));
 });
 
 fastify.get('/api/sl1e/authorize/bootstrap', async (request, reply) => {
