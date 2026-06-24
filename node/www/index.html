@@ -29,7 +29,7 @@
             </a>
             <div class="nav-links">
                 <a href="#how">How it works</a>
-                <a href="#wallet">Wallet</a>
+                <a href="#identity">Identity</a>
             </div>
             <a class="nav-cta" href="https://pass.simplelayer.one">Sign in</a>
         </nav>
@@ -106,7 +106,7 @@
                     <div>
                         <span class="label">Wallet</span>
                         <h3>Balances stay with you.</h3>
-                        <p>Marketplaces can send payment facts without holding buyer funds. Rewards and receipts live in your SL1 wallet.</p>
+                        <p>Rewards and receipts on the protocol ledger live here. Crypto and bank balances live in linked providers.</p>
                     </div>
                 </div>
             </section>
@@ -167,36 +167,36 @@
                 </div>
             </section>
 
-            <section id="wallet" class="section wallet-section">
+            <section id="identity" class="section wallet-section">
                 <div class="section-heading">
-                    <span class="kicker">SL1 Wallet</span>
-                    <h2>Your wallet follows your identity.</h2>
+                    <span class="kicker">SL1 Identity</span>
+                    <h2>Who you are — not where your money is custodied.</h2>
                     <p>
-                        Create or open a wallet tied to the same passkey you use to sign in.
-                        Shops can plug into SL1 without becoming your bank.
+                        Your passkey controls this identity. USDC, BTC, and other instruments live in
+                        linked providers such as Meanly Vault — not inside the protocol node.
                     </p>
                 </div>
 
                 <div class="wallet-shell">
-                    <article class="wallet-card wallet-primary" aria-label="SL1 wallet overview">
+                    <article class="wallet-card wallet-primary" aria-label="SL1 identity overview">
                         <div class="wallet-card-head">
                             <div>
-                                <span class="label">Wallet identity</span>
+                                <span class="label">Identity</span>
                                 <h3 id="wallet-handle">loading</h3>
                             </div>
                             <span id="wallet-state" class="wallet-pill">syncing</span>
                         </div>
 
-                        <code id="wallet-address" class="wallet-address">reading /api/wallet/summary</code>
+                        <code id="wallet-address" class="wallet-address">reading /api/identity/summary</code>
 
                         <div class="wallet-balance-main">
-                            <span>Available SL</span>
+                            <span>Protocol SL</span>
                             <strong id="wallet-native-balance">--</strong>
-                            <small>Rewards, receipts, and settlement points live here.</small>
+                            <small>Native SL1 ledger balance on this identity.</small>
                         </div>
 
                         <div class="wallet-actions">
-                            <a id="wallet-open-passkey" class="button primary" href="https://pass.simplelayer.one/authorize?client_id=simplelayer.one&amp;client_name=SL1%20Wallet&amp;redirect_uri=https%3A%2F%2Fsimplelayer.one%2F%23wallet&amp;state=wallet-demo&amp;nonce=wallet-demo&amp;mode=connect">Open with Passkey</a>
+                            <a id="wallet-open-passkey" class="button primary" href="https://pass.simplelayer.one/authorize?client_id=simplelayer.one&amp;client_name=SL1%20Identity&amp;redirect_uri=https%3A%2F%2Fsimplelayer.one%2F%23identity&amp;state=identity-demo&amp;nonce=identity-demo&amp;mode=connect">Sign in with Passkey</a>
                             <a class="button secondary" href="/identity">Manage identity</a>
                         </div>
                     </article>
@@ -204,31 +204,36 @@
                     <div class="wallet-column">
                         <article class="wallet-card">
                             <div class="wallet-card-head">
-                                <h3>Assets</h3>
-                                <span class="wallet-pill muted">projection</span>
+                                <h3>Linked providers</h3>
+                                <span id="identity-providers-state" class="wallet-pill muted">none</span>
                             </div>
-                            <div id="wallet-assets" class="asset-list">
-                                <div class="asset-row skeleton"><span>Loading assets</span><strong>--</strong></div>
+                            <div id="identity-providers-list" class="provider-list">
+                                <div class="provider-row skeleton">
+                                    <span>Checking provider attachments</span>
+                                    <strong>…</strong>
+                                </div>
                             </div>
+                            <p class="wallet-copy">Providers own instruments. The protocol only lists what you have linked.</p>
+                            <a id="link-meanly-vault" class="button secondary provider-link" href="https://meanly.one">Link Meanly Vault</a>
                         </article>
 
                         <article class="wallet-card">
                             <div class="wallet-card-head">
-                                <h3>Keys</h3>
+                                <h3>Passkeys</h3>
                                 <span id="wallet-keys" class="wallet-pill">-- active</span>
                             </div>
-                            <p class="wallet-copy">Add or rotate passkeys without asking a marketplace to hold your balance.</p>
+                            <p class="wallet-copy">Add or rotate passkeys without giving custody to a marketplace.</p>
                         </article>
                     </div>
 
                     <article class="wallet-card wallet-ledger">
                         <div class="wallet-card-head">
-                            <h3>Operations</h3>
+                            <h3>Protocol activity</h3>
                             <span id="wallet-receipts-count" class="wallet-pill muted">0 receipts</span>
                         </div>
                         <div id="wallet-operations" class="operation-list">
                             <div class="operation-row skeleton">
-                                <span>Syncing ledger history</span>
+                                <span>Syncing identity history</span>
                                 <strong>--</strong>
                             </div>
                         </div>
@@ -259,6 +264,6 @@
         </footer>
     </div>
 
-    <script src="/app.js?v=3.1.4"></script>
+    <script src="/app.js?v=3.2.0"></script>
 </body>
 </html>

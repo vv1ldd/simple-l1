@@ -6850,41 +6850,62 @@ fastify.post('/api/sl1/install-reports', async (request, reply) => {
     });
 });
 
+fastify.get('/api/identity/summary', async (request, reply) => {
+    return buildIdentitySummaryPayload(request);
+});
+
 fastify.get('/api/wallet/summary', async (request, reply) => {
+    const payload = buildIdentitySummaryPayload(request);
+    payload.deprecated = 'Use /api/identity/summary. Wallet here means identity surface, not custody.';
+    return payload;
+});
+
+function buildIdentitySummaryPayload(request) {
+    const vaultProviderUrl = String(process.env.VAULT_PROVIDER_URL || 'https://meanly.one').replace(/\/$/, '');
     const requestedAddress = String(request.query.address || '').trim();
     const accounts = Object.values(ledger.accounts || {});
     const account = requestedAddress
         ? ledger.accounts[requestedAddress]
         : accounts.find((candidate) => candidate?.entity_l1_address || candidate?.address) || null;
 
+    const emptyPayload = {
+        schema: 'simple-l1.identity.summary.v1',
+        protocol: 'simple-l1',
+        status: 'empty',
+        message: 'No SL1 identity has been created on this node yet.',
+        identity: null,
+        account: null,
+        native: null,
+        balances: [],
+        providers: [],
+        attachments: { providers: [] },
+        operations: [],
+        receipts: [],
+        intents: [],
+        identity_surface: {
+            axiom: 'Identity owns attachments. Providers own instruments.',
+            custody_boundary: 'protocol_native_sl_only',
+            vault_provider_url: vaultProviderUrl,
+        },
+    };
+
     if (!account) {
-        return {
-            protocol: 'simple-l1',
-            status: 'empty',
-            message: 'No SL1 identity has been created on this node yet.',
-            account: null,
-            balances: [],
-            operations: [],
-            receipts: [],
-            intents: [],
-        };
+        return emptyPayload;
     }
 
     const address = account.entity_l1_address || account.address;
-    const balanceMap = Object.entries(account.balances || {}).reduce((acc, [asset, amount]) => {
-        const normalizedAsset = normalizeWalletAsset(asset);
-        acc[normalizedAsset] = Number(acc[normalizedAsset] || 0) + Number(amount || 0);
-        return acc;
-    }, {});
-    const balances = Object.entries(balanceMap)
-        .map(([asset, amount]) => ({
-            asset,
-            amount,
-            available: amount,
-            reserved: 0,
-            kind: asset === 'SL' ? 'native_bonus_settlement' : 'external_projection',
-        }))
-        .sort((a, b) => (a.asset === 'SL' ? -1 : b.asset === 'SL' ? 1 : a.asset.localeCompare(b.asset)));
+    const slAmount = Number((account.balances || {}).SL ?? nativeBalance(account) ?? 0);
+    const balances = [{
+        asset: 'SL',
+        amount: slAmount,
+        available: slAmount,
+        reserved: 0,
+        kind: 'native_protocol_ledger',
+    }];
+
+    const providers = Array.isArray(account.provider_attachments)
+        ? account.provider_attachments
+        : [];
 
     const relatedEvents = (ledger.event_log || [])
         .filter((event) => JSON.stringify(event?.payload || {}).includes(address))
@@ -6899,7 +6920,7 @@ fastify.get('/api/wallet/summary', async (request, reply) => {
             amount: event.type === 'GENESIS' ? nativeBalance(account) : null,
             status: 'settled',
             description: event.type === 'GENESIS'
-                ? 'SL Identity / Wallet created'
+                ? 'SL identity created'
                 : 'Ledger event linked to this identity',
         }));
 
@@ -6914,28 +6935,42 @@ fastify.get('/api/wallet/summary', async (request, reply) => {
         ? account.keys.filter((key) => key.status !== 'revoked').length
         : (account.key_l1_address ? 1 : 0);
 
+    const identity = {
+        entity_l1_address: address,
+        handle: account.alias || account.handle || 'anonymous',
+        key_l1_address: account.key_l1_address || account.keys?.[0]?.key_l1_address || null,
+        active_keys: keyCount,
+        policy: account.authority_policies || {},
+    };
+
     return {
+        schema: 'simple-l1.identity.summary.v1',
         protocol: 'simple-l1',
         status: 'active',
-        account: {
-            entity_l1_address: address,
-            handle: account.alias || account.handle || 'anonymous',
-            key_l1_address: account.key_l1_address || account.keys?.[0]?.key_l1_address || null,
-            active_keys: keyCount,
-            external_addresses: account.external_addresses || {},
-            policy: account.authority_policies || {},
-        },
+        identity,
+        account: identity,
+        native: balances[0],
         balances,
+        providers,
+        attachments: { providers },
         operations: relatedEvents,
         receipts,
         intents,
-        wallet_model: {
-            custody: 'passkey-controlled SL1 identity',
-            money_boundary: 'bank/provider signs fiat capture; SL1 records rewards, receipts, and settlement meaning',
-            meanly_boundary: 'marketplace stores order receipts and safe access, not wallet balances',
+        identity_surface: {
+            axiom: 'Identity owns attachments. Providers own instruments.',
+            custody_boundary: 'protocol_native_sl_only',
+            vault_provider_url: vaultProviderUrl,
+            default_provider: {
+                provider_id: 'meanly.vault',
+                label: 'Meanly Vault',
+                link_url: vaultProviderUrl,
+                status: providers.some((entry) => entry?.provider_id === 'meanly.vault' && entry?.status === 'active')
+                    ? 'linked'
+                    : 'unlinked',
+            },
         },
     };
-});
+}
 
 fastify.get('/api/identity/kernel', async () => {
     return {

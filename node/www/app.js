@@ -7,12 +7,14 @@ const statusEls = {
     note: document.getElementById('status-note'),
 };
 
-const walletEls = {
+const identityEls = {
     state: document.getElementById('wallet-state'),
     handle: document.getElementById('wallet-handle'),
     address: document.getElementById('wallet-address'),
     native: document.getElementById('wallet-native-balance'),
-    assets: document.getElementById('wallet-assets'),
+    providersState: document.getElementById('identity-providers-state'),
+    providersList: document.getElementById('identity-providers-list'),
+    linkVault: document.getElementById('link-meanly-vault'),
     operations: document.getElementById('wallet-operations'),
     receiptsCount: document.getElementById('wallet-receipts-count'),
     keys: document.getElementById('wallet-keys'),
@@ -83,84 +85,133 @@ function formatAmount(value, asset) {
     })} ${asset}`;
 }
 
-function renderWalletEmpty(message) {
-    if (walletEls.state) walletEls.state.textContent = 'empty';
-    if (walletEls.handle) walletEls.handle.textContent = 'No wallet yet';
-    if (walletEls.address) walletEls.address.textContent = message || 'Create an SL1 identity to initialize a wallet.';
-    if (walletEls.native) walletEls.native.textContent = `0.00 ${NATIVE_ASSET}`;
-    if (walletEls.assets) {
-        walletEls.assets.innerHTML = `<div class="asset-row"><span>No assets yet</span><strong>0.00 ${NATIVE_ASSET}</strong></div>`;
+function renderIdentityEmpty(message) {
+    if (identityEls.state) identityEls.state.textContent = 'empty';
+    if (identityEls.handle) identityEls.handle.textContent = 'No identity yet';
+    if (identityEls.address) {
+        identityEls.address.textContent = message || 'Sign in with a passkey to create your SL1 identity.';
     }
-    if (walletEls.operations) {
-        walletEls.operations.innerHTML = '<div class="operation-row"><span>Wallet history will appear after the first identity proof.</span><strong>waiting</strong></div>';
+    if (identityEls.native) identityEls.native.textContent = `0.00 ${NATIVE_ASSET}`;
+    if (identityEls.providersState) identityEls.providersState.textContent = 'none';
+    if (identityEls.providersList) {
+        identityEls.providersList.innerHTML = `
+            <div class="provider-row">
+                <span>No provider linked<small>Instruments live in Vault, not in SL1.</small></span>
+                <strong>unlinked</strong>
+            </div>
+        `;
+    }
+    if (identityEls.operations) {
+        identityEls.operations.innerHTML = '<div class="operation-row"><span>Protocol activity appears after your first identity proof.</span><strong>waiting</strong></div>';
     }
 }
 
-function renderWallet(summary) {
-    if (!summary || summary.status === 'empty') {
-        renderWalletEmpty(summary?.message);
+function renderProviderRows(summary) {
+    const providers = Array.isArray(summary.providers) ? summary.providers : [];
+    const defaultProvider = summary.identity_surface?.default_provider;
+    const vaultUrl = defaultProvider?.link_url || 'https://meanly.one';
+
+    if (identityEls.linkVault) {
+        identityEls.linkVault.href = vaultUrl;
+        identityEls.linkVault.textContent = defaultProvider?.status === 'linked'
+            ? 'Open Meanly Vault'
+            : 'Link Meanly Vault';
+    }
+
+    if (providers.length > 0) {
+        if (identityEls.providersState) {
+            identityEls.providersState.textContent = `${providers.length} linked`;
+        }
+        if (identityEls.providersList) {
+            identityEls.providersList.innerHTML = providers.map((provider) => {
+                const label = provider.label || provider.provider_id || 'Provider';
+                const instrumentCount = Number(provider.instrument_count || provider.instruments?.length || 0);
+                const status = provider.status || 'active';
+                const openUrl = provider.open_url || vaultUrl;
+
+                return `
+                    <div class="provider-row">
+                        <span>${label}<small>${instrumentCount > 0 ? `${instrumentCount} instruments` : 'No instruments yet'}</small></span>
+                        <a class="provider-open" href="${openUrl}">${status === 'active' ? 'Open' : 'Link'}</a>
+                    </div>
+                `;
+            }).join('');
+        }
         return;
     }
 
-    const account = summary.account || {};
-    const balances = Array.isArray(summary.balances) ? summary.balances : [];
+    if (identityEls.providersState) {
+        identityEls.providersState.textContent = defaultProvider?.status === 'linked' ? 'linked' : 'none';
+    }
+    if (identityEls.providersList) {
+        identityEls.providersList.innerHTML = `
+            <div class="provider-row">
+                <span>${defaultProvider?.label || 'Meanly Vault'}<small>No provider linked on this identity yet.</small></span>
+                <strong>unlinked</strong>
+            </div>
+        `;
+    }
+}
+
+function renderIdentity(summary) {
+    if (!summary || summary.status === 'empty') {
+        renderIdentityEmpty(summary?.message);
+        return;
+    }
+
+    const identity = summary.identity || summary.account || {};
+    const nativeBalance = summary.native
+        || (Array.isArray(summary.balances) ? summary.balances.find((balance) => balance.asset === NATIVE_ASSET) : null)
+        || { amount: 0, asset: NATIVE_ASSET };
     const operations = Array.isArray(summary.operations) ? summary.operations : [];
     const receipts = Array.isArray(summary.receipts) ? summary.receipts : [];
-    const nativeBalance = balances.find((balance) => balance.asset === NATIVE_ASSET) || { amount: 0, asset: NATIVE_ASSET };
 
-    if (walletEls.state) walletEls.state.textContent = summary.status || 'active';
-    if (walletEls.handle) walletEls.handle.textContent = account.handle || 'SL1 Wallet';
-    if (walletEls.address) {
-        walletEls.address.textContent = account.entity_l1_address || 'sl1e_pending';
-        walletEls.address.title = account.entity_l1_address || '';
+    if (identityEls.state) identityEls.state.textContent = summary.status || 'active';
+    if (identityEls.handle) identityEls.handle.textContent = identity.handle || 'SL1 Identity';
+    if (identityEls.address) {
+        identityEls.address.textContent = identity.entity_l1_address || 'sl1e_pending';
+        identityEls.address.title = identity.entity_l1_address || '';
     }
-    if (walletEls.native) walletEls.native.textContent = formatAmount(nativeBalance.available ?? nativeBalance.amount, NATIVE_ASSET);
-    if (walletEls.keys) walletEls.keys.textContent = `${account.active_keys || 0} active`;
-    if (walletEls.receiptsCount) walletEls.receiptsCount.textContent = `${receipts.length} receipts`;
-
-    if (walletEls.assets) {
-        walletEls.assets.innerHTML = balances.length
-            ? balances.map((balance) => `
-                <div class="asset-row">
-                    <span>${balance.asset}<small>${balance.kind || 'asset projection'}</small></span>
-                    <strong>${formatAmount(balance.available ?? balance.amount, balance.asset)}</strong>
-                </div>
-            `).join('')
-            : `<div class="asset-row"><span>No assets yet</span><strong>0.00 ${NATIVE_ASSET}</strong></div>`;
+    if (identityEls.native) {
+        identityEls.native.textContent = formatAmount(nativeBalance.available ?? nativeBalance.amount, NATIVE_ASSET);
     }
+    if (identityEls.keys) identityEls.keys.textContent = `${identity.active_keys || 0} active`;
+    if (identityEls.receiptsCount) identityEls.receiptsCount.textContent = `${receipts.length} receipts`;
 
-    if (walletEls.operations) {
+    renderProviderRows(summary);
+
+    if (identityEls.operations) {
         const operationRows = operations.length
             ? operations.map((operation) => `
                 <div class="operation-row">
                     <span>
-                        ${operation.description || operation.type || 'Wallet operation'}
+                        ${operation.description || operation.type || 'Protocol event'}
                         <small>${operation.timestamp ? new Date(operation.timestamp).toLocaleString() : 'ledger event'}</small>
                     </span>
                     <strong>${operation.amount ? formatAmount(operation.amount, operation.asset || NATIVE_ASSET) : operation.status || 'settled'}</strong>
                 </div>
             `).join('')
-            : '<div class="operation-row"><span>No wallet operations yet<small>Receipts and rewards will appear here.</small></span><strong>empty</strong></div>';
+            : '<div class="operation-row"><span>No protocol activity yet<small>Receipts and rewards will appear here.</small></span><strong>empty</strong></div>';
 
-        walletEls.operations.innerHTML = operationRows;
+        identityEls.operations.innerHTML = operationRows;
     }
 }
 
-async function loadWallet() {
-    if (!walletEls.state) return;
+async function loadIdentity() {
+    if (!identityEls.state) return;
 
     try {
-        const response = await fetch('/api/wallet/summary', {
+        const response = await fetch('/api/identity/summary', {
             headers: { Accept: 'application/json' },
             cache: 'no-store',
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        renderWallet(await response.json());
+        renderIdentity(await response.json());
     } catch (error) {
-        if (walletEls.state) walletEls.state.textContent = 'sync pending';
-        renderWalletEmpty('Wallet projection is not live on this node yet. Restart SL1 node to enable /api/wallet/summary.');
+        if (identityEls.state) identityEls.state.textContent = 'sync pending';
+        renderIdentityEmpty('Identity summary is not live on this node yet. Restart SL1 node to enable /api/identity/summary.');
     }
 }
 
@@ -182,7 +233,7 @@ function markActiveSection() {
     });
 }
 
-function configureWalletConnectLink() {
+function configureIdentityConnectLink() {
     const link = document.getElementById('wallet-open-passkey');
     if (!link) return;
 
@@ -194,10 +245,10 @@ function configureWalletConnectLink() {
     const redirectOrigin = hostname.startsWith('pass.') ? 'https://simplelayer.one' : siteOrigin;
     const params = new URLSearchParams({
         client_id: hostname.startsWith('pass.') ? 'simplelayer.one' : hostname,
-        client_name: 'SL1 Wallet',
-        redirect_uri: `${redirectOrigin}/#wallet`,
-        state: 'wallet-demo',
-        nonce: 'wallet-demo',
+        client_name: 'SL1 Identity',
+        redirect_uri: `${redirectOrigin}/#identity`,
+        state: 'identity-demo',
+        nonce: 'identity-demo',
         mode: 'connect',
         flow: 'connect',
     });
@@ -205,12 +256,19 @@ function configureWalletConnectLink() {
     link.href = `${issuerOrigin}/authorize?${params.toString()}`;
 }
 
+function redirectLegacyWalletHash() {
+    if (window.location.hash === '#wallet') {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}#identity`);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    configureWalletConnectLink();
+    redirectLegacyWalletHash();
+    configureIdentityConnectLink();
     loadStatus();
-    loadWallet();
+    loadIdentity();
     setInterval(loadStatus, 10000);
-    setInterval(loadWallet, 15000);
+    setInterval(loadIdentity, 15000);
     markActiveSection();
     window.addEventListener('scroll', markActiveSection, { passive: true });
 });

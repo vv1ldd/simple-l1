@@ -521,6 +521,48 @@ h3 {
     font-weight: 800;
 }
 
+.provider-list {
+    display: grid;
+    gap: 10px;
+}
+
+.provider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.provider-row span {
+    display: grid;
+    gap: 4px;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.provider-row small {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.provider-open,
+.provider-row strong {
+    color: var(--green);
+    font: 800 12px/1 JetBrains Mono, monospace;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.provider-link {
+    width: 100%;
+    justify-content: center;
+    margin-top: 12px;
+}
+
 .wallet-section {
     position: relative;
 }
