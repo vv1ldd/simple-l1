@@ -2537,6 +2537,8 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         .map(([key, value]) => `<input type="hidden" name="${htmlEscape(key)}" value="${htmlEscape(value)}">`)
         .join('\n');
 
+    const issuerHostname = htmlEscape(String(issuerHost || 'pass.simplelayer.one').split(':')[0]);
+
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -2544,112 +2546,39 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${htmlEscape(surface.title)}</title>
     <meta name="application-name" content="${htmlEscape(surface.title)}">
-    <meta name="theme-color" content="#f6f6f1">
+    <meta name="theme-color" content="#090a0f">
     <meta name="apple-mobile-web-app-title" content="${htmlEscape(surface.title)}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/identity-icon.svg" type="image/svg+xml">
-    <style>
-        :root { color-scheme: dark; --bg:#080808; --panel:#0f0f10; --panel-2:#151516; --panel-3:#1b1b1d; --text:#f4f4f5; --muted:#8b8b91; --muted-2:#636369; --accent:#d8d8dc; --accent-soft:rgba(255,255,255,.08); --border:#2a2a2d; --border-strong:#3a3a40; --shadow:0 24px 80px rgba(0,0,0,.55); }
-        * { box-sizing: border-box; }
-        body { margin:0; min-height:100vh; display:grid; place-items:center; background:radial-gradient(circle at 50% -10%, rgba(255,255,255,.07), transparent 24rem),linear-gradient(180deg,#0c0c0d 0%,#070707 100%); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
-        body::before { content:""; position:fixed; inset:0; pointer-events:none; background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px); background-size:32px 32px; mask-image:radial-gradient(circle at center,rgba(0,0,0,.75),transparent 76%); }
-        main { position:relative; width:min(402px,calc(100% - 32px)); padding:22px; background:linear-gradient(180deg,var(--panel) 0%,#0b0b0c 100%); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); text-align:center; }
-        main.no-identity { width:min(402px,calc(100% - 32px)); }
-        main:not(.connect-mode) { width:min(402px,calc(100% - 28px)); text-align:center; }
-        .brand { display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-bottom:17px; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-        .dot { width:7px; height:7px; border-radius:999px; background:#f4f4f5; box-shadow:0 0 0 3px rgba(255,255,255,.08); display:inline-block; }
-        h1 { margin:0 0 9px; font-size:clamp(29px,5vw,36px); line-height:1; letter-spacing:-.065em; font-weight:820; }
-        main:not(.connect-mode) h1 { font-size:32px; }
-        p { margin:0; color:var(--muted); line-height:1.5; font-weight:620; }
-        .connect-lead { max-width:350px; margin:0 auto; font-size:13px; line-height:1.45; }
-        .choice-grid { display:grid; grid-template-columns:1fr; gap:8px; margin:20px 0 0; }
-        .no-identity .choice-grid { grid-template-columns:1fr; margin-top:17px; }
-        .no-identity .choice-grid { display:none; }
-        .connect-mode.register-ready .choice-grid { display:none; }
-        .choice-card { min-height:68px; padding:13px 14px; border:1px solid var(--border); border-radius:12px; background:var(--panel-2); cursor:pointer; color:var(--text); text-align:left; transition:border-color 140ms ease,background 140ms ease,box-shadow 140ms ease; }
-        .choice-card:disabled { opacity:.68; cursor:wait; }
-        .choice-card:hover { border-color:var(--border-strong); background:var(--panel-3); }
-        .choice-card.selected { border-color:#e5e5e8; background:#18181a; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
-        .choice-card strong { display:block; margin-bottom:5px; font-size:14px; font-weight:760; letter-spacing:-.015em; }
-        .choice-card span { display:block; color:var(--muted); font-size:11px; line-height:1.35; font-weight:650; }
-        .identity-menu { position:relative; display:inline-flex; flex-direction:column; align-items:center; max-width:100%; }
-        .identity-pill { display:inline-flex; max-width:100%; margin-top:10px; padding:5px 8px; border:1px solid var(--border); border-radius:999px; background:#111112; color:var(--muted); font-size:10px; font-weight:760; cursor:pointer; }
-        .identity-actions { display:none; position:absolute; top:calc(100% + 6px); z-index:3; width:188px; padding:6px; border:1px solid var(--border); border-radius:12px; background:#111112; box-shadow:0 16px 40px rgba(0,0,0,.42); }
-        .identity-actions.visible { display:grid; gap:4px; }
-        .identity-actions button { margin:0; padding:8px 9px; border:0; border-radius:8px; background:transparent; color:var(--text); font-size:11px; text-align:left; }
-        .identity-actions button:hover { background:var(--accent-soft); }
-        .identity-action-divider { height:1px; margin:4px 2px; background:var(--border); }
-        .identity-switch-panel { display:grid; gap:6px; margin:14px 0 0; padding:8px; border:1px solid var(--border); border-radius:13px; background:#111112; }
-        .identity-switch-panel button { margin:0; padding:10px 11px; border:1px solid var(--border); border-radius:10px; background:#151516; color:var(--text); font-size:12px; text-align:left; }
-        .identity-switch-panel button:hover { background:var(--panel-3); border-color:var(--border-strong); }
-        .alias-field { display:none; margin:12px 0 0; text-align:left; }
-        .alias-field.visible { display:block; }
-        .alias-field label { display:block; margin:0 0 6px; color:var(--muted-2); font-size:10px; font-weight:760; text-transform:uppercase; letter-spacing:.08em; }
-        .alias-wrap { display:flex; align-items:center; justify-content:center; gap:2px; padding:9px 11px; border:1px solid var(--border); border-radius:11px; background:#121213; }
-        .alias-wrap:focus-within { border-color:var(--border-strong); background:#161617; }
-        .alias-wrap input { width:100%; border:0; outline:0; background:transparent; color:var(--text); font:inherit; font-size:13px; font-weight:720; text-align:center; }
-        .axioms { display:none; }
-        .approval-step { display:${isConnectMode ? 'block' : 'block'}; margin-top:${isConnectMode ? '10px' : '20px'}; }
-        .approval-step.active { display:block; }
-        .proof { margin:18px 0; padding:13px; border:1px solid var(--border); border-radius:12px; background:#121213; text-align:left; font-size:13px; font-weight:720; }
-        .connect-mode:not(.has-intent) .proof { display:none; }
-        .proof div { display:flex; justify-content:space-between; gap:10px; margin:5px 0; }
-        .proof span { color:var(--muted); }
-        .proof b { text-align:right; word-break:break-word; }
-        .intent-description { display:none; margin-top:10px; font-size:11px; }
-        .has-intent .intent-description { display:block; }
-        .intent-confirmation { display:none; margin:12px 0 8px; padding:10px 11px; border:1px solid rgba(245,158,11,.36); border-radius:11px; background:rgba(245,158,11,.08); color:#f5d48f; font-size:11px; line-height:1.4; font-weight:760; text-align:left; }
-        .has-intent .intent-confirmation { display:block; }
-        button { width:100%; margin-top:5px; padding:14px 18px; border:1px solid #f2f2f4; border-radius:12px; background:#f4f4f5; color:#09090a; font-weight:780; cursor:pointer; transition:background 140ms ease,border-color 140ms ease,opacity 140ms ease; }
-        button:hover:not(:disabled) { background:#ffffff; border-color:#ffffff; }
-        .connect-mode form { display:none; }
-        .connect-mode.register-ready form,
-        .connect-mode.login-ready form,
-        .connect-mode .approval-step.active form { display:block; }
-        button:disabled { opacity:.58; cursor:wait; }
-        .text-action { display:none; margin:9px auto 0; color:#d4d4d8; font-size:11px; font-weight:760; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
-        .text-action.visible { display:inline-flex; }
-        .note { display:none; }
-        .status { min-height:18px; margin:10px 0 0; font-size:11px; font-weight:680; color:var(--muted); }
-        .handoff-link { display:none; width:auto; margin:8px auto 0; padding:0; border:0; border-radius:0; background:transparent; color:#d4d4d8; font-size:11px; font-weight:760; text-decoration:underline; text-underline-offset:3px; }
-        .handoff-link.visible { display:inline-flex; }
-        .handoff-panel { display:none; margin-top:12px; padding:13px; border:1px solid var(--border); border-radius:12px; background:#121213; }
-        .handoff-panel.visible { display:block; }
-        .handoff-panel img { display:block; width:164px; height:164px; margin:0 auto 9px; padding:8px; border-radius:10px; background:#fff; }
-        .handoff-panel p { color:var(--muted); font-size:11px; line-height:1.35; font-weight:680; }
-        .handoff-refresh { width:auto; margin:9px auto 0; padding:0; border:0; border-radius:0; background:transparent; color:#d4d4d8; font-size:11px; font-weight:760; text-decoration:underline; text-underline-offset:3px; }
-        @media (max-width: 680px) { .choice-grid { grid-template-columns:1fr; } main { border-radius:16px; } }
-        :root { color-scheme: light; --bg:#eef0fc; --panel:#ffffff; --panel-2:#f8fafc; --panel-3:#efe6ff; --text:#050505; --muted:#4b5563; --muted-2:#6b7280; --accent:#7c3aed; --accent-soft:#efe6ff; --acid:#d8ff6f; --border:#050505; --border-strong:#050505; --shadow:8px 8px 0 #050505; }
-        body { background:linear-gradient(90deg,rgba(0,0,0,.035) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.035) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.18),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; color:var(--text); font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; padding:22px; }
-        body::before { display:none; }
-        main { width:min(520px,calc(100% - 32px)); padding:28px; background:#fff; border:3px solid var(--border); border-radius:24px; box-shadow:var(--shadow); color:var(--text); }
-        main.no-identity, main:not(.connect-mode) { width:min(520px,calc(100% - 32px)); }
-        .brand { color:var(--border); font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:900; letter-spacing:.08em; margin-bottom:12px; }
-        .dot { width:12px; height:12px; border-radius:0; background:var(--accent); border:2px solid var(--border); box-shadow:2px 2px 0 var(--border); transform:rotate(-8deg); }
-        h1 { color:var(--text); font-size:clamp(38px,7vw,54px); font-weight:950; letter-spacing:-.08em; text-wrap:balance; }
-        p, .connect-lead, .status, .proof span, .choice-card span, .handoff-panel p { color:var(--muted); font-weight:800; }
-        .identity-pill, .choice-card, .proof, .identity-switch-panel, .handoff-panel, .alias-wrap { background:#fff; border:2px solid var(--border); border-radius:14px; box-shadow:3px 3px 0 var(--border); color:var(--text); }
-        .choice-card.selected { background:var(--acid); border-color:var(--border); box-shadow:4px 4px 0 var(--border); }
-        .choice-card:hover { background:var(--accent-soft); border-color:var(--border); }
-        .identity-actions { border:2px solid var(--border); border-radius:14px; background:#fff; box-shadow:5px 5px 0 var(--border); }
-        .identity-actions button, .identity-switch-panel button { color:var(--text); font-weight:900; }
-        .identity-actions button:hover, .identity-switch-panel button:hover { background:var(--accent-soft); }
-        .proof { margin:18px 0; background:#f8fafc; }
-        .proof b { color:var(--text); font-weight:950; }
-        .alias-wrap:focus-within { background:#fff; border-color:var(--accent); box-shadow:4px 4px 0 var(--border); }
-        .alias-wrap input { color:var(--text); caret-color:var(--accent); }
-        .alias-wrap input::placeholder { color:#9ca3af; }
-        .intent-confirmation { border:2px solid var(--border); background:#fff7d6; color:#161411; box-shadow:3px 3px 0 var(--border); }
-        button { border:2px solid var(--border); border-radius:14px; background:var(--accent); color:#fff; box-shadow:4px 4px 0 var(--border); font-weight:950; }
-        button:hover:not(:disabled) { background:#6d28d9; border-color:var(--border); transform:translate(-1px,-1px); }
-        .handoff-link, .text-action { color:var(--text); font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:900; }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css?v=3.0.0">
+    <link rel="stylesheet" href="/authorize-protocol.css?v=1.0.0">
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
 <body>
-    <main class="${connectClass}">
-        <div class="brand"><span class="dot"></span>${htmlEscape(surface.brand)}</div>
+    <div class="page-shell authorize-page">
+        <nav class="nav authorize-nav">
+            <a class="brand" href="/">
+                <span class="brand-mark">SL1</span>
+                <span>
+                    <strong>Simple Layer One</strong>
+                    <small>${issuerHostname}</small>
+                </span>
+            </a>
+            <a class="nav-cta" href="/#connect">Protocol</a>
+        </nav>
+        <section class="authorize-stage">
+            <article class="hero-card authorize-card">
+                <div class="card-topline">
+                    <span>SL1 Connect</span>
+                    <strong class="online">${clientName}</strong>
+                </div>
+                <div class="authorize-orb" aria-hidden="true"><span>SL1</span></div>
+                <div class="sl1e-authorize-panel ${connectClass}">
+        <div class="brand authorize-brand"><span class="brand-mark">SL1</span> Simple Layer One</div>
         <h1 id="sl1e-title">${mode}</h1>
         <p id="sl1e-lead" class="connect-lead">${htmlEscape(lead)}</p>
         ${wantsIdentitySwitch && identitySwitchButtons ? `<div class="identity-switch-panel" aria-label="Choose ${htmlEscape(identityLabel)}">${identitySwitchButtons}</div>` : ''}
@@ -2673,7 +2602,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 <div><span>Safety</span><b>Only this sign-in is approved</b></div>
             </div>
             <p class="${isConnectMode ? 'intent-description' : ''}">${intentDescription}</p>
-            <p class="intent-confirmation">Meanly will not get your passkey. It only receives a one-time confirmation that this is you.</p>
+            <p class="intent-confirmation">The requesting app will not get your passkey. It only receives a one-time identity proof.</p>
             <form id="sl1e-form" method="POST" action="/api/sl1e/authorize/complete">
                 ${hiddenFields}
                 <button id="sl1e-approve" type="submit">${htmlEscape(initialAction === 'register' ? 'Create account' : approveWithPasskeyLabel)}</button>
@@ -2688,7 +2617,14 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             </div>` : ''}
             <div class="note">Your identity address stays the same across web and native.</div>
         </section>
-    </main>
+                </div>
+            </article>
+        </section>
+        <footer class="footer">
+            <strong>Simple Layer One</strong>
+            <span>Meaning is representational. Authority is relational. Settlement mutates state.</span>
+        </footer>
+    </div>
     <script>
         const authorizeQuerySeed = ${JSON.stringify(clientAuthorizeQuery)};
         const buildAuthorizeParams = () => {
@@ -2723,7 +2659,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
         const aliasLabel = document.getElementById('sl1e-alias-label');
         const aliasWrap = document.getElementById('sl1e-alias-wrap');
         const aliasInput = document.getElementById('sl1e-alias');
-        const card = document.querySelector('main');
+        const card = document.querySelector('.sl1e-authorize-panel');
         const secondaryAction = document.getElementById('sl1e-secondary-action');
         const handoffButton = document.getElementById('sl1e-handoff-link');
         const handoffPanel = document.getElementById('sl1e-handoff-panel');
@@ -3118,7 +3054,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             });
             approvalStep.classList.add('active');
             aliasField?.classList.toggle('visible', asksForAlias);
-            if (aliasLabel) aliasLabel.textContent = selectedAction === 'register' ? 'Choose your alias' : 'Your Meanly alias';
+            if (aliasLabel) aliasLabel.textContent = selectedAction === 'register' ? 'Choose your alias' : 'Your SL1 alias';
             card?.classList.toggle('register-ready', selectedAction === 'register');
             card?.classList.toggle('login-ready', selectedAction === 'login' && !lockToExistingIdentity);
             if (selectedAction === 'register') {
@@ -3134,7 +3070,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
             updatePrimaryButtonState();
             setStatus(message || (selectedAction === 'register'
                 ? 'Create your account with a passkey. You can use the same account later in the app.'
-                : 'Confirm with your passkey. We will bring you back to Meanly.'));
+                : 'Confirm with your passkey. We will return you to the requesting app.'));
         };
 
         const hydrateAuthorizeState = async () => {
@@ -3162,7 +3098,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                         leadNode.textContent = 'Confirm with your passkey. We will return you to ' + state.request.client_name + ' automatically.';
                     }
                     if (selectedAction === 'register') {
-                        selectAction('login', state?.ui?.status || 'Confirm with your passkey. We will bring you back to Meanly.');
+                        selectAction('login', state?.ui?.status || 'Confirm with your passkey. We will return you to the requesting app.');
                     }
                     card?.classList.remove('no-identity', 'register-ready');
                     card?.classList.add('login-ready');
@@ -3357,7 +3293,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                 if (selectedAction === 'login') {
                     setStatus('This device cannot use passkeys here. Continue on your phone.');
                 } else {
-                    setStatus('Create your Meanly identity on a device that supports passkeys, like your phone.');
+                    setStatus('Create your SL1 identity on a device that supports passkeys, like your phone.');
                 }
                 await startDeviceHandoff();
                 return;
@@ -3373,7 +3309,7 @@ const renderSl1eAuthorizePage = (query, issuerHost = 'connect.simplelayer.one') 
                     : await completeLogin(query);
 
                 rememberIdentity(completePayload);
-                setStatus('Confirmed. Taking you back to Meanly...');
+                setStatus('Confirmed. Returning you to the requesting app...');
                 await redirectFromPayload(completePayload);
             } catch (error) {
                 const message = error.message || 'Passkey approval failed.';
