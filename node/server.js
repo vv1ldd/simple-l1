@@ -962,6 +962,18 @@ const isProtocolIssuerHost = (host) => {
     return hostname.endsWith('.simplelayer.one') || hostname.endsWith('.simplelayer.test');
 };
 
+// ADR-0028: `connect.identity.*` is the dedicated WebAuthn ceremony origin.
+// This host exists only to run the connect authorization, so it carries no
+// commerce chrome (Shop / Categories / Vault) — only the connect window.
+const isConnectCeremonyHost = (host) => {
+    const hostname = normalizedHost(host);
+    if (!hostname) {
+        return false;
+    }
+
+    return hostname.startsWith('connect.') && hostname.split('.').length > 2;
+};
+
 const passIssuerOrigin = () => {
     if (PASS_ISSUER_HOST === '127.0.0.1' || PASS_ISSUER_HOST === 'localhost') {
         return `http://localhost:${RUNTIME_PORT || 3000}`;
@@ -1057,8 +1069,21 @@ const walletSurfaceForHost = (host) => {
         };
     }
 
+    if (isConnectCeremonyHost(host)) {
+        return {
+            mode: 'commerce',
+            connectOnly: true,
+            title: 'Meanly Connect',
+            brand: 'Meanly Connect',
+            footer: 'Meanly Connect',
+            identityLabel: 'Meanly ID',
+            showCommerceNav: false,
+        };
+    }
+
     return {
         mode: 'commerce',
+        connectOnly: false,
         title: 'Meanly One Web Wallet',
         brand: 'Meanly One Web Wallet',
         footer: 'Meanly',
@@ -4464,10 +4489,22 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         .muted { color:var(--muted); font-size:12px; font-weight:850; }
         .hidden { display:none !important; }
         @media (max-width:760px) { .app { padding:18px; } main { padding:34px 0; } .split { grid-template-columns:1fr; } .card, .card.wide { width:100%; } }
+        /* ADR-0028 connect ceremony: sharpen to true neobrutalism (square corners,
+           hard offset shadows) and present only the connect window. */
+        body.connect-surface { background:linear-gradient(90deg,rgba(0,0,0,.05) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.05) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.2),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; }
+        body.connect-surface .card, body.connect-surface .card.wide { border-radius:0; border-width:4px; box-shadow:10px 10px 0 var(--border); }
+        body.connect-surface button, body.connect-surface .button, body.connect-surface input, body.connect-surface .panel { border-radius:0; }
+        body.connect-surface .pill, body.connect-surface .protocol-shell { border-radius:0; }
+        body.connect-surface .protocol-shell { border-width:3px; box-shadow:5px 5px 0 var(--border); background:#fff; padding:11px 16px; }
+        body.connect-surface .protocol-shell .brand { margin:0; font-size:11px; }
+        body.connect-surface .protocol-foot { border:3px solid var(--border); box-shadow:5px 5px 0 var(--border); background:#fff; border-radius:0; padding:9px 14px; color:var(--text); }
+        body.connect-surface .brand::before { border-radius:0; transform:none; }
+        body.connect-surface .device { border-radius:0; }
+        @media (max-width:760px) { body.connect-surface .card, body.connect-surface .card.wide { box-shadow:6px 6px 0 var(--border); } }
     </style>
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
-<body class="${surface.mode === 'protocol' ? 'protocol-surface' : ''}">
+<body class="${surface.mode === 'protocol' ? 'protocol-surface' : ''}${surface.connectOnly ? ' connect-surface' : ''}">
     <div class="app">
         ${topbarMarkup}
         <main id="app-root"></main>
