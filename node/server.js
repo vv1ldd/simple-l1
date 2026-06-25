@@ -1057,7 +1057,92 @@ const renderPassIssuerHome = (issuerHost) => {
 </html>`;
 };
 
-const walletSurfaceForHost = (host) => {
+const contourKeyForHost = (host) => {
+    const rpId = rpIdForHost(host);
+    if (rpId.endsWith('.ru')) return 'ru';
+    if (rpId.endsWith('.one')) return 'one';
+    return 'global';
+};
+
+const CEREMONY_STRINGS = {
+    en: {
+        loading: 'Loading',
+        preparingWallet: 'Preparing your wallet...',
+        createAccount: 'Create account',
+        signIn: 'Sign in',
+        continueWithMeanly: 'Continue with Meanly',
+        openMeanlyVault: 'Open Meanly Vault',
+        usePasskeyContinue: 'Use your passkey to continue.',
+        chooseNamePasskey: 'Choose a name and continue with your passkey.',
+        confirmPasskey: 'Confirm with your passkey.',
+        createYourAccount: 'Create your account.',
+        username: 'Username',
+        usernamePlaceholder: '@username',
+        continue: 'Continue',
+        chooseAnotherAccount: 'Choose another account',
+        alreadyHaveAccount: 'I already have an account',
+        useIdentity: 'Use ',
+        switchToIdentity: 'Switch to ',
+        yourVault: 'Your Vault',
+        vaultReady: 'Saved items and orders are ready here.',
+        openVault: 'Open Vault',
+        switchAccount: 'Switch account',
+        signOut: 'Sign out',
+        chooseAccountHere: 'Choose the account you want to use here.',
+        tryAgain: 'Try again',
+        couldNotLoadWallet: 'Could not load wallet.',
+        reload: 'Reload',
+        gettingPasskeyReady: 'Getting your passkey ready...',
+        confirmFaceId: 'Confirm with Face ID, Touch ID, or your security key...',
+        confirming: 'Confirming...',
+        confirmedReturning: 'Confirmed. Taking you back to Meanly...',
+        connectLandingTitle: 'Secure identity connection',
+        connectLandingBody: 'This page runs the WebAuthn ceremony for Meanly. Start sign-in from the storefront or app that sent you here.',
+    },
+    ru: {
+        loading: 'Загрузка',
+        preparingWallet: 'Подготавливаем сейф...',
+        createAccount: 'Создать аккаунт',
+        signIn: 'Войти',
+        continueWithMeanly: 'Продолжить с Meanly',
+        openMeanlyVault: 'Открыть сейф Meanly',
+        usePasskeyContinue: 'Подтвердите вход с помощью passkey.',
+        chooseNamePasskey: 'Выберите имя и продолжите с passkey.',
+        confirmPasskey: 'Подтвердите вход passkey.',
+        createYourAccount: 'Создайте аккаунт.',
+        username: 'Имя пользователя',
+        usernamePlaceholder: '@имя',
+        continue: 'Продолжить',
+        chooseAnotherAccount: 'Выбрать другой аккаунт',
+        alreadyHaveAccount: 'У меня уже есть аккаунт',
+        useIdentity: 'Использовать ',
+        switchToIdentity: 'Переключиться на ',
+        yourVault: 'Ваш сейф',
+        vaultReady: 'Заказы, коды и настройки — здесь.',
+        openVault: 'Открыть сейф',
+        switchAccount: 'Сменить аккаунт',
+        signOut: 'Выйти',
+        chooseAccountHere: 'Выберите аккаунт для входа.',
+        tryAgain: 'Повторить',
+        couldNotLoadWallet: 'Не удалось загрузить сейф.',
+        reload: 'Обновить',
+        gettingPasskeyReady: 'Готовим passkey...',
+        confirmFaceId: 'Подтвердите Face ID, Touch ID или ключ безопасности...',
+        confirming: 'Подтверждаем...',
+        confirmedReturning: 'Подтверждено. Возвращаем в Meanly...',
+        connectLandingTitle: 'Безопасное подключение Meanly',
+        connectLandingBody: 'Здесь выполняется WebAuthn-церемония Meanly. Начните вход в магазине или приложении, которое вас сюда направило.',
+    },
+};
+
+const ceremonyStringsForHost = (host, localeHint = '') => {
+    const contour = contourKeyForHost(host);
+    const locale = normalizeLocale(localeHint || (contour === 'ru' ? 'ru' : 'en'));
+    const strings = CEREMONY_STRINGS[locale] || CEREMONY_STRINGS.en;
+    return { locale, contour, strings };
+};
+
+const walletSurfaceForHost = (host, localeHint = '') => {
     if (isProtocolIssuerHost(host)) {
         return {
             mode: 'protocol',
@@ -1070,9 +1155,28 @@ const walletSurfaceForHost = (host) => {
     }
 
     if (isConnectCeremonyHost(host)) {
+        const { locale, contour, strings } = ceremonyStringsForHost(host, localeHint);
+        if (contour === 'ru') {
+            return {
+                mode: 'commerce',
+                connectOnly: true,
+                locale,
+                contour,
+                strings,
+                title: 'Meanly Connect',
+                brand: 'СЕЙФ MEANLY',
+                footer: 'Meanly RU',
+                identityLabel: 'Meanly ID',
+                showCommerceNav: false,
+            };
+        }
+
         return {
             mode: 'commerce',
             connectOnly: true,
+            locale,
+            contour,
+            strings,
             title: 'Meanly Connect',
             brand: 'Meanly Connect',
             footer: 'Meanly Connect',
@@ -1084,6 +1188,9 @@ const walletSurfaceForHost = (host) => {
     return {
         mode: 'commerce',
         connectOnly: false,
+        locale: normalizeLocale(localeHint),
+        contour: contourKeyForHost(host),
+        strings: ceremonyStringsForHost(host, localeHint).strings,
         title: 'Meanly One Web Wallet',
         brand: 'Meanly One Web Wallet',
         footer: 'Meanly',
@@ -2529,6 +2636,7 @@ const authorizeBootstrapState = (query, issuerHost = 'connect.simplelayer.one') 
         queryWithBrowserHint.identity_hint = browserIdentityHint;
     }
 
+    const { strings } = ceremonyStringsForHost(issuerHost, query.ui_locale || query.alias_locale);
     const clientName = String(query.client_name || query.client_id || 'External app');
     const isMeanlyReference = String(query.client_id || '') === 'meanly.reference';
     const isConnectMode = query.flow === 'connect' || query.mode === 'connect';
@@ -2562,21 +2670,21 @@ const authorizeBootstrapState = (query, issuerHost = 'connect.simplelayer.one') 
             state: query.state || null,
             nonce: query.nonce || null,
             has_intent: hasIntent,
-            intent_title: rawIntentTitle || 'Continue with Meanly',
-            intent_cta: rawIntentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue'),
+            intent_title: rawIntentTitle || strings.continueWithMeanly,
+            intent_cta: rawIntentCta || (isMeanlyReference ? strings.continueWithMeanly : strings.continue),
             is_connect_mode: isConnectMode,
             wants_identity_switch: wantsIdentitySwitch,
         },
         ui: {
             mode: initialAction === 'register'
-                ? 'Create account'
-                : (hasIntent ? (rawIntentTitle || rawIntentCta || (isMeanlyReference ? 'Continue with Meanly' : 'Continue')) : 'Sign in'),
+                ? strings.createAccount
+                : (hasIntent ? (rawIntentTitle || rawIntentCta || (isMeanlyReference ? strings.continueWithMeanly : strings.continue)) : strings.signIn),
             initial_action: initialAction,
             status: initialAction === 'register'
-                ? 'Create your account.'
+                ? strings.createYourAccount
                 : (hasIntent
-                    ? 'Confirm with your passkey.'
-                    : 'Use your passkey to continue.'),
+                    ? strings.confirmPasskey
+                    : strings.usePasskeyContinue),
         },
         selected_identity: selectedIdentity,
         identities: verifiableIdentityOptions(),
@@ -4421,7 +4529,7 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
 };
 
 const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
-    const surface = walletSurfaceForHost(issuerHost);
+    const surface = walletSurfaceForHost(issuerHost, query.ui_locale || query.alias_locale);
     const initialRoute = {
         path: String(query.__spa_path || '/wallet'),
         query: Object.fromEntries(Object.entries(query).filter(([key]) => key !== '__spa_path')),
@@ -4438,7 +4546,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         : `<div class="protocol-foot"><span>${htmlEscape(surface.footer)}</span></div>`;
 
     return `<!doctype html>
-<html lang="en">
+<html lang="${htmlEscape(surface.locale || 'en')}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -4512,6 +4620,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
     </div>
     <script>
         const SL1_SURFACE = ${JSON.stringify(surface)};
+        const S = SL1_SURFACE.strings || {};
         const initialRoute = ${JSON.stringify(initialRoute)};
         const root = document.getElementById('app-root');
         const navButtons = Array.from(document.querySelectorAll('[data-nav]'));
@@ -4586,11 +4695,11 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             if (payload.selected_identity?.entity_l1_address) rememberIdentity(payload.selected_identity.entity_l1_address);
         };
         const renderLoading = () => {
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Loading</h1><p>Preparing your wallet...</p></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.loading || 'Loading') + '</h1><p>' + escapeHtml(S.preparingWallet || 'Preparing your wallet...') + '</p></section>';
         };
         const renderIdentityList = (identities, current) => {
             if (!identities?.length) return '';
-            return '<div class="identity-list">' + identities.map((identity) => '<button type="button" data-switch-identity="' + escapeHtml(identity.entity_l1_address) + '">' + (current === identity.entity_l1_address ? 'Use ' : 'Switch to ') + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>').join('') + '</div>';
+            return '<div class="identity-list">' + identities.map((identity) => '<button type="button" data-switch-identity="' + escapeHtml(identity.entity_l1_address) + '">' + (current === identity.entity_l1_address ? (S.useIdentity || 'Use ') : (S.switchToIdentity || 'Switch to ')) + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>').join('') + '</div>';
         };
         const renderAuthorize = () => {
             const state = appState.authorize;
@@ -4598,17 +4707,17 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const identity = state.selected_identity;
             const identities = state.identities || [];
             const isRegister = state.ui?.initial_action === 'register' && !identity;
-            const title = isRegister ? 'Create account' : (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? 'Continue with Meanly' : 'Open Meanly Vault'));
+            const title = isRegister ? (S.createAccount || 'Create account') : (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? (S.continueWithMeanly || 'Continue with Meanly') : (S.openMeanlyVault || 'Open Meanly Vault')));
             root.innerHTML = '<section class="card">' +
                 '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>' +
                 '<h1>' + escapeHtml(title) + '</h1>' +
-                '<p>' + escapeHtml(isRegister ? 'Choose a name and continue with your passkey.' : 'Use your passkey to continue.') + '</p>' +
+                '<p>' + escapeHtml(isRegister ? (S.chooseNamePasskey || 'Choose a name and continue with your passkey.') : (S.usePasskeyContinue || 'Use your passkey to continue.')) + '</p>' +
                 (identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
                 (state.request?.wants_identity_switch ? renderIdentityList(identities, identity?.entity_l1_address) : '') +
-                (isRegister ? '<div class="panel"><label for="spa-alias">Username</label><input id="spa-alias" autocomplete="username" maxlength="25" placeholder="@username"></div>' : '') +
-                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(isRegister ? 'Create account' : (request.intent_cta || 'Continue')) + '</button>' +
-                (!isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">Choose another account</button>' : '') +
-                (isRegister && identities.length ? '<button id="sign-in-existing" class="secondary" type="button">I already have an account</button>' : '') +
+                (isRegister ? '<div class="panel"><label for="spa-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="spa-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div>' : '') +
+                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(isRegister ? (S.createAccount || 'Create account') : (request.intent_cta || S.continue || 'Continue')) + '</button>' +
+                (!isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">' + escapeHtml(S.chooseAnotherAccount || 'Choose another account') + '</button>' : '') +
+                (isRegister && identities.length ? '<button id="sign-in-existing" class="secondary" type="button">' + escapeHtml(S.alreadyHaveAccount || 'I already have an account') + '</button>' : '') +
                 '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || state.ui?.status || '') + '</div></section>';
             document.getElementById('primary-action')?.addEventListener('click', () => isRegister ? createAccountFromAuthorize() : approveAuthorize());
             document.getElementById('choose-account')?.addEventListener('click', () => {
@@ -4638,12 +4747,12 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const profile = wallet.profile;
             const identities = wallet.identities || [];
             if (!profile) {
-                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Create account</h1><p>Choose a name and continue with your passkey.</p><div class="panel"><label for="wallet-alias">Username</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="@username"></div><div class="actions"><button id="wallet-create" type="button">Create account</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">Sign in</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.createAccount || 'Create account') + '</h1><p>' + escapeHtml(S.chooseNamePasskey || 'Choose a name and continue with your passkey.') + '</p><div class="panel"><label for="wallet-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div><div class="actions"><button id="wallet-create" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">' + escapeHtml(S.signIn || 'Sign in') + '</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
                 document.getElementById('wallet-create')?.addEventListener('click', createAccountForWallet);
                 document.getElementById('wallet-existing')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
                 return;
             }
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Your Vault</h1><p>Saved items and orders are ready here.</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">Open Vault</button><button id="switch-wallet" class="secondary" type="button">Switch account</button><button id="lock-wallet" class="secondary" type="button">Sign out</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.yourVault || 'Your Vault') + '</h1><p>' + escapeHtml(S.vaultReady || 'Saved items and orders are ready here.') + '</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">' + escapeHtml(S.openVault || 'Open Vault') + '</button><button id="switch-wallet" class="secondary" type="button">' + escapeHtml(S.switchAccount || 'Switch account') + '</button><button id="lock-wallet" class="secondary" type="button">' + escapeHtml(S.signOut || 'Sign out') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             document.getElementById('open-vault')?.addEventListener('click', openVaultAuthorize);
             document.getElementById('switch-wallet')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
             document.getElementById('lock-wallet')?.addEventListener('click', () => {
@@ -4658,7 +4767,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         };
         const renderSwitch = () => {
             const wallet = appState.wallet || {};
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Sign in</h1><p>Choose the account you want to use here.</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">Create account</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.signIn || 'Sign in') + '</h1><p>' + escapeHtml(S.chooseAccountHere || 'Choose the account you want to use here.') + '</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
                 rememberIdentity(button.dataset.switchIdentity);
                 navigate('/wallet', { identity_hint: button.dataset.switchIdentity });
@@ -4771,7 +4880,9 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             if (appState.activeIdentityHint || appState.profile?.entity_l1_address) params.identity_hint = appState.activeIdentityHint || appState.profile.entity_l1_address;
             navigate('/authorize', params);
         };
-        appState.route = window.location.pathname === initialRoute.path ? initialRoute : routeFromLocation();
+        appState.route = window.location.pathname === initialRoute.path
+            ? initialRoute
+            : (initialRoute.path === '/authorize' ? initialRoute : routeFromLocation());
         render();
     </script>
 </body>
@@ -7509,9 +7620,40 @@ fastify.addHook('onRequest', async (request, reply) => {
     return reply.redirect(302, `${protocolSiteOrigin()}${pathname}${query}`);
 });
 
+const renderConnectCeremonyLanding = (host, localeHint = '') => {
+    const surface = walletSurfaceForHost(host, localeHint);
+    const strings = surface.strings || CEREMONY_STRINGS.en;
+    return `<!doctype html>
+<html lang="${htmlEscape(surface.locale || 'en')}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${htmlEscape(surface.brand)}</title>
+    <style>
+        body { margin:0; min-height:100vh; display:grid; place-items:center; background:#eef0fc; font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; color:#050505; }
+        .card { width:min(460px,calc(100vw - 42px)); padding:30px; border:4px solid #050505; background:#fff; box-shadow:10px 10px 0 #050505; text-align:center; }
+        h1 { margin:0 0 12px; font-size:clamp(32px,7vw,48px); font-weight:950; letter-spacing:-.06em; }
+        p { margin:0; color:#4b5563; font-weight:800; line-height:1.5; }
+        .brand { display:inline-flex; margin-bottom:14px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+    </style>
+</head>
+<body>
+    <section class="card">
+        <div class="brand">${htmlEscape(surface.brand)}</div>
+        <h1>${htmlEscape(strings.connectLandingTitle || 'Secure identity connection')}</h1>
+        <p>${htmlEscape(strings.connectLandingBody || 'Start sign-in from the storefront or app that sent you here.')}</p>
+    </section>
+</body>
+</html>`;
+};
+
 fastify.get('/', async (request, reply) => {
     if (isPassIssuerHost(request.hostname)) {
         return reply.type('text/html; charset=utf-8').send(renderPassIssuerHome(request.hostname));
+    }
+
+    if (isConnectCeremonyHost(request.hostname)) {
+        return reply.type('text/html; charset=utf-8').send(renderConnectCeremonyLanding(request.hostname, request.query?.ui_locale || request.query?.alias_locale));
     }
 
     const indexPath = path.join(__dirname, 'www', 'index.html');
