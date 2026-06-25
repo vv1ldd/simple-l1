@@ -17,6 +17,9 @@ const BUILTIN_CLIENTS = {
         redirect_uris: ['https://meanly.one/simple-l1/callback'],
         default_mode: 'login',
         default_scope: 'openid sl1e marketplace',
+        brand: 'MEANLY ONE',
+        accent: '#7c3aed',
+        ui_locale: 'en',
         first_party: true,
     },
     'meanly.ru': {
@@ -24,6 +27,9 @@ const BUILTIN_CLIENTS = {
         redirect_uris: ['https://meanly.ru/simple-l1/callback'],
         default_mode: 'login',
         default_scope: 'openid sl1e marketplace',
+        brand: 'СЕЙФ MEANLY',
+        accent: '#7c3aed',
+        ui_locale: 'ru',
         first_party: true,
     },
     'meanly.reference': {
@@ -192,6 +198,9 @@ const normalizeAuthorizeQuery = (rawQuery = {}, { clientIdFromPath = null } = {}
         delete query.client_name;
         query.client_name = client.display_name;
         if (client.logo_url) query.client_logo_url = client.logo_url;
+        if (client.brand) query.client_brand = client.brand;
+        if (client.accent) query.client_accent = client.accent;
+        if (client.ui_locale && !query.ui_locale) query.ui_locale = client.ui_locale;
         if (!query.mode && client.default_mode) query.mode = client.default_mode;
         if (!query.flow && client.default_flow) query.flow = client.default_flow;
         if (!query.scope && client.default_scope) query.scope = client.default_scope;

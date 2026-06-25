@@ -1081,6 +1081,9 @@ const CEREMONY_STRINGS = {
         continue: 'Continue',
         chooseAnotherAccount: 'Choose another account',
         alreadyHaveAccount: 'I already have an account',
+        newHereCreate: 'New here? Create an account',
+        haveAccountSignIn: 'Already have an account? Sign in',
+        continueTo: 'Continue to',
         useIdentity: 'Use ',
         switchToIdentity: 'Switch to ',
         yourVault: 'Your Vault',
@@ -1115,6 +1118,9 @@ const CEREMONY_STRINGS = {
         continue: 'Продолжить',
         chooseAnotherAccount: 'Выбрать другой аккаунт',
         alreadyHaveAccount: 'У меня уже есть аккаунт',
+        newHereCreate: 'Впервые здесь? Создать аккаунт',
+        haveAccountSignIn: 'Уже есть аккаунт? Войти',
+        continueTo: 'Продолжить в',
         useIdentity: 'Использовать ',
         switchToIdentity: 'Переключиться на ',
         yourVault: 'Ваш сейф',
@@ -4528,8 +4534,13 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
 </html>`;
 };
 
+const SAFE_HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
 const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
     const surface = walletSurfaceForHost(issuerHost, query.ui_locale || query.alias_locale);
+    const clientBrand = String(query.client_brand || '').trim();
+    if (clientBrand) surface.brand = clientBrand;
+    const clientAccent = String(query.client_accent || '').trim();
+    surface.accent = SAFE_HEX_COLOR.test(clientAccent) ? clientAccent : '';
     const initialRoute = {
         path: String(query.__spa_path || '/wallet'),
         query: Object.fromEntries(Object.entries(query).filter(([key]) => key !== '__spa_path')),
@@ -4595,6 +4606,9 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         .device { display:grid; gap:5px; padding:12px; border:2px solid var(--border); border-radius:14px; background:#fff; }
         .status { min-height:18px; margin-top:12px; color:var(--muted); font-size:12px; font-weight:900; text-align:center; }
         .muted { color:var(--muted); font-size:12px; font-weight:850; }
+        .storefront-tag { margin:-4px 0 14px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+        button.link-button, .link-button { min-height:auto; padding:8px 10px; border:0; background:transparent; box-shadow:none; color:var(--muted); font-weight:900; font-size:13px; text-decoration:underline; text-underline-offset:3px; }
+        button.link-button:hover { color:var(--text); }
         .hidden { display:none !important; }
         @media (max-width:760px) { .app { padding:18px; } main { padding:34px 0; } .split { grid-template-columns:1fr; } .card, .card.wide { width:100%; } }
         /* ADR-0028 connect ceremony: sharpen to true neobrutalism (square corners,
@@ -4610,6 +4624,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         body.connect-surface .device { border-radius:0; }
         @media (max-width:760px) { body.connect-surface .card, body.connect-surface .card.wide { box-shadow:6px 6px 0 var(--border); } }
     </style>
+    ${surface.accent ? `<style>:root{--accent:${htmlEscape(surface.accent)};}</style>` : ''}
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
 <body class="${surface.mode === 'protocol' ? 'protocol-surface' : ''}${surface.connectOnly ? ' connect-surface' : ''}">
@@ -4631,6 +4646,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             activeIdentityHint: '',
             profile: null,
             status: '',
+            authMode: null,
         };
         const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
         const shortValue = (value) => { const text = String(value || ''); return text.length <= 22 ? text : text.slice(0, 12) + '...' + text.slice(-7); };
@@ -4701,38 +4717,42 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             if (!identities?.length) return '';
             return '<div class="identity-list">' + identities.map((identity) => '<button type="button" data-switch-identity="' + escapeHtml(identity.entity_l1_address) + '">' + (current === identity.entity_l1_address ? (S.useIdentity || 'Use ') : (S.switchToIdentity || 'Switch to ')) + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>').join('') + '</div>';
         };
+        const setAuthMode = (mode) => { appState.authMode = mode; appState.status = ''; renderAuthorize(); };
         const renderAuthorize = () => {
             const state = appState.authorize;
             const request = state.request || {};
             const identity = state.selected_identity;
             const identities = state.identities || [];
-            const isRegister = state.ui?.initial_action === 'register' && !identity;
-            const title = isRegister ? (S.createAccount || 'Create account') : (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? (S.continueWithMeanly || 'Continue with Meanly') : (S.openMeanlyVault || 'Open Meanly Vault')));
+            const defaultMode = (state.ui?.initial_action === 'register' && !identity) ? 'register' : 'login';
+            const mode = appState.authMode || defaultMode;
+            const isRegister = mode === 'register';
+            const storefront = String(request.client_name || '').trim();
+            const showStorefront = storefront && storefront !== 'External app' && !/meanly\\.reference/i.test(String(request.client_id || ''));
+            const loginTitle = identity
+                ? (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? (S.continueWithMeanly || 'Continue with Meanly') : (S.openMeanlyVault || 'Open Meanly Vault')))
+                : (S.signIn || 'Sign in');
+            const title = isRegister ? (S.createAccount || 'Create account') : loginTitle;
+            const primaryLabel = isRegister
+                ? (S.createAccount || 'Create account')
+                : (identity ? (request.intent_cta || S.continue || 'Continue') : (S.signIn || 'Sign in'));
             root.innerHTML = '<section class="card">' +
                 '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>' +
+                (showStorefront ? '<div class="muted storefront-tag">' + escapeHtml((S.continueTo || 'Continue to') + ' ' + storefront) + '</div>' : '') +
                 '<h1>' + escapeHtml(title) + '</h1>' +
                 '<p>' + escapeHtml(isRegister ? (S.chooseNamePasskey || 'Choose a name and continue with your passkey.') : (S.usePasskeyContinue || 'Use your passkey to continue.')) + '</p>' +
-                (identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
-                (state.request?.wants_identity_switch ? renderIdentityList(identities, identity?.entity_l1_address) : '') +
+                (!isRegister && identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
+                (!isRegister && state.request?.wants_identity_switch ? renderIdentityList(identities, identity?.entity_l1_address) : '') +
                 (isRegister ? '<div class="panel"><label for="spa-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="spa-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div>' : '') +
-                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(isRegister ? (S.createAccount || 'Create account') : (request.intent_cta || S.continue || 'Continue')) + '</button>' +
+                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(primaryLabel) + '</button>' +
                 (!isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">' + escapeHtml(S.chooseAnotherAccount || 'Choose another account') + '</button>' : '') +
-                (isRegister && identities.length ? '<button id="sign-in-existing" class="secondary" type="button">' + escapeHtml(S.alreadyHaveAccount || 'I already have an account') + '</button>' : '') +
-                '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || state.ui?.status || '') + '</div></section>';
+                '<button id="toggle-mode" class="link-button" type="button">' + escapeHtml(isRegister ? (S.haveAccountSignIn || 'Already have an account? Sign in') : (S.newHereCreate || 'New here? Create an account')) + '</button>' +
+                '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || (appState.authMode ? '' : (state.ui?.status || ''))) + '</div></section>';
             document.getElementById('primary-action')?.addEventListener('click', () => isRegister ? createAccountFromAuthorize() : approveAuthorize());
+            document.getElementById('toggle-mode')?.addEventListener('click', () => setAuthMode(isRegister ? 'login' : 'register'));
             document.getElementById('choose-account')?.addEventListener('click', () => {
                 const query = Object.fromEntries(routeQuery());
                 query.sl1e_switch = '1';
                 navigate('/authorize', query);
-            });
-            document.getElementById('sign-in-existing')?.addEventListener('click', () => {
-                const first = identities[0]?.entity_l1_address;
-                if (!first) return;
-                rememberIdentity(first);
-                const query = Object.fromEntries(routeQuery());
-                query.identity_hint = first;
-                delete query.sl1e_switch;
-                navigate('/authorize', query, true);
             });
             root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
                 rememberIdentity(button.dataset.switchIdentity);
