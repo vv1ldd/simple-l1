@@ -315,6 +315,16 @@ try {
 }
 
 try {
+  execFileSync(process.execPath, [path.join(__dirname, 'test-subject-authority-classifier.js')], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+  recordPass('SL1 subject authority classifier suite passes');
+} catch (error) {
+  recordFail('SL1 subject authority classifier suite passes', error.stderr || error.message);
+}
+
+try {
   execFileSync(process.execPath, [path.join(__dirname, 'test-identity-proof-runtime.js')], {
     cwd: repoRoot,
     stdio: 'pipe',

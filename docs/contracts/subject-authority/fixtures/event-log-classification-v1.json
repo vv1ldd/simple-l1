@@ -1,0 +1,108 @@
+{
+  "schema_version": "simple-l1.subject_authority.event_log_classification.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-authority-classification-v1",
+  "ruleset_status": "frozen",
+  "description": "Slice 2a semantic admissibility fixture. Maps existing runtime event_log types to non-binding admissibility classes. Classification decides eligibility for identity reasoning, never runtime action.",
+  "invariants": [
+    "authority_history = f(event_log, semantic_classification)",
+    "authority_history != event_log",
+    "classification does not mutate event_log",
+    "same event_log + same ruleset -> same classification",
+    "legacy_unknown = epistemic uncertainty",
+    "reject = semantic prohibition",
+    "only authority_event_candidate is eligible for authority_history",
+    "unknown event type -> legacy_unknown, never authority_event_candidate"
+  ],
+  "classification_classes": [
+    "authority_event_candidate",
+    "system_event",
+    "projection_update",
+    "legacy_unknown",
+    "reject"
+  ],
+  "event_log": [
+    { "id": "evt_genesis", "type": "GENESIS" },
+    { "id": "evt_passkey_added", "type": "PASSKEY_ADDED" },
+    { "id": "evt_passkey_revoked", "type": "PASSKEY_REVOKED" },
+    { "id": "evt_native_bootstrap", "type": "NATIVE_CONTROLLER_BOOTSTRAPPED" },
+    { "id": "evt_binding_proposed", "type": "CONTROLLER_BINDING_PROPOSED" },
+    { "id": "evt_binding_approved", "type": "CONTROLLER_BINDING_APPROVED" },
+    { "id": "evt_capability_grant", "type": "CAPABILITY_GRANT_CREATED" },
+    { "id": "evt_control_grant", "type": "CONTROL_GRANT_CREATED" },
+    { "id": "evt_control_grant_revoked", "type": "CONTROL_GRANT_REVOKED" },
+    { "id": "evt_policy_artifact", "type": "POLICY_ARTIFACT_RECORDED" },
+    { "id": "evt_external_proof", "type": "EXTERNAL_PROOF_RECORDED" },
+    { "id": "evt_mkt_settlement", "type": "MARKETPLACE_SETTLEMENT_RECORDED" },
+    { "id": "evt_mkt_seller_upsert", "type": "MARKETPLACE_SELLER_UPSERTED" },
+    { "id": "evt_mkt_listing_upsert", "type": "MARKETPLACE_LISTING_UPSERTED" },
+    { "id": "evt_mkt_seller_activated", "type": "MARKETPLACE_SELLER_ACTIVATED" },
+    { "id": "evt_authorization", "type": "AUTHORIZATION_CREATED" },
+    { "id": "evt_transfer", "type": "TRANSFER" },
+    { "id": "evt_unknown_future", "type": "SOME_FUTURE_RUNTIME_EVENT" }
+  ],
+  "expected_classifications": {
+    "evt_genesis": "authority_event_candidate",
+    "evt_passkey_added": "authority_event_candidate",
+    "evt_passkey_revoked": "authority_event_candidate",
+    "evt_native_bootstrap": "authority_event_candidate",
+    "evt_binding_proposed": "authority_event_candidate",
+    "evt_binding_approved": "authority_event_candidate",
+    "evt_capability_grant": "authority_event_candidate",
+    "evt_control_grant": "authority_event_candidate",
+    "evt_control_grant_revoked": "authority_event_candidate",
+    "evt_policy_artifact": "system_event",
+    "evt_external_proof": "system_event",
+    "evt_mkt_settlement": "projection_update",
+    "evt_mkt_seller_upsert": "projection_update",
+    "evt_mkt_listing_upsert": "projection_update",
+    "evt_mkt_seller_activated": "projection_update",
+    "evt_authorization": "legacy_unknown",
+    "evt_transfer": "reject",
+    "evt_unknown_future": "legacy_unknown"
+  },
+  "expected_summary": {
+    "authority_event_candidate": 9,
+    "system_event": 2,
+    "projection_update": 4,
+    "legacy_unknown": 2,
+    "reject": 1
+  },
+  "expected_authority_candidate_ids": [
+    "evt_genesis",
+    "evt_passkey_added",
+    "evt_passkey_revoked",
+    "evt_native_bootstrap",
+    "evt_binding_proposed",
+    "evt_binding_approved",
+    "evt_capability_grant",
+    "evt_control_grant",
+    "evt_control_grant_revoked"
+  ],
+  "negative_cases": [
+    {
+      "name": "unknown_event_is_epistemic_uncertainty_not_authority",
+      "event": { "id": "evt_x", "type": "TOTALLY_NEW_TYPE" },
+      "expected_classification": "legacy_unknown",
+      "expected_eligible_for_authority_history": false
+    },
+    {
+      "name": "retired_transfer_is_prohibited",
+      "event": { "id": "evt_t", "type": "TRANSFER" },
+      "expected_classification": "reject",
+      "expected_eligible_for_authority_history": false
+    },
+    {
+      "name": "projection_update_is_not_authority_input",
+      "event": { "id": "evt_p", "type": "MARKETPLACE_LISTING_UPSERTED" },
+      "expected_classification": "projection_update",
+      "expected_eligible_for_authority_history": false
+    },
+    {
+      "name": "missing_type_collapses_to_legacy_unknown",
+      "event": { "id": "evt_no_type" },
+      "expected_classification": "legacy_unknown",
+      "expected_eligible_for_authority_history": false
+    }
+  ]
+}
