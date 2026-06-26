@@ -1,0 +1,140 @@
+{
+  "schema_version": "simple-l1.subject_authority_ruleset.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-authority-v1",
+  "ruleset_status": "frozen",
+  "description": "Frozen v1 invariants for subject authority events and deterministic authority-history evaluation.",
+  "domains": [
+    {
+      "id": "SEMANTIC_CLASS",
+      "meaning": "An authority_event is a semantic-class assertion that claims authority to change a scoped authority graph."
+    },
+    {
+      "id": "CAUSALITY",
+      "meaning": "Canonical subject state is derived from causally ordered authority history."
+    },
+    {
+      "id": "DETERMINISM",
+      "meaning": "The same causally ordered authority history always produces the same canonical subject state."
+    },
+    {
+      "id": "SCOPED_AUTHORITY",
+      "meaning": "Authority in one domain does not grant authority in another domain."
+    },
+    {
+      "id": "BRIDGE_BOUNDARY",
+      "meaning": "Legacy event bridging is loss-minimizing and must not generate new authority facts."
+    }
+  ],
+  "failure_taxonomy": [
+    {
+      "code": "SCHEMA_ERROR",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Authority event violates the authority-event JSON Schema."
+    },
+    {
+      "code": "SEMANTIC_CLASS_INVALID",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Object is not a valid authority_event semantic class."
+    },
+    {
+      "code": "SUBJECT_INVALID",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Authority event subject is missing or not a valid subject address."
+    },
+    {
+      "code": "UNKNOWN_AUTHORITY_DOMAIN",
+      "domain": "SCOPED_AUTHORITY",
+      "meaning": "Authority domain is not recognized by the evaluator."
+    },
+    {
+      "code": "ACTION_DOMAIN_MISMATCH",
+      "domain": "SCOPED_AUTHORITY",
+      "meaning": "Action is not valid for the declared authority domain."
+    },
+    {
+      "code": "TARGET_REQUIRED",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Authority event target is required."
+    },
+    {
+      "code": "TIMESTAMP_INVALID",
+      "domain": "CAUSALITY",
+      "meaning": "Authority event timestamp is missing or not a valid date-time."
+    },
+    {
+      "code": "PROOF_INVALID",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Authority event proof type is missing or unsupported."
+    },
+    {
+      "code": "PROOF_CONTROLLER_INVALID",
+      "domain": "SEMANTIC_CLASS",
+      "meaning": "Authority event proof controller is missing or not a valid subject address."
+    },
+    {
+      "code": "RECIPIENT_REQUIRED",
+      "domain": "SCOPED_AUTHORITY",
+      "meaning": "Transfer authority event requires a recipient subject."
+    },
+    {
+      "code": "CAPABILITY_SCOPE_REQUIRED",
+      "domain": "SCOPED_AUTHORITY",
+      "meaning": "Capability grant authority event requires both capability and scope."
+    },
+    {
+      "code": "CAUSAL_REFERENCE_MISMATCH",
+      "domain": "CAUSALITY",
+      "meaning": "previous_state_reference does not match the evaluator state before applying the event."
+    },
+    {
+      "code": "AUTHORITY_HISTORY_NOT_ORDERED",
+      "domain": "CAUSALITY",
+      "meaning": "History is not in valid causal order."
+    },
+    {
+      "code": "PROJECTION_INPUT_REJECTED",
+      "domain": "BRIDGE_BOUNDARY",
+      "meaning": "Projection or application view was supplied where authority history is required."
+    },
+    {
+      "code": "BRIDGE_FACT_INVENTION",
+      "domain": "BRIDGE_BOUNDARY",
+      "meaning": "Bridge attempted to create authority facts not present in legacy event semantics."
+    },
+    {
+      "code": "UNSUPPORTED_LEGACY_EVENT_TYPE",
+      "domain": "BRIDGE_BOUNDARY",
+      "meaning": "Bridge refused to translate a legacy event type without accepted subject-authority semantics."
+    }
+  ],
+  "axioms": [
+    "canonical_subject_state = replay(authority_history)",
+    "same causally ordered authority_history -> identical canonical_subject_state",
+    "authority_event != transaction",
+    "authority is scoped",
+    "bridge MUST be loss-minimizing, not truth-generating",
+    "projection input MUST NOT affect canonical subject state",
+    "key_rotation != identity_change",
+    "device authority != finance authority",
+    "device owner relation is scoped device authority, not Layer D asset ownership",
+    "The system never edits identity; it appends causality and re-evaluates subject state"
+  ],
+  "canonical_terms": [
+    "subject",
+    "authority_event",
+    "authority_domain",
+    "claim",
+    "relationship",
+    "agent",
+    "delegation",
+    "projection"
+  ],
+  "forbidden_canonical_terms": [
+    "user",
+    "account",
+    "profile",
+    "wallet",
+    "provider_account"
+  ]
+}

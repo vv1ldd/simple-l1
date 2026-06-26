@@ -250,6 +250,7 @@ const signedDecisionGraphSchemaPath = path.join(contractsDir, 'signed-decision-g
 const shadowDivergenceRecordSchemaPath = path.join(contractsDir, 'shadow-divergence-record.schema.json');
 const identityProofEnvelopeSchemaPath = path.join(contractsDir, 'identity-proof', 'schema', 'identity-proof-envelope.schema.json');
 const identityStateEnvelopeSchemaPath = path.join(contractsDir, 'identity-mesh', 'schema', 'identity-state-envelope.schema.json');
+const subjectAuthorityEventSchemaPath = path.join(contractsDir, 'subject-authority', 'schema', 'authority-event.schema.json');
 const joinRequestSchema = compileSchema(joinRequestSchemaPath);
 const namespaceArtifactSchema = compileSchema(namespaceArtifactSchemaPath);
 const truthSpecSchema = compileSchema(truthSpecSchemaPath);
@@ -259,6 +260,7 @@ const signedDecisionGraphSchema = compileSchema(signedDecisionGraphSchemaPath);
 const shadowDivergenceRecordSchema = compileSchema(shadowDivergenceRecordSchemaPath);
 const identityProofEnvelopeSchema = compileSchema(identityProofEnvelopeSchemaPath);
 const identityStateEnvelopeSchema = compileSchema(identityStateEnvelopeSchemaPath);
+compileSchema(subjectAuthorityEventSchemaPath);
 
 validateExample(
   path.join(examplesDir, 'join-request.example.json'),
@@ -301,6 +303,16 @@ validateExample(
   shadowDivergenceRecordSchema,
   'shadow-divergence-record.schema.json',
 );
+
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'test-subject-authority-runtime.js')], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+  recordPass('SL1 subject authority runtime suite passes');
+} catch (error) {
+  recordFail('SL1 subject authority runtime suite passes', error.stderr || error.message);
+}
 
 try {
   execFileSync(process.execPath, [path.join(__dirname, 'test-identity-proof-runtime.js')], {

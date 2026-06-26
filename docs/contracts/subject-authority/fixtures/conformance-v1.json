@@ -1,0 +1,275 @@
+{
+  "schema_version": "simple-l1.subject_authority_conformance.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-authority-v1",
+  "ruleset_status": "frozen",
+  "deterministic_runner": {
+    "seed": "subject-authority-v1:0000000000000001",
+    "case_order": "fixture_order"
+  },
+  "subjects": {
+    "alice": "sl1:id:alice",
+    "bob": "sl1:id:bob",
+    "app_x": "sl1:agent:app-x",
+    "pixel_7a": "sl1:device:pixel-7a"
+  },
+  "authority_history": [
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000001",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "identity",
+      "action": "genesis",
+      "target": "sl1:id:alice",
+      "proof": {
+        "type": "genesis_authority",
+        "controller": "sl1:id:alice",
+        "signature": null,
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:00:00Z",
+      "previous_state_reference": null,
+      "causal_parents": [],
+      "metadata": {
+        "fixture": "base"
+      }
+    },
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000002",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "identity",
+      "action": "bind_controller",
+      "target": "sl1:agent:alice-passkey-a",
+      "proof": {
+        "type": "signed_intent",
+        "controller": "sl1:id:alice",
+        "signature": "fixture-signature-controller-a",
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:01:00Z",
+      "previous_state_reference": null,
+      "causal_parents": ["ae_0000000000000001"],
+      "metadata": {
+        "controller_type": "passkey"
+      }
+    },
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000003",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "identity",
+      "action": "rotate_key",
+      "target": "sl1:agent:alice-passkey-b",
+      "proof": {
+        "type": "signed_intent",
+        "controller": "sl1:id:alice",
+        "signature": "fixture-signature-controller-b",
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:02:00Z",
+      "previous_state_reference": null,
+      "causal_parents": ["ae_0000000000000002"],
+      "metadata": {
+        "previous_controller": "sl1:agent:alice-passkey-a"
+      }
+    },
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000004",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "device",
+      "action": "bind_device",
+      "target": "sl1:device:pixel-7a",
+      "proof": {
+        "type": "signed_intent",
+        "controller": "sl1:id:alice",
+        "signature": "fixture-signature-device-bind",
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:03:00Z",
+      "previous_state_reference": null,
+      "causal_parents": ["ae_0000000000000003"],
+      "metadata": {
+        "relationship": "owner"
+      }
+    },
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000005",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "finance",
+      "action": "grant_capability",
+      "target": "sl1:agent:app-x",
+      "capability": "approve_payment",
+      "scope": "payment:daily-limit:100",
+      "expires_at": "2027-01-01T00:00:00Z",
+      "proof": {
+        "type": "signed_intent",
+        "controller": "sl1:id:alice",
+        "signature": "fixture-signature-finance-grant",
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:04:00Z",
+      "previous_state_reference": null,
+      "causal_parents": ["ae_0000000000000004"],
+      "metadata": {
+        "policy": "allow"
+      }
+    },
+    {
+      "schema_version": "simple-l1.subject_authority.authority_event.v1",
+      "event_id": "ae_0000000000000006",
+      "type": "authority_event",
+      "subject": "sl1:id:alice",
+      "authority_domain": "device",
+      "action": "transfer_device",
+      "target": "sl1:device:pixel-7a",
+      "recipient": "sl1:id:bob",
+      "proof": {
+        "type": "signed_intent",
+        "controller": "sl1:id:alice",
+        "signature": "fixture-signature-device-transfer",
+        "legacy_event_id": null,
+        "evidence_hash": null
+      },
+      "timestamp": "2026-06-26T12:05:00Z",
+      "previous_state_reference": null,
+      "causal_parents": ["ae_0000000000000005"],
+      "metadata": {
+        "accepted_by_recipient": true
+      }
+    }
+  ],
+  "expected": {
+    "subject": "sl1:id:alice",
+    "identity_continuity": {
+      "subject": "sl1:id:alice",
+      "status": "continuous",
+      "controllers": ["sl1:agent:alice-passkey-b"]
+    },
+    "effective_authority": {
+      "identity": ["sl1:agent:alice-passkey-b"],
+      "device": [],
+      "finance": ["sl1:agent:app-x:approve_payment:payment:daily-limit:100"],
+      "organization": [],
+      "application": []
+    },
+    "relationships": [],
+    "delegations": [
+      {
+        "domain": "finance",
+        "target": "sl1:agent:app-x",
+        "capability": "approve_payment",
+        "scope": "payment:daily-limit:100"
+      }
+    ],
+    "transfers": [
+      {
+        "domain": "device",
+        "target": "sl1:device:pixel-7a",
+        "from": "sl1:id:alice",
+        "to": "sl1:id:bob"
+      }
+    ]
+  },
+  "semantic_cases": [
+    {
+      "name": "same causally ordered authority history yields identical state",
+      "case_type": "determinism",
+      "expected": {
+        "ok": true,
+        "reason_codes": []
+      }
+    },
+    {
+      "name": "projection input is rejected",
+      "case_type": "projection_input",
+      "input": {
+        "subject": "sl1:id:alice",
+        "device_owner": "sl1:device:pixel-7a"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["PROJECTION_INPUT_REJECTED"]
+      }
+    },
+    {
+      "name": "invalid causal reference is rejected",
+      "case_type": "invalid_causal_reference",
+      "event": {
+        "schema_version": "simple-l1.subject_authority.authority_event.v1",
+        "event_id": "ae_00000000000000ff",
+        "type": "authority_event",
+        "subject": "sl1:id:alice",
+        "authority_domain": "device",
+        "action": "bind_device",
+        "target": "sl1:device:rogue",
+        "proof": {
+          "type": "signed_intent",
+          "controller": "sl1:id:alice",
+          "signature": "fixture-signature-rogue",
+          "legacy_event_id": null,
+          "evidence_hash": null
+        },
+        "timestamp": "2026-06-26T12:06:00Z",
+        "previous_state_reference": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "causal_parents": ["ae_ffffffffffffffff"],
+        "metadata": {}
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["CAUSAL_REFERENCE_MISMATCH", "AUTHORITY_HISTORY_NOT_ORDERED"]
+      }
+    }
+  ],
+  "legacy_bridge_cases": [
+    {
+      "name": "legacy GENESIS maps to identity genesis authority event",
+      "legacy_event": {
+        "id": "legacy_genesis_001",
+        "type": "GENESIS",
+        "payload": {
+          "entity_l1_address": "sl1e_0123456789abcdef0123456789abcdef0123456",
+          "key_l1_address": "sl1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "publicKey": "legacy-public-key",
+          "credentialId": "legacy-credential"
+        },
+        "timestamp": "2026-06-26T12:10:00Z"
+      },
+      "expected": {
+        "authority_domain": "identity",
+        "action": "genesis",
+        "proof_type": "legacy_event_bridge"
+      }
+    },
+    {
+      "name": "legacy PASSKEY_ADDED maps to bind_controller without inventing new authority",
+      "legacy_event": {
+        "id": "legacy_passkey_001",
+        "type": "PASSKEY_ADDED",
+        "payload": {
+          "entity_l1_address": "sl1e_0123456789abcdef0123456789abcdef0123456",
+          "key_l1_address": "sl1_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "credentialId": "legacy-credential-b"
+        },
+        "timestamp": "2026-06-26T12:11:00Z"
+      },
+      "expected": {
+        "authority_domain": "identity",
+        "action": "bind_controller",
+        "proof_type": "legacy_event_bridge"
+      }
+    }
+  ]
+}
