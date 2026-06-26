@@ -20,6 +20,7 @@ It defines shared meaning for:
 - Subject authority runtime boundary (ADR-0052) for RFC-0052 subject continuity.
 - Authority event evaluation boundary (ADR-0053) for the deterministic truth interpreter.
 - Semantic write-path classification boundary (ADR-0054) for Slice 2 shadow-mode integration.
+- Observation not correction boundary (ADR-0055) for Slice 2b divergence measurement.
 
 ## Structure
 
