@@ -19,6 +19,7 @@ It defines shared meaning for:
 - Ownership semantics firewall for Layer A/B/C artifacts.
 - Subject authority runtime boundary (ADR-0052) for RFC-0052 subject continuity.
 - Authority event evaluation boundary (ADR-0053) for the deterministic truth interpreter.
+- Semantic write-path classification boundary (ADR-0054) for Slice 2 shadow-mode integration.
 
 ## Structure
 
