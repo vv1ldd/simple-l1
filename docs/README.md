@@ -17,6 +17,8 @@ It defines shared meaning for:
 - Shadow execution validation records.
 - Truth pipeline readiness gates before ownership projection.
 - Ownership semantics firewall for Layer A/B/C artifacts.
+- Subject authority runtime boundary (ADR-0052) for RFC-0052 subject continuity.
+- Authority event evaluation boundary (ADR-0053) for the deterministic truth interpreter.
 
 ## Structure
 
