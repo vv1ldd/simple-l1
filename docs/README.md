@@ -21,6 +21,7 @@ It defines shared meaning for:
 - Authority event evaluation boundary (ADR-0053) for the deterministic truth interpreter.
 - Semantic write-path classification boundary (ADR-0054) for Slice 2 shadow-mode integration.
 - Observation not correction boundary (ADR-0055) for Slice 2b divergence measurement.
+- Email claim and notification boundary (ADR-0056) for non-authoritative email semantics in SL1E.
 
 ## Structure
 
