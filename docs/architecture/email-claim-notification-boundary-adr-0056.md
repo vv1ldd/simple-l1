@@ -11,6 +11,7 @@ ADR-0053 answers: Who may interpret causality into state?
 ADR-0054 answers: How may runtime mutations enter the authority model?
 ADR-0055 answers: What may divergence measurement do?
 ADR-0056 answers: What may email mean, and what must it never mean?
+ADR-0057 answers: How may claims change without changing subject authority?
 ```
 
 RFC-0052 models email as a claim or attribute, not as identity authority.
@@ -81,7 +82,7 @@ Evidence that a subject controls an email address.
 ```text
 claim: controls_email
 value: disclosed only with consent and scope
-canonical storage: value_hash preferred in authority history
+canonical storage: value_hash in claim_history
 ```
 
 An email claim is not:
@@ -174,7 +175,7 @@ authority_event stores raw email as subject-defining truth
 genesis event embeds email as identity root
 ```
 
-Canonical authority history may reference `value_hash` for claims. Raw email belongs in application disclosure or external evidence, not replayable subject ontology.
+Canonical claim provenance belongs in `claim_history`, not `authority_history`. Raw email belongs in application disclosure or external evidence, not replayable subject ontology.
 
 ## Relation To Subject Authority Stack
 
