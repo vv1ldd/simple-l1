@@ -131,6 +131,18 @@
             { "type": "string" },
             { "type": "null" }
           ]
+        },
+        "email": {
+          "anyOf": [
+            { "type": "string", "format": "email" },
+            { "type": "null" }
+          ]
+        },
+        "email_hash": {
+          "anyOf": [
+            { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            { "type": "null" }
+          ]
         }
       }
     },

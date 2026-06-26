@@ -1,0 +1,139 @@
+{
+  "schema_version": "simple-l1.subject_authority.email_claim.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-authority-email-claim-v1",
+  "ruleset_status": "frozen",
+  "description": "ADR-0056 email claim and notification hint fixture. Email is a non-authoritative claim and routing hint, never identity authority, authentication, or recovery.",
+  "invariants": [
+    "email_control != identity_authority",
+    "email_delivery != authentication",
+    "email_claim != recovery_path",
+    "email_hash != subject",
+    "email disclosure requires scope containing email",
+    "raw email must not enter authority_history as subject-defining truth"
+  ],
+  "positive_cases": [
+    {
+      "name": "scope_gated_email_disclosure",
+      "input": {
+        "alias": "alice",
+        "display_alias": "Alice",
+        "email": "Alice@Example.com",
+        "scope": "openid sl1e email"
+      },
+      "expected": {
+        "ok": true,
+        "claims": {
+          "alias": "alice",
+          "display_alias": "Alice",
+          "email": "alice@example.com",
+          "email_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976"
+        }
+      }
+    },
+    {
+      "name": "email_claim_projection_uses_value_hash",
+      "input": {
+        "email": "bob@meanly.one",
+        "subject": "sl1:id:sl1e_bob",
+        "issuer": "meanly.ops"
+      },
+      "expected": {
+        "ok": true,
+        "claim_type": "controls_email",
+        "value_hash": "sha256:7aecc1e420854afb5e3026e0978105fe298f4455c1292ae969ef332e51f50588"
+      }
+    },
+    {
+      "name": "notification_email_hint_is_non_authoritative",
+      "input": {
+        "email": "ops@meanly.one"
+      },
+      "expected": {
+        "ok": true,
+        "recipient_hint": {
+          "type": "email_hash",
+          "authority_effect": "none"
+        }
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "email_without_scope_is_rejected",
+      "input": {
+        "email": "alice@example.com",
+        "scope": "openid sl1e"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["EMAIL_SCOPE_REQUIRED"]
+      }
+    },
+    {
+      "name": "invalid_email_is_rejected",
+      "input": {
+        "email": "not-an-email",
+        "scope": "openid sl1e email"
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["EMAIL_INVALID"]
+      }
+    },
+    {
+      "name": "email_as_controller_is_forbidden",
+      "input": {
+        "email": "alice@example.com",
+        "email_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+        "is_controller": true
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["EMAIL_AUTHORITY_ELEVATION_FORBIDDEN"]
+      }
+    },
+    {
+      "name": "email_as_recovery_path_is_forbidden",
+      "input": {
+        "email": "alice@example.com",
+        "email_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+        "is_recovery_path": true
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["EMAIL_AUTHORITY_ELEVATION_FORBIDDEN"]
+      }
+    },
+    {
+      "name": "email_as_subject_key_is_forbidden",
+      "input": {
+        "email": "alice@example.com",
+        "is_subject_key": true
+      },
+      "expected": {
+        "ok": false,
+        "reason_codes": ["EMAIL_AS_SUBJECT_KEY_FORBIDDEN"]
+      }
+    },
+    {
+      "name": "raw_email_in_authority_history_is_forbidden_pattern",
+      "note": "Documented anti-pattern only; authority_history must store value_hash, not raw email.",
+      "forbidden_authority_event": {
+        "type": "authority_event",
+        "action": "accept_claim",
+        "metadata": {
+          "email": "alice@example.com"
+        }
+      },
+      "expected": {
+        "pattern": "RAW_EMAIL_IN_AUTHORITY_HISTORY_FORBIDDEN"
+      }
+    }
+  ],
+  "client_scope_examples": {
+    "meanly.ops": "openid sl1e email",
+    "meanly.one": "openid sl1e marketplace email",
+    "meanly.ru": "openid sl1e marketplace email"
+  }
+}

@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { buildIdentityProofClaims } = require('./subject-email-claims');
 
 const IDENTITY_PROOF_ENVELOPE_VERSION = 'simple-l1.identity_proof_envelope.v1';
 const IDENTITY_PROOF_TYPE = 'identity_proof';
@@ -86,6 +87,7 @@ const createIdentityProofEnvelope = ({
     expiresAt = null,
     assuranceLevel = 'AL2',
     claims = null,
+    scope = null,
     secret,
 } = {}) => {
     const mode = proof?.mode || 'login';
@@ -99,6 +101,19 @@ const createIdentityProofEnvelope = ({
         key_l1_address: subject?.key_l1_address ?? proof?.controller_l1_address ?? proof?.keyAddress ?? null,
     };
     const normalizedIntent = normalizeIntent(intent || proof?.intent, mode);
+    const resolvedScope = scope ?? claims?.scope ?? proof?.scope ?? null;
+    const emailFromClaims = claims?.email ?? proof?.email ?? null;
+    const builtClaims = buildIdentityProofClaims({
+        alias: claims?.alias ?? proof?.alias ?? null,
+        displayAlias: claims?.display_alias ?? proof?.display_alias ?? proof?.displayAlias ?? null,
+        email: emailFromClaims,
+        scope: resolvedScope,
+    });
+    if (!builtClaims.ok) {
+        const error = new Error(`IdentityProof claims rejected: ${builtClaims.reason_codes.join(',')}`);
+        error.reason_codes = builtClaims.reason_codes;
+        throw error;
+    }
     const payload = {
         schema_version: IDENTITY_PROOF_ENVELOPE_VERSION,
         proof_type: IDENTITY_PROOF_TYPE,
@@ -112,10 +127,7 @@ const createIdentityProofEnvelope = ({
         issued_at: new Date(issuedAt || proof?.issued_at || proof?.issuedAt || Date.now()).toISOString(),
         expires_at: new Date(expiresAt || proof?.expires_at || proof?.expiresAt || Date.now() + 10 * 60 * 1000).toISOString(),
         assurance_level: String(assuranceLevel || 'AL2'),
-        claims: {
-            alias: claims?.alias ?? proof?.alias ?? null,
-            display_alias: claims?.display_alias ?? proof?.display_alias ?? proof?.displayAlias ?? null,
-        },
+        claims: builtClaims.claims,
     };
 
     const envelope = {
