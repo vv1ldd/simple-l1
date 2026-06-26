@@ -279,6 +279,180 @@
       },
       "provenance_log": [],
       "nonce": 0
+    },
+    "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393": {
+      "entity_l1_address": "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_3b9b30150099c11e588777a06fa1a4c35df0660f",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "aaa111.sl1.one",
+      "publicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+      "credentialId": "bBUb0roR9uiYGxE9peJ0PsF0rXk",
+      "credentialPublicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+      "counter": 0,
+      "transports": [
+        "hybrid",
+        "internal"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "aaa111.sl1.one",
+      "display_alias": "aaa111",
+      "keys": [
+        {
+          "key_l1_address": "sl1_3b9b30150099c11e588777a06fa1a4c35df0660f",
+          "publicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+          "credentialId": "bBUb0roR9uiYGxE9peJ0PsF0rXk",
+          "credentialPublicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+          "counter": 0,
+          "transports": [
+            "hybrid",
+            "internal"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "aaa111.sl1.one",
+          "display_alias": "aaa111",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-11T15:55:45.771Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_198d81bd8f",
+        "ETH": "0xfe28961ab1"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    },
+    "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52": {
+      "entity_l1_address": "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_39844db21f6d6ace60c46aa80e9a7eead3018716",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "sataniyazow.sl1.one",
+      "publicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+      "credentialId": "WHm0iNdcdECnrGdKsAWbTGB4ZNQ",
+      "credentialPublicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "sataniyazow.sl1.one",
+      "display_alias": "sataniyazow",
+      "keys": [
+        {
+          "key_l1_address": "sl1_39844db21f6d6ace60c46aa80e9a7eead3018716",
+          "publicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+          "credentialId": "WHm0iNdcdECnrGdKsAWbTGB4ZNQ",
+          "credentialPublicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "sataniyazow.sl1.one",
+          "display_alias": "sataniyazow",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-11T21:42:49.515Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_01f90a6edd",
+        "ETH": "0xecc018f95c"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
+    },
+    "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c": {
+      "entity_l1_address": "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c",
+      "address_version": "simple-l1:entity:v1",
+      "key_l1_address": "sl1_748ea66b9809c437038cb91ad24b9fc5179b5cca",
+      "key_address_version": "simple-l1:passkey-key:v1",
+      "handle": "sataniyazow2.sl1.one",
+      "publicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+      "credentialId": "aWqm0olqZFYiKkpCzvm9JKLr18g",
+      "credentialPublicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+      "counter": 0,
+      "transports": [
+        "internal",
+        "hybrid"
+      ],
+      "rp_id": "meanly.test",
+      "alias": "sataniyazow2.sl1.one",
+      "display_alias": "sataniyazow2",
+      "keys": [
+        {
+          "key_l1_address": "sl1_748ea66b9809c437038cb91ad24b9fc5179b5cca",
+          "publicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+          "credentialId": "aWqm0olqZFYiKkpCzvm9JKLr18g",
+          "credentialPublicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+          "counter": 0,
+          "transports": [
+            "internal",
+            "hybrid"
+          ],
+          "rp_id": "meanly.test",
+          "alias": "sataniyazow2.sl1.one",
+          "display_alias": "sataniyazow2",
+          "role": "primary",
+          "status": "active",
+          "registered_at": "2026-06-11T21:48:11.164Z"
+        }
+      ],
+      "balances": {
+        "SL": 1000,
+        "BTC": 0,
+        "ETH": 0
+      },
+      "external_addresses": {
+        "BTC": "bc1_ec3e88c37e",
+        "ETH": "0x87017f69fd"
+      },
+      "authority_policies": {
+        "session_limit": 1000,
+        "intent_scope": [
+          "payments",
+          "identity-claims"
+        ],
+        "active_policies": [
+          "Daily Limit 1000 SL"
+        ]
+      },
+      "provenance_log": [],
+      "nonce": 0
     }
   },
   "event_log": [
@@ -389,6 +563,78 @@
         "rp_id": "meanly.test"
       },
       "timestamp": "2026-06-09T18:37:22.361Z"
+    },
+    {
+      "id": "1e5cf915c477d8b8",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393",
+        "entity_l1_address": "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393",
+        "key_l1_address": "sl1_3b9b30150099c11e588777a06fa1a4c35df0660f",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "aaa111.sl1.one",
+        "alias": "aaa111.sl1.one",
+        "display_alias": "aaa111",
+        "publicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+        "credentialId": "bBUb0roR9uiYGxE9peJ0PsF0rXk",
+        "credentialPublicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+        "counter": 0,
+        "transports": [
+          "hybrid",
+          "internal"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-11T15:55:45.771Z"
+    },
+    {
+      "id": "40c13d95cc4cdf95",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52",
+        "entity_l1_address": "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52",
+        "key_l1_address": "sl1_39844db21f6d6ace60c46aa80e9a7eead3018716",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "sataniyazow.sl1.one",
+        "alias": "sataniyazow.sl1.one",
+        "display_alias": "sataniyazow",
+        "publicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+        "credentialId": "WHm0iNdcdECnrGdKsAWbTGB4ZNQ",
+        "credentialPublicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-11T21:42:49.515Z"
+    },
+    {
+      "id": "a49619eedeacae07",
+      "type": "GENESIS",
+      "payload": {
+        "address": "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c",
+        "entity_l1_address": "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c",
+        "key_l1_address": "sl1_748ea66b9809c437038cb91ad24b9fc5179b5cca",
+        "address_version": "simple-l1:entity:v1",
+        "key_address_version": "simple-l1:passkey-key:v1",
+        "handle": "sataniyazow2.sl1.one",
+        "alias": "sataniyazow2.sl1.one",
+        "display_alias": "sataniyazow2",
+        "publicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+        "credentialId": "aWqm0olqZFYiKkpCzvm9JKLr18g",
+        "credentialPublicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+        "counter": 0,
+        "transports": [
+          "internal",
+          "hybrid"
+        ],
+        "rp_id": "meanly.test"
+      },
+      "timestamp": "2026-06-11T21:48:11.164Z"
     }
   ],
   "pending_settlements": [],
@@ -550,6 +796,48 @@
       "status": "active",
       "source": "GENESIS",
       "created_at": "2026-06-09T18:37:22.361Z"
+    },
+    {
+      "id": "cb_d55a5f0c6790527f5c0c",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393",
+      "controller_l1_address": "sl1_3b9b30150099c11e588777a06fa1a4c35df0660f",
+      "key_l1_address": "sl1_3b9b30150099c11e588777a06fa1a4c35df0660f",
+      "credential_id": "bBUb0roR9uiYGxE9peJ0PsF0rXk",
+      "credential_public_key": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+      "credentialPublicKey": "pQECAyYgASFYIM8RNV7_TV9uKaf3P-0Qk7DpLQDw20sl-fWmAPSZ8P8HIlggTd3qN1xA9Ro7hnave50DwPwMkujXHIjMDeFozGLwtgY",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-11T15:55:45.771Z"
+    },
+    {
+      "id": "cb_6706a3d98abf1b704c5b",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52",
+      "controller_l1_address": "sl1_39844db21f6d6ace60c46aa80e9a7eead3018716",
+      "key_l1_address": "sl1_39844db21f6d6ace60c46aa80e9a7eead3018716",
+      "credential_id": "WHm0iNdcdECnrGdKsAWbTGB4ZNQ",
+      "credential_public_key": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+      "credentialPublicKey": "pQECAyYgASFYIIcKTA9TzAGpVohp8g-7lYdE-z5Vuqg_0X5WPnXBAD1QIlggE6hoCpl4SX1YcwY2MMZeIpU0laj9i-sG5gc7ECVXWz0",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-11T21:42:49.515Z"
+    },
+    {
+      "id": "cb_909dc16b50afbd508cf5",
+      "object_type": "ControllerBinding",
+      "entity_l1_address": "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c",
+      "controller_l1_address": "sl1_748ea66b9809c437038cb91ad24b9fc5179b5cca",
+      "key_l1_address": "sl1_748ea66b9809c437038cb91ad24b9fc5179b5cca",
+      "credential_id": "aWqm0olqZFYiKkpCzvm9JKLr18g",
+      "credential_public_key": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+      "credentialPublicKey": "pQECAyYgASFYIFJAU7NVPPtuA4c9Y75J4B6TFmlcfWCOC9515C2XcRKxIlggE2uJS-PkCvy4gZzwiL0me003LL6vcSkTHNcFxoZdNfk",
+      "rp_id": "meanly.test",
+      "status": "active",
+      "source": "GENESIS",
+      "created_at": "2026-06-11T21:48:11.164Z"
     }
   ],
   "controller_binding_proposals": [],
@@ -927,8 +1215,11 @@
       "bc1_e8596b92f7": "sl1e_3c9cbf831ae00b60b7ef43c0e409866c67dc7b5",
       "bc1_q3059301306072a8648ce03020706052b810400": "sl1e_4e0b165328d56dc97ad72da7b2118331191574c",
       "bc1_93b4a5b487": "sl1e_b492c4151f112f9a81daaa306d502e6fb5f8379",
-      "bc1_7542bf1362": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982"
+      "bc1_7542bf1362": "sl1e_3d2a77785f16535cb4ebaedc95e0fc03de84982",
+      "bc1_198d81bd8f": "sl1e_d05efd6069982d5ad9b88c566c9f18934e59393",
+      "bc1_01f90a6edd": "sl1e_b6d50263925951841a0f2d2c0b7124fdf171f52",
+      "bc1_ec3e88c37e": "sl1e_fb729f7b685e1a4eb0b85ce73a2254cf5bc0e6c"
     }
   },
-  "state_root": "7cad10a93a19105b8fed24190bc59d393e5d00406bca78edbddc299e5e48ef1f"
+  "state_root": "7fcb426296979edad538162763f163bb7e6f956427e3f0fe23537ee0d26e69db"
 }
