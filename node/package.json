@@ -22,6 +22,7 @@
     "identity-mesh:check": "node scripts/test-identity-mesh-conformance.js",
     "subject-authority:test": "node scripts/test-subject-authority-runtime.js",
     "subject-authority:classify:test": "node scripts/test-subject-authority-classifier.js",
+    "subject-authority:reconcile:test": "node scripts/test-subject-authority-shadow-reconciler.js",
     "sl1-wire:check": "node scripts/test-sl1-wire-conformance.js",
     "sl1e:authorize:check": "node scripts/test-sl1e-authorize-registry.js",
     "sl1e:issuer-ceremony:check": "node scripts/test-issuer-ceremony-delegation.js",

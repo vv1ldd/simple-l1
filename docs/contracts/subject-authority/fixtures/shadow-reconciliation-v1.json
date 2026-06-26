@@ -1,0 +1,145 @@
+{
+  "schema_version": "simple-l1.subject_authority.shadow_reconciliation.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-authority-shadow-reconciliation-v1",
+  "ruleset_status": "frozen",
+  "description": "Slice 2b shadow reconciliation fixture. Measures divergence between runtime projection, semantic admissibility, and canonical causal truth. Measurement only: no recommendations, fixes, severity, or enforcement.",
+  "invariants": [
+    "drift_report is a function of state only",
+    "drift_report does not depend on execution context",
+    "drift_report MUST NOT modify any system state",
+    "drift_report MUST be deterministic over same inputs",
+    "drift_report MUST NOT contain recommendations, fixes, prioritization, severity, enforcement, or correction targets",
+    "drift_report MUST NOT be consumed by any system layer",
+    "measurement is not optimization"
+  ],
+  "drift_types": [
+    "execution_drift",
+    "semantic_drift",
+    "authority_drift",
+    "projection_drift",
+    "unknown_drift"
+  ],
+  "clean_case": {
+    "name": "no_divergence_between_layers",
+    "inputs": {
+      "runtime_projection": {
+        "subject": "sl1:id:alice",
+        "controllers": ["sl1:agent:key-one", "sl1:agent:key-two"],
+        "device_authority": [],
+        "represented_event_ids": ["evt_genesis", "evt_passkey"],
+        "believed_classifications": {
+          "evt_genesis": "authority_event_candidate",
+          "evt_passkey": "authority_event_candidate"
+        }
+      },
+      "event_log": [
+        { "id": "evt_genesis", "type": "GENESIS" },
+        { "id": "evt_passkey", "type": "PASSKEY_ADDED" }
+      ],
+      "canonical_state": {
+        "subject": "sl1:id:alice",
+        "identity_continuity": {
+          "subject": "sl1:id:alice",
+          "status": "continuous",
+          "controllers": ["sl1:agent:key-one", "sl1:agent:key-two"]
+        },
+        "effective_authority": {
+          "identity": ["sl1:agent:key-one", "sl1:agent:key-two"],
+          "device": [],
+          "finance": [],
+          "organization": [],
+          "application": []
+        },
+        "relationships": [],
+        "delegations": [],
+        "transfers": [],
+        "applied_events": ["ae_one", "ae_two"]
+      }
+    },
+    "expected": {
+      "has_drift": false,
+      "drift_types_present": [],
+      "summary": {
+        "execution_drift": 0,
+        "semantic_drift": 0,
+        "authority_drift": 0,
+        "projection_drift": 0,
+        "unknown_drift": 0
+      }
+    }
+  },
+  "drift_case": {
+    "name": "all_five_drift_types_present",
+    "inputs": {
+      "runtime_projection": {
+        "subject": "sl1:id:bob",
+        "controllers": ["sl1:agent:rt-ghost"],
+        "device_authority": [],
+        "represented_event_ids": ["evt_transfer"],
+        "believed_classifications": {
+          "evt_genesis": "system_event"
+        }
+      },
+      "event_log": [
+        { "id": "evt_genesis", "type": "GENESIS" },
+        { "id": "evt_passkey", "type": "PASSKEY_ADDED" },
+        { "id": "evt_transfer", "type": "TRANSFER" },
+        { "id": "evt_authorization", "type": "AUTHORIZATION_CREATED" },
+        { "id": "evt_unknown", "type": "SOME_FUTURE_RUNTIME_EVENT" }
+      ],
+      "canonical_state": {
+        "subject": "sl1:id:bob",
+        "identity_continuity": {
+          "subject": "sl1:id:bob",
+          "status": "continuous",
+          "controllers": ["sl1:agent:real-controller"]
+        },
+        "effective_authority": {
+          "identity": ["sl1:agent:real-controller"],
+          "device": [],
+          "finance": [],
+          "organization": [],
+          "application": []
+        },
+        "relationships": [],
+        "delegations": [],
+        "transfers": [],
+        "applied_events": ["ae_only_one"]
+      }
+    },
+    "expected": {
+      "has_drift": true,
+      "drift_types_present": [
+        "execution_drift",
+        "semantic_drift",
+        "authority_drift",
+        "projection_drift",
+        "unknown_drift"
+      ],
+      "summary": {
+        "execution_drift": 1,
+        "semantic_drift": 1,
+        "authority_drift": 1,
+        "projection_drift": 1,
+        "unknown_drift": 1
+      },
+      "expected_drift_details": {
+        "execution_drift_event_id": "evt_transfer",
+        "semantic_drift_event_id": "evt_genesis",
+        "semantic_drift_runtime_believed": "system_event",
+        "semantic_drift_classifier": "authority_event_candidate",
+        "authority_admissible_candidates": 2,
+        "authority_canonical_applied": 1,
+        "projection_only_in_runtime": ["sl1:agent:rt-ghost"],
+        "projection_only_in_canonical": ["sl1:agent:real-controller"],
+        "unknown_drift_count": 2,
+        "unknown_drift_event_ids": ["evt_authorization", "evt_unknown"]
+      }
+    }
+  },
+  "purity_case": {
+    "name": "reconciler_is_referentially_transparent_and_causally_inert",
+    "note": "Test must deep-clone inputs, run computeDriftReport twice, and assert inputs are unchanged and reports are identical. The report must contain no actions, recommendations, fixes, severity, or enforcement fields."
+  }
+}
