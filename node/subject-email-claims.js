@@ -137,9 +137,11 @@ function buildIdentityProofClaims({
     displayAlias = null,
     display_alias: displayAliasSnake = null,
     email = null,
+    email_hash: emailHashSnake = null,
+    emailHash = null,
     scope = null,
 } = {}) {
-    const emailClaims = buildConsentedEmailClaims({ email, scope });
+    const emailClaims = buildConsentedEmailClaims({ email, emailHash: emailHash ?? emailHashSnake, scope });
     if (emailClaims._rejected) {
         return {
             ok: false,

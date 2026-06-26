@@ -35,6 +35,7 @@ const {
     createIdentityProofEnvelope,
     verifyIdentityProof,
 } = require('./identity-proof-runtime');
+const { emailDisclosureFromClaimHistory } = require('./subject-claim-history-runtime');
 const {
     createIdentityStateEnvelope,
     verifyIdentityStateEnvelope,
@@ -97,6 +98,7 @@ const GENESIS_FILE = path.join(__dirname, 'genesis.json');
 let ledger = {
     accounts: {},              // Derived state (View)
     event_log: [],             // Primary Source of Truth (Signed Transitions)
+    claim_history: [],         // Append-only versionable claim stream (not authority history)
     pending_settlements: [],
     intent_registry: {},       // Intent Resolution Engine store
     settlement_events: [],     // Settlement Event Bus stream
@@ -589,6 +591,7 @@ async function start() {
         try {
             const data = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
             ledger.event_log = data.event_log || [];
+            ledger.claim_history = Array.isArray(data.claim_history) ? data.claim_history : [];
             persistedAccounts = data.accounts || {};
         } catch (e) { console.error('[BOOT] Failed to parse ledger_db.json'); }
     }
@@ -1007,6 +1010,32 @@ const redirectIssuerToCeremonyHost = (request, reply) => {
 
     reply.redirect(`${originForHost(ceremonyHost)}${request.url}`);
     return true;
+};
+
+const CONNECT_REQUEST_COOKIE = 'sl1e_connect_request';
+
+const parseCookieHeader = (header = '') => Object.fromEntries(
+    String(header || '')
+        .split(';')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+            const index = part.indexOf('=');
+            if (index === -1) return [part, ''];
+            return [
+                decodeURIComponent(part.slice(0, index).trim()),
+                decodeURIComponent(part.slice(index + 1).trim()),
+            ];
+        })
+);
+
+const connectRequestCookieValue = (request) => parseCookieHeader(request.headers?.cookie || '')[CONNECT_REQUEST_COOKIE] || '';
+
+const setConnectRequestCookie = (reply, requestRef) => {
+    reply.header(
+        'Set-Cookie',
+        `${CONNECT_REQUEST_COOKIE}=${encodeURIComponent(String(requestRef || ''))}; Path=/; Max-Age=180; HttpOnly; Secure; SameSite=Lax`
+    );
 };
 
 const renderPassIssuerHome = (issuerHost) => {
@@ -2298,6 +2327,36 @@ const prepareAuthorizeQuery = (rawQuery, options = {}) => {
     return normalizeAuthorizeQuery(rawQuery, options);
 };
 
+// Parameters the user supplies during the ceremony (on connect.identity.*),
+// not at PAR push time. These must survive request_ref resolution, but must
+// never override the issuer-owned stored request (client_id, redirect_uri,
+// state, nonce, scope remain authoritative).
+const CEREMONY_INTERACTIVE_PARAMS = [
+    'alias',
+    'display_alias',
+    'alias_locale',
+    'ui_locale',
+    'alias_reservation_owner',
+    'identity_hint',
+    'login_hint',
+    'entity_l1_address',
+    'browser_identity_hint',
+    'remembered_identity_hint',
+    'identity_capsule',
+    'sl1e_switch',
+];
+
+const ceremonyInteractiveOverlay = (liveQuery = {}) => {
+    const overlay = {};
+    for (const key of CEREMONY_INTERACTIVE_PARAMS) {
+        const value = liveQuery[key];
+        if (value !== undefined && value !== null && String(value) !== '') {
+            overlay[key] = value;
+        }
+    }
+    return overlay;
+};
+
 const authorizeQueryFromRequest = (request, options = {}) => {
     if (options.requestRef || request.query?.request_ref) {
         const resolved = resolveAuthorizeRequestRef(
@@ -2310,6 +2369,7 @@ const authorizeQueryFromRequest = (request, options = {}) => {
         return {
             ok: true,
             query: {
+                ...ceremonyInteractiveOverlay(request.query || {}),
                 ...resolved.query,
                 __spa_path: '/authorize',
                 request_ref: options.requestRef || request.query.request_ref,
@@ -2607,6 +2667,14 @@ const issueSl1eProof = (query, verifiedAccount = null, proofContext = {}) => {
     proof.username = proof.username || accountName;
     proof.displayName = proof.displayName || accountName;
 
+    // ADR-0057: email disclosure is derived from claim_history, not account fields.
+    // The active claim projection is not subject authority and never becomes a subject key.
+    const consentedEmail = emailDisclosureFromClaimHistory({
+        claimHistory: ledger.claim_history || [],
+        subject: entityAddress,
+        scope: query.scope,
+    });
+
     const response = {
         protocol: 'simple-l1',
         success: true,
@@ -2618,6 +2686,8 @@ const issueSl1eProof = (query, verifiedAccount = null, proofContext = {}) => {
             key_l1_address: keyAddress,
             alias: accountAlias,
             display_alias: accountDisplayName(account) || null,
+            email: consentedEmail.email,
+            email_hash: consentedEmail.email_hash,
         },
     };
 
@@ -2626,6 +2696,9 @@ const issueSl1eProof = (query, verifiedAccount = null, proofContext = {}) => {
         clientId: proof.clientId,
         redirectUri: proof.redirectUri,
         intent: proof.intent || null,
+        scope: query.scope ? String(query.scope) : null,
+        disclosedEmail: consentedEmail.email,
+        disclosedEmailHash: consentedEmail.email_hash,
         expiresAtMs: expiresAt.getTime(),
     };
 
@@ -4535,26 +4608,45 @@ const renderSl1IdentityPage = (query = {}, issuerHost = 'connect.simplelayer.one
 };
 
 const SAFE_HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
+// The ceremony is issuer-owned but client-branded; the brand should link back to
+// the storefront that initiated the request. Derive that origin from the
+// client's redirect_uri (already validated against the registry at PAR time).
+const storefrontHomeUrl = (query = {}) => {
+    const candidate = String(query.client_home_url || query.redirect_uri || '').trim();
+    if (!candidate) return '';
+    try {
+        const url = new URL(candidate);
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+        return `${url.protocol}//${url.host}/`;
+    } catch (error) {
+        return '';
+    }
+};
 const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer.one') => {
     const surface = walletSurfaceForHost(issuerHost, query.ui_locale || query.alias_locale);
     const clientBrand = String(query.client_brand || '').trim();
     if (clientBrand) surface.brand = clientBrand;
     const clientAccent = String(query.client_accent || '').trim();
     surface.accent = SAFE_HEX_COLOR.test(clientAccent) ? clientAccent : '';
+    surface.homeUrl = storefrontHomeUrl(query);
     const initialRoute = {
         path: String(query.__spa_path || '/wallet'),
         query: Object.fromEntries(Object.entries(query).filter(([key]) => key !== '__spa_path')),
     };
-    const topbarMarkup = surface.showCommerceNav
-        ? `<nav class="topbar" aria-label="Meanly navigation">
+    const topbarMarkup = surface.connectOnly
+        ? ''
+        : surface.showCommerceNav
+            ? `<nav class="topbar" aria-label="Meanly navigation">
             <a href="/">Shop</a>
             <a href="/catalog">Categories</a>
             <button type="button" data-nav="/wallet">Vault</button>
         </nav>`
-        : `<header class="protocol-shell" aria-label="Simple Layer protocol"><span class="brand">${htmlEscape(surface.brand)}</span></header>`;
-    const footMarkup = surface.showCommerceNav
-        ? `<div class="foot"><span class="brand">${htmlEscape(surface.footer)}</span><span>2026</span></div>`
-        : `<div class="protocol-foot"><span>${htmlEscape(surface.footer)}</span></div>`;
+            : `<header class="protocol-shell" aria-label="Simple Layer protocol">${surface.homeUrl ? `<a class="brand" href="${htmlEscape(surface.homeUrl)}">${htmlEscape(surface.brand)}</a>` : `<span class="brand">${htmlEscape(surface.brand)}</span>`}</header>`;
+    const footMarkup = surface.connectOnly
+        ? ''
+        : surface.showCommerceNav
+            ? `<div class="foot"><span class="brand">${htmlEscape(surface.footer)}</span><span>2026</span></div>`
+            : `<div class="protocol-foot"><span>${htmlEscape(surface.footer)}</span></div>`;
 
     return `<!doctype html>
 <html lang="${htmlEscape(surface.locale || 'en')}">
@@ -4582,7 +4674,9 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         main { display:grid; place-items:center; padding:60px 0; }
         .card { width:min(460px,calc(100vw - 42px)); padding:30px; border:4px solid var(--border); border-radius:26px; background:#fff; box-shadow:var(--shadow); text-align:center; }
         .card.wide { width:min(560px,calc(100vw - 42px)); text-align:center; }
-        .brand { display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+        .brand { display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; color:var(--text); }
+        a.brand { text-decoration:none; cursor:pointer; }
+        a.brand:hover { opacity:.7; }
         .brand::before { content:""; width:12px; height:12px; background:var(--accent); border:2px solid var(--border); box-shadow:2px 2px 0 var(--border); transform:rotate(-8deg); }
         h1 { margin:0 0 10px; font-size:clamp(40px,8vw,64px); line-height:.92; letter-spacing:-.085em; font-weight:950; text-wrap:balance; }
         h2 { margin:0 0 10px; font-size:24px; letter-spacing:-.05em; font-weight:950; }
@@ -4611,23 +4705,25 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         button.link-button:hover { color:var(--text); }
         .hidden { display:none !important; }
         @media (max-width:760px) { .app { padding:18px; } main { padding:34px 0; } .split { grid-template-columns:1fr; } .card, .card.wide { width:100%; } }
-        /* ADR-0028 connect ceremony: sharpen to true neobrutalism (square corners,
-           hard offset shadows) and present only the connect window. */
+        /* ADR-0029 connect ceremony: rounded neobrutalism, unified with the
+           storefront surface; present only the connect window. */
         body.connect-surface { background:linear-gradient(90deg,rgba(0,0,0,.05) 1px,transparent 1px),linear-gradient(0deg,rgba(0,0,0,.05) 1px,transparent 1px),radial-gradient(circle at 50% -120px,rgba(124,58,237,.2),transparent 38rem),var(--bg); background-size:28px 28px,28px 28px,auto,auto; }
-        body.connect-surface .card, body.connect-surface .card.wide { border-radius:0; border-width:4px; box-shadow:10px 10px 0 var(--border); }
-        body.connect-surface button, body.connect-surface .button, body.connect-surface input, body.connect-surface .panel { border-radius:0; }
-        body.connect-surface .pill, body.connect-surface .protocol-shell { border-radius:0; }
-        body.connect-surface .protocol-shell { border-width:3px; box-shadow:5px 5px 0 var(--border); background:#fff; padding:11px 16px; }
+        body.connect-surface .card, body.connect-surface .card.wide { border-radius:26px; border-width:4px; box-shadow:10px 10px 0 var(--border); }
+        body.connect-surface .protocol-shell { border-width:3px; border-radius:999px; box-shadow:5px 5px 0 var(--border); background:#fff; padding:11px 16px; }
         body.connect-surface .protocol-shell .brand { margin:0; font-size:11px; }
-        body.connect-surface .protocol-foot { border:3px solid var(--border); box-shadow:5px 5px 0 var(--border); background:#fff; border-radius:0; padding:9px 14px; color:var(--text); }
-        body.connect-surface .brand::before { border-radius:0; transform:none; }
-        body.connect-surface .device { border-radius:0; }
+        body.connect-surface .protocol-shell .brand[href] { cursor:pointer; text-decoration:none; }
+        body.connect-surface .protocol-foot { border:3px solid var(--border); border-radius:999px; box-shadow:5px 5px 0 var(--border); background:#fff; padding:9px 14px; color:var(--text); }
+        body.connect-only-app .app { grid-template-rows:1fr; padding:20px; }
+        body.connect-only-app main { padding:24px 0; }
+        .connect-links { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; margin-top:12px; }
+        .connect-actions { margin-top:16px; }
+        button.pill.secondary { cursor:pointer; }
         @media (max-width:760px) { body.connect-surface .card, body.connect-surface .card.wide { box-shadow:6px 6px 0 var(--border); } }
     </style>
     ${surface.accent ? `<style>:root{--accent:${htmlEscape(surface.accent)};}</style>` : ''}
     <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
 </head>
-<body class="${surface.mode === 'protocol' ? 'protocol-surface' : ''}${surface.connectOnly ? ' connect-surface' : ''}">
+<body class="${[surface.mode === 'protocol' ? 'protocol-surface' : '', surface.connectOnly ? 'connect-surface connect-only-app' : ''].filter(Boolean).join(' ')}">
     <div class="app">
         ${topbarMarkup}
         <main id="app-root"></main>
@@ -4649,6 +4745,9 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             authMode: null,
         };
         const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+        const brandMarkup = () => SL1_SURFACE.homeUrl
+            ? '<a class="brand" href="' + escapeHtml(SL1_SURFACE.homeUrl) + '">' + escapeHtml(SL1_SURFACE.brand) + '</a>'
+            : '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>';
         const shortValue = (value) => { const text = String(value || ''); return text.length <= 22 ? text : text.slice(0, 12) + '...' + text.slice(-7); };
         const setStatus = (message) => { appState.status = message || ''; const node = document.getElementById('spa-status'); if (node) node.textContent = appState.status; };
         const routeQuery = () => new URLSearchParams(appState.route.query || {});
@@ -4711,13 +4810,18 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             if (payload.selected_identity?.entity_l1_address) rememberIdentity(payload.selected_identity.entity_l1_address);
         };
         const renderLoading = () => {
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.loading || 'Loading') + '</h1><p>' + escapeHtml(S.preparingWallet || 'Preparing your wallet...') + '</p></section>';
+            root.innerHTML = '<section class="card">' + brandMarkup() + '<h1>' + escapeHtml(S.loading || 'Loading') + '</h1><p>' + escapeHtml(S.preparingWallet || 'Preparing your wallet...') + '</p></section>';
         };
         const renderIdentityList = (identities, current) => {
             if (!identities?.length) return '';
             return '<div class="identity-list">' + identities.map((identity) => '<button type="button" data-switch-identity="' + escapeHtml(identity.entity_l1_address) + '">' + (current === identity.entity_l1_address ? (S.useIdentity || 'Use ') : (S.switchToIdentity || 'Switch to ')) + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>').join('') + '</div>';
         };
         const setAuthMode = (mode) => { appState.authMode = mode; appState.status = ''; renderAuthorize(); };
+        const openAccountSwitcher = () => {
+            const query = Object.fromEntries(routeQuery());
+            query.sl1e_switch = '1';
+            navigate('/authorize', query);
+        };
         const renderAuthorize = () => {
             const state = appState.authorize;
             const request = state.request || {};
@@ -4726,33 +4830,56 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const defaultMode = (state.ui?.initial_action === 'register' && !identity) ? 'register' : 'login';
             const mode = appState.authMode || defaultMode;
             const isRegister = mode === 'register';
+            const connectOnly = Boolean(SL1_SURFACE.connectOnly);
             const storefront = String(request.client_name || '').trim();
             const showStorefront = storefront && storefront !== 'External app' && !/meanly\\.reference/i.test(String(request.client_id || ''));
-            const loginTitle = identity
-                ? (state.ui?.mode || request.intent_title || (SL1_SURFACE.connectOnly ? (S.continueWithMeanly || 'Continue with Meanly') : (S.openMeanlyVault || 'Open Meanly Vault')))
-                : (S.signIn || 'Sign in');
-            const title = isRegister ? (S.createAccount || 'Create account') : loginTitle;
-            const primaryLabel = isRegister
-                ? (S.createAccount || 'Create account')
-                : (identity ? (request.intent_cta || S.continue || 'Continue') : (S.signIn || 'Sign in'));
-            root.innerHTML = '<section class="card">' +
-                '<div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div>' +
+            let title;
+            let subtitle;
+            let primaryLabel;
+            if (isRegister) {
+                title = S.createAccount || 'Create account';
+                subtitle = S.chooseNamePasskey || 'Choose a name and continue with your passkey.';
+                primaryLabel = S.createAccount || 'Create account';
+            } else if (connectOnly && identity) {
+                title = request.intent_title || S.continueWithMeanly || 'Continue with Meanly';
+                subtitle = state.ui?.status || S.confirmPasskey || 'Confirm with your passkey.';
+                primaryLabel = request.intent_cta || S.continue || 'Continue';
+            } else if (identity) {
+                title = state.ui?.mode || request.intent_title || (connectOnly ? (S.continueWithMeanly || 'Continue with Meanly') : (S.openMeanlyVault || 'Open Meanly Vault'));
+                subtitle = S.usePasskeyContinue || 'Use your passkey to continue.';
+                primaryLabel = request.intent_cta || S.continue || 'Continue';
+            } else {
+                title = S.signIn || 'Sign in';
+                subtitle = S.usePasskeyContinue || 'Use your passkey to continue.';
+                primaryLabel = S.signIn || 'Sign in';
+            }
+            const toggleLabel = isRegister
+                ? (S.haveAccountSignIn || 'Already have an account? Sign in')
+                : (S.newHereCreate || 'New here? Create an account');
+            const secondaryLinks = [];
+            if (!isRegister && identities.length > 1) {
+                secondaryLinks.push('<button id="choose-account" class="link-button" type="button">' + escapeHtml(S.chooseAnotherAccount || 'Choose another account') + '</button>');
+            }
+            secondaryLinks.push('<button id="toggle-mode" class="link-button" type="button">' + escapeHtml(toggleLabel) + '</button>');
+            root.innerHTML = '<section class="card' + (connectOnly ? ' connect-card' : '') + '">' +
+                brandMarkup() +
                 (showStorefront ? '<div class="muted storefront-tag">' + escapeHtml((S.continueTo || 'Continue to') + ' ' + storefront) + '</div>' : '') +
                 '<h1>' + escapeHtml(title) + '</h1>' +
-                '<p>' + escapeHtml(isRegister ? (S.chooseNamePasskey || 'Choose a name and continue with your passkey.') : (S.usePasskeyContinue || 'Use your passkey to continue.')) + '</p>' +
+                '<p>' + escapeHtml(subtitle) + '</p>' +
                 (!isRegister && identity ? '<button class="pill secondary" type="button" id="identity-pill">' + escapeHtml(identity.label || shortValue(identity.entity_l1_address)) + '</button>' : '') +
                 (!isRegister && state.request?.wants_identity_switch ? renderIdentityList(identities, identity?.entity_l1_address) : '') +
                 (isRegister ? '<div class="panel"><label for="spa-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="spa-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div>' : '') +
-                '<div class="actions"><button id="primary-action" type="button">' + escapeHtml(primaryLabel) + '</button>' +
-                (!isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">' + escapeHtml(S.chooseAnotherAccount || 'Choose another account') + '</button>' : '') +
-                '<button id="toggle-mode" class="link-button" type="button">' + escapeHtml(isRegister ? (S.haveAccountSignIn || 'Already have an account? Sign in') : (S.newHereCreate || 'New here? Create an account')) + '</button>' +
-                '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || (appState.authMode ? '' : (state.ui?.status || ''))) + '</div></section>';
+                '<div class="actions' + (connectOnly ? ' connect-actions' : '') + '"><button id="primary-action" type="button">' + escapeHtml(primaryLabel) + '</button>' +
+                (!connectOnly && !isRegister && identities.length > 1 ? '<button id="choose-account" class="secondary" type="button">' + escapeHtml(S.chooseAnotherAccount || 'Choose another account') + '</button>' : '') +
+                (!connectOnly ? '<button id="toggle-mode" class="link-button" type="button">' + escapeHtml(toggleLabel) + '</button>' : '') +
+                '</div>' +
+                (connectOnly ? '<div class="connect-links">' + secondaryLinks.join('') + '</div>' : '') +
+                '<div id="spa-status" class="status">' + escapeHtml(appState.status || (connectOnly ? '' : (appState.authMode ? '' : (state.ui?.status || '')))) + '</div></section>';
             document.getElementById('primary-action')?.addEventListener('click', () => isRegister ? createAccountFromAuthorize() : approveAuthorize());
             document.getElementById('toggle-mode')?.addEventListener('click', () => setAuthMode(isRegister ? 'login' : 'register'));
-            document.getElementById('choose-account')?.addEventListener('click', () => {
-                const query = Object.fromEntries(routeQuery());
-                query.sl1e_switch = '1';
-                navigate('/authorize', query);
+            document.getElementById('choose-account')?.addEventListener('click', openAccountSwitcher);
+            document.getElementById('identity-pill')?.addEventListener('click', () => {
+                if (identities.length > 1) openAccountSwitcher();
             });
             root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
                 rememberIdentity(button.dataset.switchIdentity);
@@ -4767,12 +4894,12 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             const profile = wallet.profile;
             const identities = wallet.identities || [];
             if (!profile) {
-                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.createAccount || 'Create account') + '</h1><p>' + escapeHtml(S.chooseNamePasskey || 'Choose a name and continue with your passkey.') + '</p><div class="panel"><label for="wallet-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div><div class="actions"><button id="wallet-create" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">' + escapeHtml(S.signIn || 'Sign in') + '</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+                root.innerHTML = '<section class="card">' + brandMarkup() + '<h1>' + escapeHtml(S.createAccount || 'Create account') + '</h1><p>' + escapeHtml(S.chooseNamePasskey || 'Choose a name and continue with your passkey.') + '</p><div class="panel"><label for="wallet-alias">' + escapeHtml(S.username || 'Username') + '</label><input id="wallet-alias" autocomplete="username" maxlength="25" placeholder="' + escapeHtml(S.usernamePlaceholder || '@username') + '"></div><div class="actions"><button id="wallet-create" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button>' + (identities.length ? '<button id="wallet-existing" class="secondary" type="button">' + escapeHtml(S.signIn || 'Sign in') + '</button>' : '') + '</div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
                 document.getElementById('wallet-create')?.addEventListener('click', createAccountForWallet);
                 document.getElementById('wallet-existing')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
                 return;
             }
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.yourVault || 'Your Vault') + '</h1><p>' + escapeHtml(S.vaultReady || 'Saved items and orders are ready here.') + '</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">' + escapeHtml(S.openVault || 'Open Vault') + '</button><button id="switch-wallet" class="secondary" type="button">' + escapeHtml(S.switchAccount || 'Switch account') + '</button><button id="lock-wallet" class="secondary" type="button">' + escapeHtml(S.signOut || 'Sign out') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card">' + brandMarkup() + '<h1>' + escapeHtml(S.yourVault || 'Your Vault') + '</h1><p>' + escapeHtml(S.vaultReady || 'Saved items and orders are ready here.') + '</p><div class="pill">' + escapeHtml(profile.display_alias || profile.username || shortValue(profile.entity_l1_address)) + '</div><div class="actions"><button id="open-vault" type="button">' + escapeHtml(S.openVault || 'Open Vault') + '</button><button id="switch-wallet" class="secondary" type="button">' + escapeHtml(S.switchAccount || 'Switch account') + '</button><button id="lock-wallet" class="secondary" type="button">' + escapeHtml(S.signOut || 'Sign out') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             document.getElementById('open-vault')?.addEventListener('click', openVaultAuthorize);
             document.getElementById('switch-wallet')?.addEventListener('click', () => navigate('/wallet', { sl1e_switch:'1' }));
             document.getElementById('lock-wallet')?.addEventListener('click', () => {
@@ -4787,7 +4914,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
         };
         const renderSwitch = () => {
             const wallet = appState.wallet || {};
-            root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>' + escapeHtml(S.signIn || 'Sign in') + '</h1><p>' + escapeHtml(S.chooseAccountHere || 'Choose the account you want to use here.') + '</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
+            root.innerHTML = '<section class="card">' + brandMarkup() + '<h1>' + escapeHtml(S.signIn || 'Sign in') + '</h1><p>' + escapeHtml(S.chooseAccountHere || 'Choose the account you want to use here.') + '</p>' + renderIdentityList(wallet.identities || [], '') + '<div class="actions"><button id="new-account" class="secondary" type="button">' + escapeHtml(S.createAccount || 'Create account') + '</button></div><div id="spa-status" class="status">' + escapeHtml(appState.status || '') + '</div></section>';
             root.querySelectorAll('[data-switch-identity]').forEach((button) => button.addEventListener('click', () => {
                 rememberIdentity(button.dataset.switchIdentity);
                 navigate('/wallet', { identity_hint: button.dataset.switchIdentity });
@@ -4807,7 +4934,7 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
                 if (appState.route.query?.sl1e_switch === '1') renderSwitch();
                 else renderWallet();
             } catch (error) {
-                root.innerHTML = '<section class="card"><div class="brand">' + escapeHtml(SL1_SURFACE.brand) + '</div><h1>Try again</h1><p>' + escapeHtml(error.message || 'Could not load wallet.') + '</p><div class="actions"><button type="button" onclick="window.location.reload()">Reload</button></div></section>';
+                root.innerHTML = '<section class="card">' + brandMarkup() + '<h1>' + escapeHtml(S.tryAgain || 'Try again') + '</h1><p>' + escapeHtml(error.message || S.couldNotLoadWallet || 'Could not load wallet.') + '</p><div class="actions"><button type="button" onclick="window.location.reload()">' + escapeHtml(S.reload || 'Reload') + '</button></div></section>';
             }
         };
         const authorizeQueryWithIdentity = () => {
@@ -5754,7 +5881,28 @@ fastify.post('/api/sl1e/device-pairings/:pairingId/registration/complete', async
 });
 
 fastify.get('/connect', async (request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderSl1ConnectHome(request.hostname));
+    if (!isConnectCeremonyHost(request.hostname)) {
+        return reply.type('text/html; charset=utf-8').send(renderSl1ConnectHome(request.hostname));
+    }
+
+    const requestRef = request.query?.request_ref || connectRequestCookieValue(request);
+    if (!requestRef) {
+        return reply
+            .type('text/html; charset=utf-8')
+            .send(renderConnectCeremonyLanding(request.hostname, request.query?.ui_locale || request.query?.alias_locale));
+    }
+
+    const prepared = authorizeQueryFromRequest(request, { requestRef });
+    if (!prepared.ok) {
+        const statusCode = prepared.error === 'authorization_request_not_found' ? 404 : 422;
+        return reply.code(statusCode).send({
+            error: prepared.error || 'invalid_authorization_request',
+        });
+    }
+
+    return reply
+        .type('text/html; charset=utf-8')
+        .send(renderAuthorizePageForHost(prepared.query, request.hostname));
 });
 
 fastify.get('/identity', async (request, reply) => {
@@ -5827,6 +5975,11 @@ fastify.get('/r/:requestRef', async (request, reply) => {
         return reply.code(statusCode).send({
             error: prepared.error || 'invalid_authorization_request',
         });
+    }
+
+    if (isConnectCeremonyHost(request.hostname)) {
+        setConnectRequestCookie(reply, request.params.requestRef);
+        return reply.redirect('/connect', 302);
     }
 
     return reply
@@ -6678,6 +6831,13 @@ fastify.post('/api/sl1e/authorization-code/exchange', async (request, reply) => 
             issuer_id: NODE_ID,
             issuer_url: `${issuerProto}://${issuerHost}`,
             key_id: `sl1-connect:${NODE_ID}`,
+        },
+        scope: record.scope,
+        claims: {
+            alias: record.response?.identity?.alias ?? null,
+            display_alias: record.response?.identity?.display_alias ?? null,
+            email: record.disclosedEmail ?? null,
+            email_hash: record.disclosedEmailHash ?? null,
         },
         secret: SL1_CONNECT_SECRET,
     });
@@ -7651,7 +7811,7 @@ const renderConnectCeremonyLanding = (host, localeHint = '') => {
     <title>${htmlEscape(surface.brand)}</title>
     <style>
         body { margin:0; min-height:100vh; display:grid; place-items:center; background:#eef0fc; font-family:Outfit,Inter,ui-sans-serif,system-ui,sans-serif; color:#050505; }
-        .card { width:min(460px,calc(100vw - 42px)); padding:30px; border:4px solid #050505; background:#fff; box-shadow:10px 10px 0 #050505; text-align:center; }
+        .card { width:min(460px,calc(100vw - 42px)); padding:30px; border:4px solid #050505; border-radius:26px; background:#fff; box-shadow:10px 10px 0 #050505; text-align:center; }
         h1 { margin:0 0 12px; font-size:clamp(32px,7vw,48px); font-weight:950; letter-spacing:-.06em; }
         p { margin:0; color:#4b5563; font-weight:800; line-height:1.5; }
         .brand { display:inline-flex; margin-bottom:14px; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }

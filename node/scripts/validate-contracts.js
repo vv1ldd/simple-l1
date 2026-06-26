@@ -335,6 +335,26 @@ try {
 }
 
 try {
+  execFileSync(process.execPath, [path.join(__dirname, 'test-subject-claim-history-runtime.js')], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+  recordPass('SL1 subject claim history suite passes');
+} catch (error) {
+  recordFail('SL1 subject claim history suite passes', error.stderr || error.message);
+}
+
+try {
+  execFileSync(process.execPath, [path.join(__dirname, 'test-subject-claim-issuance-policy.js')], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+  recordPass('SL1 subject claim issuance policy suite passes');
+} catch (error) {
+  recordFail('SL1 subject claim issuance policy suite passes', error.stderr || error.message);
+}
+
+try {
   execFileSync(process.execPath, [path.join(__dirname, 'test-subject-email-claims.js')], {
     cwd: repoRoot,
     stdio: 'pipe',

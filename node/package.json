@@ -23,6 +23,8 @@
     "subject-authority:test": "node scripts/test-subject-authority-runtime.js",
     "subject-authority:classify:test": "node scripts/test-subject-authority-classifier.js",
     "subject-authority:reconcile:test": "node scripts/test-subject-authority-shadow-reconciler.js",
+    "subject-authority:claim-history:test": "node scripts/test-subject-claim-history-runtime.js",
+    "subject-authority:claim-policy:test": "node scripts/test-subject-claim-issuance-policy.js",
     "subject-authority:email:test": "node scripts/test-subject-email-claims.js",
     "sl1-wire:check": "node scripts/test-sl1-wire-conformance.js",
     "sl1e:authorize:check": "node scripts/test-sl1e-authorize-registry.js",

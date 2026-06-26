@@ -1,0 +1,174 @@
+{
+  "schema_version": "simple-l1.subject_claim_issuance_policy.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-claim-issuance-policy-v1",
+  "ruleset_status": "frozen",
+  "description": "ADR-0058 claim issuance policy fixture. Admission is a non-authoritative eligibility decision for claim event candidates.",
+  "decision_alphabet": ["admitted", "rejected", "pending_evidence", "unknown"],
+  "issuer_classes": [
+    "self_asserted",
+    "delegated_assertion",
+    "provider_assertion",
+    "organization_assertion",
+    "public_institution_assertion"
+  ],
+  "invariants": [
+    "claim_policy != authority_history",
+    "claim_policy != claim_history",
+    "claim_event_candidate != claim_event",
+    "claim_event_candidate != authority_event",
+    "issuer_eligibility != subject_authority",
+    "claim_admission != identity_creation",
+    "admission is not attestation",
+    "attestation is not truth",
+    "disclosure is not endorsement",
+    "unknown does not default to admitted",
+    "pending_evidence does not default to admitted"
+  ],
+  "policy": {
+    "controls_email": {
+      "allowed_issuer_classes": ["self_asserted", "provider_assertion"],
+      "required_evidence": ["email_control_challenge"],
+      "raw_disclosure_allowed_in_decision": false
+    },
+    "controls_phone": {
+      "allowed_issuer_classes": ["self_asserted", "provider_assertion"],
+      "required_evidence": ["phone_control_challenge"],
+      "raw_disclosure_allowed_in_decision": false
+    },
+    "organization_role": {
+      "allowed_issuer_classes": ["organization_assertion"],
+      "required_evidence": ["organization_statement"],
+      "raw_disclosure_allowed_in_decision": false
+    },
+    "payment_endpoint": {
+      "allowed_issuer_classes": ["self_asserted", "provider_assertion"],
+      "required_evidence": [],
+      "raw_disclosure_allowed_in_decision": false
+    }
+  },
+  "claim_event_candidates": [
+    {
+      "candidate_id": "claim_candidate_email_self_001",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "issuer": {
+        "issuer_id": "sl1e_claim_alice",
+        "issuer_class": "self_asserted"
+      },
+      "value_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+      "evidence_refs": ["email_control_challenge:alice:001"]
+    },
+    {
+      "candidate_id": "claim_candidate_email_org_001",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "issuer": {
+        "issuer_id": "sl1e_org_meanly",
+        "issuer_class": "organization_assertion"
+      },
+      "value_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+      "evidence_refs": ["email_control_challenge:alice:001"]
+    },
+    {
+      "candidate_id": "claim_candidate_email_missing_evidence_001",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "issuer": {
+        "issuer_id": "sl1e_claim_alice",
+        "issuer_class": "self_asserted"
+      },
+      "value_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+      "evidence_refs": []
+    },
+    {
+      "candidate_id": "claim_candidate_unknown_type_001",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_nostr",
+      "issuer": {
+        "issuer_id": "sl1e_claim_alice",
+        "issuer_class": "self_asserted"
+      },
+      "value_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "evidence_refs": ["nostr_control_challenge:alice:001"]
+    },
+    {
+      "candidate_id": "claim_candidate_payment_endpoint_001",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "payment_endpoint",
+      "issuer": {
+        "issuer_id": "sl1e_claim_alice",
+        "issuer_class": "self_asserted"
+      },
+      "value_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "evidence_refs": []
+    }
+  ],
+  "positive_cases": [
+    {
+      "name": "self_asserted_email_with_required_evidence_is_admitted",
+      "candidate_id": "claim_candidate_email_self_001",
+      "expected": {
+        "decision": "admitted",
+        "reason_codes": [],
+        "authority_effect": "none",
+        "writes": []
+      }
+    },
+    {
+      "name": "payment_endpoint_without_required_evidence_is_admitted",
+      "candidate_id": "claim_candidate_payment_endpoint_001",
+      "expected": {
+        "decision": "admitted",
+        "reason_codes": [],
+        "authority_effect": "none",
+        "writes": []
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "issuer_class_not_allowed_is_rejected",
+      "candidate_id": "claim_candidate_email_org_001",
+      "expected": {
+        "decision": "rejected",
+        "reason_codes": ["CLAIM_ISSUER_CLASS_NOT_ALLOWED"],
+        "authority_effect": "none",
+        "writes": []
+      }
+    },
+    {
+      "name": "missing_required_evidence_is_pending_evidence",
+      "candidate_id": "claim_candidate_email_missing_evidence_001",
+      "expected": {
+        "decision": "pending_evidence",
+        "reason_codes": ["CLAIM_REQUIRED_EVIDENCE_MISSING"],
+        "authority_effect": "none",
+        "writes": []
+      }
+    },
+    {
+      "name": "unknown_claim_type_is_unknown_not_admitted",
+      "candidate_id": "claim_candidate_unknown_type_001",
+      "expected": {
+        "decision": "unknown",
+        "reason_codes": ["CLAIM_POLICY_UNKNOWN"],
+        "authority_effect": "none",
+        "writes": []
+      }
+    }
+  ],
+  "forbidden_effects": [
+    "authority_event_created",
+    "claim_event_created",
+    "claim_history_written",
+    "authority_history_mutated",
+    "subject_state_changed",
+    "identity_created",
+    "claim_attested",
+    "claim_endorsed",
+    "disclosure_performed",
+    "controller_bound",
+    "session_granted"
+  ]
+}

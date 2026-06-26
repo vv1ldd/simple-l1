@@ -1,0 +1,182 @@
+{
+  "schema_version": "simple-l1.subject_claim_history.v1",
+  "contract_pack": "subject-authority",
+  "ruleset_version": "subject-claim-history-v1",
+  "ruleset_status": "frozen",
+  "description": "ADR-0057 versionable claim history fixture. Claims are append-only assertions about a subject and never authority changes.",
+  "invariants": [
+    "claim_history != authority_history",
+    "claim_event != authority_event",
+    "active_claim_projection != subject_state",
+    "CLAIM_ISSUED does not grant authority",
+    "CLAIM_REVOKED does not revoke subject",
+    "CLAIM_SUPERSEDED preserves subject continuity",
+    "disclosure reflects active claims only"
+  ],
+  "subjects": {
+    "alice": "sl1e_claim_alice"
+  },
+  "claim_history": [
+    {
+      "event_id": "claim_evt_email_001",
+      "event_type": "CLAIM_ISSUED",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "value_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+      "disclosure_value": "alice@example.com",
+      "evidence_ref": "email-proof:alice:001",
+      "occurred_at": "2026-06-26T10:00:00.000Z"
+    },
+    {
+      "event_id": "claim_evt_email_002",
+      "event_type": "CLAIM_SUPERSEDED",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "supersedes": "claim_evt_email_001",
+      "value_hash": "sha256:39b2e68fb7a999c201293575a65c16f99f8fc33d8ee094cc742499e737fcdb21",
+      "disclosure_value": "alice@meanly.one",
+      "evidence_ref": "email-proof:alice:002",
+      "occurred_at": "2026-06-26T11:00:00.000Z"
+    },
+    {
+      "event_id": "claim_evt_matrix_001",
+      "event_type": "CLAIM_ISSUED",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_matrix",
+      "value_hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "evidence_ref": "matrix-proof:alice:001",
+      "occurred_at": "2026-06-26T12:00:00.000Z"
+    },
+    {
+      "event_id": "claim_evt_email_003",
+      "event_type": "CLAIM_REVOKED",
+      "subject": "sl1e_claim_alice",
+      "claim_type": "controls_email",
+      "revokes": "claim_evt_email_002",
+      "occurred_at": "2026-06-26T13:00:00.000Z"
+    }
+  ],
+  "positive_cases": [
+    {
+      "name": "issued_claim_becomes_active_projection",
+      "history_event_ids": ["claim_evt_email_001"],
+      "expected": {
+        "active_claims": [
+          {
+            "claim_id": "claim_evt_email_001",
+            "subject": "sl1e_claim_alice",
+            "claim_type": "controls_email",
+            "status": "active",
+            "value_hash": "sha256:ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976"
+          }
+        ]
+      }
+    },
+    {
+      "name": "superseded_claim_is_not_currently_disclosable",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_email_002"],
+      "expected": {
+        "active_claims": [
+          {
+            "claim_id": "claim_evt_email_002",
+            "subject": "sl1e_claim_alice",
+            "claim_type": "controls_email",
+            "status": "active",
+            "value_hash": "sha256:39b2e68fb7a999c201293575a65c16f99f8fc33d8ee094cc742499e737fcdb21",
+            "supersedes": "claim_evt_email_001"
+          }
+        ],
+        "inactive_claims": [
+          {
+            "claim_id": "claim_evt_email_001",
+            "status": "superseded",
+            "superseded_by": "claim_evt_email_002"
+          }
+        ]
+      }
+    },
+    {
+      "name": "revoked_claim_is_not_currently_disclosable",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_email_002", "claim_evt_email_003"],
+      "expected": {
+        "active_claims": [],
+        "inactive_claims": [
+          {
+            "claim_id": "claim_evt_email_002",
+            "status": "revoked",
+            "revoked_by": "claim_evt_email_003"
+          }
+        ]
+      }
+    },
+    {
+      "name": "different_claim_types_share_lifecycle_without_new_mechanism",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_matrix_001"],
+      "expected": {
+        "active_claim_types": ["controls_email", "controls_matrix"]
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "claim_issued_is_not_authority_change",
+      "forbidden_effects": ["authority_event_created", "controller_bound", "session_granted"],
+      "expected_reason_code": "CLAIM_EVENT_NOT_AUTHORITY"
+    },
+    {
+      "name": "claim_revoked_is_not_subject_revocation",
+      "forbidden_effects": ["subject_continuity_changed", "controller_revoked", "identity_disabled"],
+      "expected_reason_code": "CLAIM_REVOCATION_NOT_SUBJECT_REVOCATION"
+    },
+    {
+      "name": "account_record_is_not_canonical_claim_source",
+      "forbidden_projection": {
+        "account": {
+          "email": "alice@example.com"
+        }
+      },
+      "expected_reason_code": "ACCOUNT_IS_NOT_CLAIM_SOURCE"
+    }
+  ],
+  "disclosure_cases": [
+    {
+      "name": "email_scope_discloses_active_email_claim",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_email_002"],
+      "input": {
+        "subject": "sl1e_claim_alice",
+        "claim_type": "controls_email",
+        "scope": "openid sl1e email"
+      },
+      "expected": {
+        "email": "alice@meanly.one",
+        "email_hash": "sha256:39b2e68fb7a999c201293575a65c16f99f8fc33d8ee094cc742499e737fcdb21"
+      }
+    },
+    {
+      "name": "missing_email_scope_does_not_disclose_active_email_claim",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_email_002"],
+      "input": {
+        "subject": "sl1e_claim_alice",
+        "claim_type": "controls_email",
+        "scope": "openid sl1e"
+      },
+      "expected": {
+        "email": null,
+        "email_hash": null
+      }
+    },
+    {
+      "name": "revoked_email_claim_is_not_disclosed_even_with_scope",
+      "history_event_ids": ["claim_evt_email_001", "claim_evt_email_002", "claim_evt_email_003"],
+      "input": {
+        "subject": "sl1e_claim_alice",
+        "claim_type": "controls_email",
+        "scope": "openid sl1e email"
+      },
+      "expected": {
+        "email": null,
+        "email_hash": null
+      }
+    }
+  ]
+}
