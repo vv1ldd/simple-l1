@@ -27,6 +27,7 @@ It defines shared meaning for:
 - Identity issuance and client authentication model (ADR-0059) for issuer vs client Connect responsibilities.
 - Policy decision and domain projection boundary (ADR-0060) for truth vs policy vs local authorization decisions.
 - Authentication adapter boundary (ADR-0061) for replacing passkeys or future credential mechanisms without reissuing identity.
+- Vault ownership boundary (ADR-0062) for entity-owned portable personal vault and encrypted storage representations.
 
 ## Structure
 
