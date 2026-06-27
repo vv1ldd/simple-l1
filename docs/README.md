@@ -29,6 +29,8 @@ It defines shared meaning for:
 - Authentication adapter boundary (ADR-0061) for replacing passkeys or future credential mechanisms without reissuing identity.
 - Vault ownership boundary (ADR-0062) for entity-owned portable personal vault and encrypted storage representations.
 - Identity realm and realm state boundary (ADR-0063) for durable realm state, event-log recovery, and replaceable issuer runtime.
+- Identity key hierarchy boundary (ADR-0064) for authority lifecycle, recovery continuity, and root/device/session authority roles.
+- Realm event vs domain event boundary (ADR-0065) for separating identity realm evolution from application domain evolution.
 
 ## Structure
 
