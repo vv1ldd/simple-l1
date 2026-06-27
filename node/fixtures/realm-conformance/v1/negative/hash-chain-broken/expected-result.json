@@ -1,0 +1,6 @@
+{
+  "result_schema": 1,
+  "accepted": false,
+  "reason": "REALM_EVENT_CHAIN_BROKEN",
+  "normative": true
+}

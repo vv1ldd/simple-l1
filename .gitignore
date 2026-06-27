@@ -23,3 +23,7 @@ www/*.key
 
 # Logs
 *.log
+
+# Rust build artifacts
+target/
+implementations/rust/**/target/

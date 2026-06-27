@@ -1,0 +1,26 @@
+{
+  "rootAuthority": {
+    "id": "fixture_root",
+    "authorityRef": "fixture_root_ref",
+    "status": "active",
+    "issuedAt": "2026-06-27T00:00:00.000Z",
+    "issuedEvent": "realm_evt_1_root_authority_created_3cb79337222d7fe0"
+  },
+  "recoveryAuthorities": [],
+  "devices": [
+    {
+      "id": "fixture_device_01",
+      "authority": "device:fixture_device_01",
+      "authorityRef": "device:fixture_device_01",
+      "status": "active",
+      "publicKey": "pk_fixture_device",
+      "issuedAt": "2026-06-27T00:00:00.000Z",
+      "issuedEvent": "realm_evt_2_device_key_issued_6005b887d701c23d",
+      "revokedAt": null,
+      "revokedEvent": null
+    }
+  ],
+  "sessions": [],
+  "federationTrusts": [],
+  "lastSequence": 2
+}

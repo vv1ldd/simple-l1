@@ -1,0 +1,20 @@
+{
+  "anchor_schema": 1,
+  "history_head": "6005b887d701c23dd2103e8aa4ffdb63e20239f94dea2f74286cf7aae5e0d903",
+  "projection_hash": "a47a496f54a680c17bd7941c1d2cb622fd9fbc21604270d7f28bedbcd254bc61",
+  "current_authority": "fixture_root_ref",
+  "last_sequence": 2,
+  "canonical_event_count": 2,
+  "authority_subjects": [
+    {
+      "kind": "root",
+      "ref": "fixture_root_ref",
+      "status": "active"
+    },
+    {
+      "kind": "device",
+      "ref": "device:fixture_device_01",
+      "status": "active"
+    }
+  ]
+}

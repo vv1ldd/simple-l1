@@ -1,0 +1,52 @@
+{
+  "report_schema": 1,
+  "implementation": "node",
+  "implementation_version": "1.0.0",
+  "protocol": "realm",
+  "protocol_release": "realm-protocol-v1.0",
+  "package_fingerprint": "85ece3542b1c500289bd19f298d31d2800a386d705c5df3e85eabd45e80d075d",
+  "distribution_digest": "d483aee9dd61d42773d665af4453f589ffe0b46f956a545e2fda78b7ffa3f7af",
+  "manifest_hash": "087b0ec3cd92a8cf6dcf1a574f4c2b889b40c3e837ffe1e3e533facb3fd2f3bf",
+  "protocol_version": "1.0",
+  "profile": "evidence",
+  "compatibility_level": "Evidence",
+  "status": "PASS",
+  "vectors": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  },
+  "proofs": [
+    {
+      "name": "core_conformance",
+      "status": "PASS"
+    },
+    {
+      "name": "cross_language_replay_equality",
+      "status": "PASS"
+    },
+    {
+      "name": "cross_language_history_exchange",
+      "status": "PASS"
+    },
+    {
+      "name": "cross_language_evidence_interoperability",
+      "status": "PASS"
+    }
+  ],
+  "proof_summary": {
+    "passed": 4,
+    "failed": 0,
+    "pending": 0
+  },
+  "evidence": {
+    "core_conformance": "PASS",
+    "replay_equality": "PASS",
+    "history_exchange": "PASS",
+    "evidence_interoperability": "PASS",
+    "operational_profile": "N/A"
+  },
+  "generated_at": "2026-06-27T00:00:00.000Z",
+  "manifest": "docs/protocol/v1/manifest.json",
+  "fingerprint": "461fd90f48bfa0def55243d44203b5755ea14f3de68d6097c90efd54dc1e32d5"
+}

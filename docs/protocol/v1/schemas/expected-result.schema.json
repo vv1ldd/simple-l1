@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simple-l1.local/realm/protocol/v1/expected-result.schema.json",
+  "title": "Realm Protocol v1 Expected Negative Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["result_schema", "accepted", "reason"],
+  "properties": {
+    "result_schema": {
+      "const": 1
+    },
+    "accepted": {
+      "const": false
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime_reason_aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "normative": {
+      "type": "boolean"
+    }
+  }
+}

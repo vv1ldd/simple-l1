@@ -32,7 +32,9 @@
     "marketplace:seller:test": "node scripts/test-marketplace-seller-launch.js",
     "evm:slice:test": "node scripts/run-evm-slice.js",
     "kernel:test": "node scripts/test-execution-kernel.js",
-    "shadow:test": "node scripts/test-shadow-validation.js"
+    "shadow:test": "node scripts/test-shadow-validation.js",
+    "realm:shadow-verify": "node scripts/realm-shadow-verify.js",
+    "realm:shadow-verify:test": "node scripts/test-realm-shadow-verify.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

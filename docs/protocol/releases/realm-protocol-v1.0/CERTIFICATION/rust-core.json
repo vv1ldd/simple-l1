@@ -1,0 +1,40 @@
+{
+  "report_schema": 1,
+  "implementation": "rust",
+  "implementation_version": "0.1.0",
+  "protocol": "realm",
+  "protocol_release": "realm-protocol-v1.0",
+  "package_fingerprint": "85ece3542b1c500289bd19f298d31d2800a386d705c5df3e85eabd45e80d075d",
+  "distribution_digest": "d483aee9dd61d42773d665af4453f589ffe0b46f956a545e2fda78b7ffa3f7af",
+  "manifest_hash": "087b0ec3cd92a8cf6dcf1a574f4c2b889b40c3e837ffe1e3e533facb3fd2f3bf",
+  "protocol_version": "1.0",
+  "profile": "core",
+  "compatibility_level": "Semantic",
+  "status": "PASS",
+  "vectors": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  },
+  "proofs": [
+    {
+      "name": "core_conformance",
+      "status": "PASS"
+    }
+  ],
+  "proof_summary": {
+    "passed": 1,
+    "failed": 0,
+    "pending": 0
+  },
+  "evidence": {
+    "core_conformance": "PASS",
+    "replay_equality": "N/A",
+    "history_exchange": "N/A",
+    "evidence_interoperability": "N/A",
+    "operational_profile": "N/A"
+  },
+  "generated_at": "2026-06-27T00:00:00.000Z",
+  "manifest": "docs/protocol/v1/manifest.json",
+  "fingerprint": "a71e6b3147c07d49c723a4dfe17b1c47c5c4456c967644d1551a2e0e1076abdc"
+}

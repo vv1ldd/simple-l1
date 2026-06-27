@@ -1,0 +1,10 @@
+{
+  "result_schema": 1,
+  "accepted": false,
+  "reason": "UNSUPPORTED_EVENT_VERSION",
+  "runtime_reason_aliases": [
+    "REPLAY_UNSUPPORTED_EVENT_VERSION",
+    "INDEPENDENT_INTERPRETER_UNSUPPORTED_EVENT_VERSION"
+  ],
+  "normative": true
+}

@@ -1,0 +1,17 @@
+{
+  "proposal": {
+    "envelope": {
+      "type": "SESSION_AUTHORITY_ISSUED",
+      "signer": "device:fixture_device_01",
+      "authority_reference": "device:fixture_device_01",
+      "sequence": 3,
+      "timestamp": "2026-06-27T00:00:00.000Z"
+    },
+    "payload": {
+      "session_id": "invalid_signature_session",
+      "device_ref": "fixture_device_01",
+      "authority_ref": "session:invalid_signature_session"
+    }
+  },
+  "signature": "invalid_signature"
+}

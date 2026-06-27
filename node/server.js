@@ -74,6 +74,11 @@ const {
     LedgerWriteForbiddenError,
     LedgerSnapshotVerificationError,
 } = require('./identity-ledger-store');
+const {
+    isCanonicalRealmEvent,
+    ensureAuthorityStateStores,
+} = require('./current-authority-state');
+const { applyCanonicalAuthorityProjection, acceptAndApplyRealmEvent, rebuildAuthorityStateOnLedger } = require('./realm-event-pipeline');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -139,6 +144,7 @@ let ledger = {
     cluster_genesis: null,     // Network Birthday
     treasury: { btc_deposits: {} }
 };
+ensureAuthorityStateStores(ledger);
 
 // ── Constitutional Layer — instantiated after ledger is defined ───────────────
 // All engines are wired after `broadcast` is defined (below).
@@ -528,6 +534,12 @@ function applyEvent(event, isInitialReplay = false) {
             activateSeller(ledger, event.payload.seller_id, new Date(event.timestamp));
             break;
         }
+
+        default:
+            if (isCanonicalRealmEvent(event)) {
+                applyCanonicalAuthorityProjection(ledger, event);
+            }
+            break;
     }
 
     if (!isInitialReplay) {
@@ -655,6 +667,7 @@ async function start() {
     history.forEach(ev => applyEvent(ev, true));
     ledger.event_log = history;
     ledger.state_root = calculateStateRoot(); // Initial root after replay
+    rebuildAuthorityStateOnLedger(ledger);
 
     if (bootstrap.state_root && bootstrap.state_root !== ledger.state_root) {
         const message = `[BOOT] Realm snapshot verification failed for ${identityRealmConfig.realmId}: expected ${bootstrap.state_root}, replayed ${ledger.state_root}`;
@@ -807,6 +820,13 @@ async function start() {
 const saveLedger = () => {
     identityLedgerStore.saveSnapshot(ledger);
 };
+
+function acceptRealmEvent(proposal, options = {}) {
+    return acceptAndApplyRealmEvent(ledger, proposal, {
+        applyEvent,
+        ...options,
+    });
+}
 
 const writeEmbeddedRuntimePortFile = () => {
     if (!RUNTIME_PORT_FILE) return;

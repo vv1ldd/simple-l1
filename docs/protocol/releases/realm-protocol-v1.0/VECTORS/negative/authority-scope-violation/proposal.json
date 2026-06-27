@@ -1,0 +1,13 @@
+{
+  "envelope": {
+    "type": "ROOT_AUTHORITY_CREATED",
+    "signer": "device:fixture_device_01",
+    "authority_reference": "device:fixture_device_01",
+    "sequence": 3,
+    "timestamp": "2026-06-27T00:00:00.000Z"
+  },
+  "payload": {
+    "root_id": "scope_escalation_root",
+    "public_key": "pk_scope_escalation_root"
+  }
+}

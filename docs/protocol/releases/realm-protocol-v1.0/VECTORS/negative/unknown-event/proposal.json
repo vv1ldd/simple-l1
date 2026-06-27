@@ -1,0 +1,12 @@
+{
+  "envelope": {
+    "type": "UNKNOWN_REALM_EVENT",
+    "signer": "fixture_root_ref",
+    "authority_reference": "fixture_root_ref",
+    "sequence": 3,
+    "timestamp": "2026-06-27T00:00:00.000Z"
+  },
+  "payload": {
+    "unknown": "value"
+  }
+}

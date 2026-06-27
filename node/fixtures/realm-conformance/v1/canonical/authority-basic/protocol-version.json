@@ -1,0 +1,12 @@
+{
+  "protocol": "realm",
+  "protocol_version": 1,
+  "anchor_schema": 1,
+  "fixture_kind": "canonical",
+  "fixture_name": "authority-basic",
+  "normative": true,
+  "event_versions": {
+    "ROOT_AUTHORITY_CREATED": 1,
+    "DEVICE_KEY_ISSUED": 1
+  }
+}

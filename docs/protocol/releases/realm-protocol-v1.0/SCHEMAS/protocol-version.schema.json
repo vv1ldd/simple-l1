@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simple-l1.local/realm/protocol/v1/protocol-version.schema.json",
+  "title": "Realm Protocol v1 Vector Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "protocol_version",
+    "anchor_schema",
+    "fixture_kind",
+    "fixture_name",
+    "normative",
+    "event_versions"
+  ],
+  "properties": {
+    "protocol": {
+      "const": "realm"
+    },
+    "protocol_version": {
+      "const": 1
+    },
+    "anchor_schema": {
+      "const": 1
+    },
+    "fixture_kind": {
+      "enum": ["canonical", "negative"]
+    },
+    "fixture_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "normative": {
+      "const": true
+    },
+    "event_versions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    }
+  }
+}

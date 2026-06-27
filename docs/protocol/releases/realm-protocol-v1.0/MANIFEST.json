@@ -1,0 +1,282 @@
+{
+  "package_schema": 1,
+  "protocol": "realm",
+  "name": "Realm Protocol Standard",
+  "version": "1.0",
+  "status": "stable-standard-candidate",
+  "generated_at": "2026-06-27T00:00:00.000Z",
+  "protocol_release": "realm-protocol-v1.0",
+  "anchor_schema": 1,
+  "result_schema": 1,
+  "profiles": [
+    "core",
+    "extended",
+    "operational"
+  ],
+  "compatibility_levels": [
+    "semantic",
+    "evidence",
+    "operational"
+  ],
+  "protocol_versions": [
+    "1.0"
+  ],
+  "source_manifest": "docs/protocol/v1/manifest.json",
+  "source_manifest_hash": "087b0ec3cd92a8cf6dcf1a574f4c2b889b40c3e837ffe1e3e533facb3fd2f3bf",
+  "package_fingerprint": "85ece3542b1c500289bd19f298d31d2800a386d705c5df3e85eabd45e80d075d",
+  "distribution_digest": "d483aee9dd61d42773d665af4453f589ffe0b46f956a545e2fda78b7ffa3f7af",
+  "fingerprint_material": {
+    "type": "standard_payload_sha256_list",
+    "excludes": [
+      "CERTIFICATION/",
+      "MANIFEST.json",
+      "RELEASE.md",
+      "SHA256SUMS"
+    ]
+  },
+  "digest_material": {
+    "type": "distribution_sha256_list",
+    "excludes": [
+      "SHA256SUMS"
+    ],
+    "self_reference_fields": [
+      "distribution_digest"
+    ],
+    "manifest_derived_fields": [
+      "certification",
+      "files"
+    ],
+    "certification_derived_fields": [
+      "fingerprint"
+    ]
+  },
+  "certification": [
+    {
+      "file": "CERTIFICATION/node-core.json",
+      "implementation": "node",
+      "profile": "core",
+      "status": "PASS",
+      "fingerprint": "3a4fc1c3572606a92518da9e079f8a4542b4a2c75940e229889cefc65f6c6bb4"
+    },
+    {
+      "file": "CERTIFICATION/node-evidence.json",
+      "implementation": "node",
+      "profile": "evidence",
+      "status": "PASS",
+      "fingerprint": "461fd90f48bfa0def55243d44203b5755ea14f3de68d6097c90efd54dc1e32d5"
+    },
+    {
+      "file": "CERTIFICATION/node-operational.json",
+      "implementation": "node",
+      "profile": "operational",
+      "status": "PASS",
+      "fingerprint": "f7c318014f893ceb8192016592f46a2228afc705cae247093e8f74b78432f5eb"
+    },
+    {
+      "file": "CERTIFICATION/rust-core.json",
+      "implementation": "rust",
+      "profile": "core",
+      "status": "PASS",
+      "fingerprint": "a71e6b3147c07d49c723a4dfe17b1c47c5c4456c967644d1551a2e0e1076abdc"
+    },
+    {
+      "file": "CERTIFICATION/rust-evidence.json",
+      "implementation": "rust",
+      "profile": "evidence",
+      "status": "PASS",
+      "fingerprint": "85870e9957969ceb9cdc5560b49eb1b8b2f52d317e29dc07531768a453361d01"
+    }
+  ],
+  "standard_payload_files": [
+    {
+      "path": "COMPLIANCE-MATRIX.md",
+      "sha256": "63e2973bdc797b4fc04d9c9f5649d1aad1f32de61ee77b79af6be837cd6f161b"
+    },
+    {
+      "path": "PROFILES/conformance-profile-v1.md",
+      "sha256": "07f74de2b5e6c383ebfd6a9c204db73933000cbe3c1679dbfbfa47b41b2aa0d1"
+    },
+    {
+      "path": "SCHEMAS/expected-result.schema.json",
+      "sha256": "5ae7cf307d70af4ecc8657e040319648aae1e30a7cedafbf097f5bcf25a10f3e"
+    },
+    {
+      "path": "SCHEMAS/protocol-version.schema.json",
+      "sha256": "c317f4e8f93788c14fd1a132526ad3c3f096df88495bd7b2fb258ea11359382f"
+    },
+    {
+      "path": "SCHEMAS/semantic-anchors.schema.json",
+      "sha256": "0acf1d7c42380954cf14b8810782a1d09549c0b48ed7bc12dc8d37f1dd25cb14"
+    },
+    {
+      "path": "SPECIFICATION/realm-protocol-v1.md",
+      "sha256": "fe14adf00d818d4c52d27aca874bced20e63b969f1620a01e8aff1f672432db6"
+    },
+    {
+      "path": "STABILITY-POLICY.md",
+      "sha256": "9bee69ae0b195f8d796dfcee580d4a8791b01e5bfbd48ee8738a4a7d3a193b4c"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/expected-anchors.json",
+      "sha256": "974c36fb4ffba122610e8704551e9b5dd23880b351fcd2a4b6472f2d1943309b"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/expected-state.json",
+      "sha256": "e7ed91892f9babfac73463b7bd2940cc773a5158a50232beb5a9081b8dafc6f4"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/history.jsonl",
+      "sha256": "2f013139f2f0ef4b3ddab9c9a917bea0221a73beb812d1fca616c3fa9ef85463"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/protocol-version.json",
+      "sha256": "9153d115edb6e8b846e15effa1faf9f60a01fd7f7e56fb90d6596982069dbb3f"
+    },
+    {
+      "path": "VECTORS/negative/authority-scope-violation/expected-result.json",
+      "sha256": "dc24dc88645f3399a2284a0762708cfcb9530e1fab194faf82b189cb8e57595f"
+    },
+    {
+      "path": "VECTORS/negative/authority-scope-violation/proposal.json",
+      "sha256": "1a423a02db6d53f4c946efbf229b9b7e91819780b08473ebf0bcf2d05d40beb8"
+    },
+    {
+      "path": "VECTORS/negative/hash-chain-broken/expected-result.json",
+      "sha256": "7500646ba2d4ceb54aab0a1c697dc1f4725acea43a6ff0aa482c2e1c1ccc1fcd"
+    },
+    {
+      "path": "VECTORS/negative/hash-chain-broken/history.jsonl",
+      "sha256": "be3b5fa573993bef7d5d8a58a589ff8b6b1d1e09a7106bfc888e381b1265243a"
+    },
+    {
+      "path": "VECTORS/negative/invalid-signature/expected-result.json",
+      "sha256": "a263a8c81a3690684273aea7c2dd7cbe55f8e9f37929bc5948519ea8dc8a0f28"
+    },
+    {
+      "path": "VECTORS/negative/invalid-signature/signed-proposal.json",
+      "sha256": "2aefdf682e72920eaa66f7aa373e2b5d60a19070b6d00c9b2c72ba1d4f6a7284"
+    },
+    {
+      "path": "VECTORS/negative/unknown-event/expected-result.json",
+      "sha256": "3f8c5e39fc454e8d5b5ae0f679d9ca054d13e6c47fb85aaecfe3186de665e63a"
+    },
+    {
+      "path": "VECTORS/negative/unknown-event/proposal.json",
+      "sha256": "400f3594e340748c85d2f5755f06afb02cad233d375a35338f5a6c4231dda88b"
+    },
+    {
+      "path": "VECTORS/negative/unsupported-version/expected-result.json",
+      "sha256": "c3c9969d3c8ed594a473ddbb4e30fded07e127ca247431741012c0764de59447"
+    },
+    {
+      "path": "VECTORS/negative/unsupported-version/history.jsonl",
+      "sha256": "e56822b06585bbf21976a9bd659c9149db509c0443109736544b7a048f2a72a8"
+    }
+  ],
+  "files": [
+    {
+      "path": "CERTIFICATION/node-core.json",
+      "sha256": "5b169829487ba1dfb0dd6b44122097a60b0050fb3ffb66c694fe32361ac689e6"
+    },
+    {
+      "path": "CERTIFICATION/node-evidence.json",
+      "sha256": "6e3a9966d11bd2612b2a20c1e1d4570529ede66cda1d88d35da6833f490895ba"
+    },
+    {
+      "path": "CERTIFICATION/node-operational.json",
+      "sha256": "f708769dcd089cd5c81e9bb4a13440b76cd57605146631f32d743a68b3be734c"
+    },
+    {
+      "path": "CERTIFICATION/rust-core.json",
+      "sha256": "fd7343798185561aa4612ee2ad1dcd58154b21919e1963f8270d7449ab34099a"
+    },
+    {
+      "path": "CERTIFICATION/rust-evidence.json",
+      "sha256": "331d67e44650cf9638273d6ad213bd299ebfce68a65dcb1cdeca155eab02cebe"
+    },
+    {
+      "path": "COMPLIANCE-MATRIX.md",
+      "sha256": "63e2973bdc797b4fc04d9c9f5649d1aad1f32de61ee77b79af6be837cd6f161b"
+    },
+    {
+      "path": "PROFILES/conformance-profile-v1.md",
+      "sha256": "07f74de2b5e6c383ebfd6a9c204db73933000cbe3c1679dbfbfa47b41b2aa0d1"
+    },
+    {
+      "path": "SCHEMAS/expected-result.schema.json",
+      "sha256": "5ae7cf307d70af4ecc8657e040319648aae1e30a7cedafbf097f5bcf25a10f3e"
+    },
+    {
+      "path": "SCHEMAS/protocol-version.schema.json",
+      "sha256": "c317f4e8f93788c14fd1a132526ad3c3f096df88495bd7b2fb258ea11359382f"
+    },
+    {
+      "path": "SCHEMAS/semantic-anchors.schema.json",
+      "sha256": "0acf1d7c42380954cf14b8810782a1d09549c0b48ed7bc12dc8d37f1dd25cb14"
+    },
+    {
+      "path": "SPECIFICATION/realm-protocol-v1.md",
+      "sha256": "fe14adf00d818d4c52d27aca874bced20e63b969f1620a01e8aff1f672432db6"
+    },
+    {
+      "path": "STABILITY-POLICY.md",
+      "sha256": "9bee69ae0b195f8d796dfcee580d4a8791b01e5bfbd48ee8738a4a7d3a193b4c"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/expected-anchors.json",
+      "sha256": "974c36fb4ffba122610e8704551e9b5dd23880b351fcd2a4b6472f2d1943309b"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/expected-state.json",
+      "sha256": "e7ed91892f9babfac73463b7bd2940cc773a5158a50232beb5a9081b8dafc6f4"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/history.jsonl",
+      "sha256": "2f013139f2f0ef4b3ddab9c9a917bea0221a73beb812d1fca616c3fa9ef85463"
+    },
+    {
+      "path": "VECTORS/canonical/authority-basic/protocol-version.json",
+      "sha256": "9153d115edb6e8b846e15effa1faf9f60a01fd7f7e56fb90d6596982069dbb3f"
+    },
+    {
+      "path": "VECTORS/negative/authority-scope-violation/expected-result.json",
+      "sha256": "dc24dc88645f3399a2284a0762708cfcb9530e1fab194faf82b189cb8e57595f"
+    },
+    {
+      "path": "VECTORS/negative/authority-scope-violation/proposal.json",
+      "sha256": "1a423a02db6d53f4c946efbf229b9b7e91819780b08473ebf0bcf2d05d40beb8"
+    },
+    {
+      "path": "VECTORS/negative/hash-chain-broken/expected-result.json",
+      "sha256": "7500646ba2d4ceb54aab0a1c697dc1f4725acea43a6ff0aa482c2e1c1ccc1fcd"
+    },
+    {
+      "path": "VECTORS/negative/hash-chain-broken/history.jsonl",
+      "sha256": "be3b5fa573993bef7d5d8a58a589ff8b6b1d1e09a7106bfc888e381b1265243a"
+    },
+    {
+      "path": "VECTORS/negative/invalid-signature/expected-result.json",
+      "sha256": "a263a8c81a3690684273aea7c2dd7cbe55f8e9f37929bc5948519ea8dc8a0f28"
+    },
+    {
+      "path": "VECTORS/negative/invalid-signature/signed-proposal.json",
+      "sha256": "2aefdf682e72920eaa66f7aa373e2b5d60a19070b6d00c9b2c72ba1d4f6a7284"
+    },
+    {
+      "path": "VECTORS/negative/unknown-event/expected-result.json",
+      "sha256": "3f8c5e39fc454e8d5b5ae0f679d9ca054d13e6c47fb85aaecfe3186de665e63a"
+    },
+    {
+      "path": "VECTORS/negative/unknown-event/proposal.json",
+      "sha256": "400f3594e340748c85d2f5755f06afb02cad233d375a35338f5a6c4231dda88b"
+    },
+    {
+      "path": "VECTORS/negative/unsupported-version/expected-result.json",
+      "sha256": "c3c9969d3c8ed594a473ddbb4e30fded07e127ca247431741012c0764de59447"
+    },
+    {
+      "path": "VECTORS/negative/unsupported-version/history.jsonl",
+      "sha256": "e56822b06585bbf21976a9bd659c9149db509c0443109736544b7a048f2a72a8"
+    }
+  ]
+}

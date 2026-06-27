@@ -1,0 +1,6 @@
+{
+  "result_schema": 1,
+  "accepted": false,
+  "reason": "DEVICE_SIGNATURE_INVALID",
+  "normative": true
+}

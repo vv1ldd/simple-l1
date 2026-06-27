@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simple-l1.local/realm/protocol/v1/semantic-anchors.schema.json",
+  "title": "Realm Protocol v1 Semantic Anchors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "anchor_schema",
+    "history_head",
+    "projection_hash",
+    "current_authority",
+    "last_sequence",
+    "canonical_event_count",
+    "authority_subjects"
+  ],
+  "properties": {
+    "anchor_schema": {
+      "const": 1
+    },
+    "history_head": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projection_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "current_authority": {
+      "type": ["string", "null"]
+    },
+    "last_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "canonical_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "authority_subjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref", "status"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
