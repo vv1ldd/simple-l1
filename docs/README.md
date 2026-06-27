@@ -37,6 +37,7 @@ It defines shared meaning for:
 - Key hierarchy implementation boundary (ADR-0069) for materializing authority lifecycle through events, validators, and projections without making keys identity.
 - Recovery ceremony protocol (ADR-0070) for restoring authority continuity through validated realm events rather than key or backup restoration.
 - Device event submission protocol (ADR-0071) for proposing realm mutations through validated event proposals rather than direct state writes.
+- Federation trust policy model (ADR-0072) for implementing explicit trust over external authority histories without merging realm state.
 
 ## Structure
 
