@@ -68,6 +68,12 @@ const {
     ceremonyHostForIssuer,
 } = require('./issuer-ceremony-delegation');
 const { ceremonyInteractiveOverlay } = require('./sl1e-ceremony-params');
+const {
+    createIdentityLedgerStore,
+    parseIdentityRealmConfig,
+    LedgerWriteForbiddenError,
+    LedgerSnapshotVerificationError,
+} = require('./identity-ledger-store');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -87,11 +93,12 @@ const { FederationRegistry, SUBNET_STATUS }    = require('./settlement/federatio
 const EMBEDDED_RUNTIME = ['1', 'true', 'yes', 'on'].includes(String(process.env.SL1_EMBEDDED || '').toLowerCase());
 const DATA_DIR = process.env.SL1_DATA_DIR || __dirname;
 fs.mkdirSync(DATA_DIR, { recursive: true });
+const identityRealmConfig = parseIdentityRealmConfig({ ...process.env, SL1_DATA_DIR: DATA_DIR });
+const identityLedgerStore = createIdentityLedgerStore(identityRealmConfig);
 const RUNTIME_PORT_FILE = process.env.SL1_RUNTIME_PORT_FILE || '';
 const RUNTIME_HOST = process.env.SL1_HOST || process.env.HOST || (EMBEDDED_RUNTIME ? '127.0.0.1' : '0.0.0.0');
 const RUNTIME_PORT = Number(process.env.PORT ?? (EMBEDDED_RUNTIME ? 0 : 3000));
 
-const LEDGER_FILE = path.join(DATA_DIR, 'ledger_db.json');
 const NETWORK_JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'network_join_requests.json');
 const INSTALL_REPORTS_FILE = path.join(DATA_DIR, 'install_reports.json');
 const MESH_MAILBOX_FILE = path.join(DATA_DIR, 'mesh_mailbox.json');
@@ -524,8 +531,10 @@ function applyEvent(event, isInitialReplay = false) {
     }
 
     if (!isInitialReplay) {
+        identityLedgerStore.assertWritable();
         ledger.event_log.push(event);
         ledger.state_root = calculateStateRoot(); // New: Deterministic State Proof
+        identityLedgerStore.recordEvent(event);
         saveLedger();
     }
 }
@@ -588,14 +597,10 @@ function legacyAccountGenesisEvent(account) {
 async function start() {
     // 1. Initial Load from persistence
     let persistedAccounts = {};
-    if (fs.existsSync(LEDGER_FILE)) {
-        try {
-            const data = JSON.parse(fs.readFileSync(LEDGER_FILE, 'utf8'));
-            ledger.event_log = data.event_log || [];
-            ledger.claim_history = Array.isArray(data.claim_history) ? data.claim_history : [];
-            persistedAccounts = data.accounts || {};
-        } catch (e) { console.error('[BOOT] Failed to parse ledger_db.json'); }
-    }
+    const bootstrap = identityLedgerStore.loadBootstrap();
+    ledger.event_log = bootstrap.event_log || [];
+    ledger.claim_history = bootstrap.claim_history || [];
+    persistedAccounts = bootstrap.accounts || {};
 
     // 2. Inject Genesis Block if empty
     if (ledger.event_log.length === 0 && fs.existsSync(GENESIS_FILE)) {
@@ -650,6 +655,21 @@ async function start() {
     history.forEach(ev => applyEvent(ev, true));
     ledger.event_log = history;
     ledger.state_root = calculateStateRoot(); // Initial root after replay
+
+    if (bootstrap.state_root && bootstrap.state_root !== ledger.state_root) {
+        const message = `[BOOT] Realm snapshot verification failed for ${identityRealmConfig.realmId}: expected ${bootstrap.state_root}, replayed ${ledger.state_root}`;
+        console.error(message);
+        throw new LedgerSnapshotVerificationError(message);
+    }
+
+    if (identityRealmConfig.backend === 'replicated' && bootstrap.migrated_from_legacy) {
+        const migrated = identityLedgerStore.migrateLegacyEventLogIfNeeded(ledger.event_log);
+        if (migrated) {
+            console.log(`[BOOT] Migrated ${ledger.event_log.length} legacy event(s) into replicated realm log.`);
+        }
+    }
+
+    console.log(`[BOOT] Identity realm ${identityRealmConfig.realmId} (${identityRealmConfig.role}/${identityRealmConfig.backend}) loaded ${ledger.event_log.length} event(s).`);
 
     // --- Dynamic Sovereign Developer Onboarding ---
     const devAddress = identityKernel.systemEntityAddress('simple-l1:developer:admin');
@@ -785,7 +805,7 @@ async function start() {
 }
 
 const saveLedger = () => {
-    fs.writeFileSync(LEDGER_FILE, JSON.stringify(ledger, null, 2));
+    identityLedgerStore.saveSnapshot(ledger);
 };
 
 const writeEmbeddedRuntimePortFile = () => {
@@ -5414,7 +5434,14 @@ fastify.addHook('onRequest', async (request, reply) => {
 });
 
 fastify.get('/healthcheck', async () => {
-    return { status: 'ok', service: 'simple-layer-one', node_id: NODE_ID };
+    return {
+        status: 'ok',
+        service: 'simple-layer-one',
+        node_id: NODE_ID,
+        identity_realm: identityRealmConfig.realmId,
+        ledger_role: identityRealmConfig.role,
+        ledger_backend: identityRealmConfig.backend,
+    };
 });
 
 fastify.get('/api/sl1e/runtime/status', async () => {
@@ -5432,7 +5459,35 @@ fastify.get('/api/sl1e/runtime/status', async () => {
         data_dir: DATA_DIR,
         runtime_version: NODE_VERSION,
         protocol_version: IDENTITY_PROTOCOL_VERSION,
+        identity_realm: {
+            realm_id: identityRealmConfig.realmId,
+            role: identityRealmConfig.role,
+            backend: identityRealmConfig.backend,
+            replica_source: identityRealmConfig.replicaSource || null,
+            writable: identityRealmConfig.role !== 'standby',
+            event_count: ledger.event_log.length,
+            state_root: ledger.state_root || null,
+        },
     };
+});
+
+fastify.setErrorHandler((error, request, reply) => {
+    if (error instanceof LedgerWriteForbiddenError) {
+        return reply.code(503).send({
+            error: error.code,
+            message: error.message,
+            identity_realm: identityRealmConfig.realmId,
+            ledger_role: identityRealmConfig.role,
+        });
+    }
+    if (error instanceof LedgerSnapshotVerificationError) {
+        return reply.code(500).send({
+            error: error.code,
+            message: error.message,
+            identity_realm: identityRealmConfig.realmId,
+        });
+    }
+    throw error;
 });
 
 fastify.post('/api/sl1e/native/bootstrap', async (request, reply) => {
