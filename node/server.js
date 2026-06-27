@@ -977,6 +977,23 @@ const isConnectCeremonyHost = (host) => {
     return hostname.startsWith('connect.') && hostname.split('.').length > 2;
 };
 
+// ADR-0030: commerce contours run the connect ceremony on their own
+// `pass.<contour>` issuer host (e.g. pass.meanly.ru / pass.meanly.one) rather
+// than a dedicated connect.* origin. These hosts must render the simplified
+// connect window (no Shop / Categories / Vault chrome), just like a connect
+// ceremony host, while still serving the issuer PAR endpoints.
+const isCommercePassCeremonyHost = (host) => {
+    const hostname = normalizedHost(host);
+    if (!hostname.startsWith('pass.')) {
+        return false;
+    }
+    if (hostname.endsWith('.simplelayer.one') || hostname.endsWith('.simplelayer.test')) {
+        return false;
+    }
+    const contour = contourKeyForHost(hostname);
+    return contour === 'ru' || contour === 'one';
+};
+
 const passIssuerOrigin = () => {
     if (PASS_ISSUER_HOST === '127.0.0.1' || PASS_ISSUER_HOST === 'localhost') {
         return `http://localhost:${RUNTIME_PORT || 3000}`;
@@ -1189,7 +1206,7 @@ const walletSurfaceForHost = (host, localeHint = '') => {
         };
     }
 
-    if (isConnectCeremonyHost(host)) {
+    if (isConnectCeremonyHost(host) || isCommercePassCeremonyHost(host)) {
         const { locale, contour, strings } = ceremonyStringsForHost(host, localeHint);
         if (contour === 'ru') {
             return {
