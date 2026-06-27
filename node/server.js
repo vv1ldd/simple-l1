@@ -535,6 +535,30 @@ function applyEvent(event, isInitialReplay = false) {
             break;
         }
 
+        case 'ACCOUNT_PROVENANCE_ADMISSION': {
+            // Legalizes the provenance of an operational subject that entered
+            // ledger.accounts outside the causal event path (e.g. dev admin
+            // onboarding injection, ADR-0054). This is reconciliation, not
+            // creation: the event carries the subject's existing account state
+            // so replay reproduces it byte-for-byte and state = projection(history)
+            // holds again. It is inert if a canonical creation event already
+            // produced the subject, so it can never override accepted history.
+            const entityAddress = identityKernel.assertEntityAddress(
+                event.payload.account || event.payload.entity_l1_address
+            );
+            const reconciled = event.payload.account_state;
+            if (!reconciled || typeof reconciled !== 'object') {
+                throw new Error('ACCOUNT_PROVENANCE_ADMISSION requires account_state');
+            }
+            if (!ledger.accounts[entityAddress]) {
+                ledger.accounts[entityAddress] = {
+                    ...reconciled,
+                    entity_l1_address: entityAddress,
+                };
+            }
+            break;
+        }
+
         default:
             if (isCanonicalRealmEvent(event)) {
                 applyCanonicalAuthorityProjection(ledger, event);

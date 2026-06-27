@@ -1,0 +1,17 @@
+{
+  "node": "lena",
+  "checked_at": "2026-06-27T22:30:00Z",
+  "mode": "dry-run",
+  "ledger": "/data/simple-l1/ledger_db.json",
+  "orphans": [
+    "sl1e_4e0b165328d56dc97ad72da7b2118331191574c"
+  ],
+  "admitted": [
+    "sl1e_4e0b165328d56dc97ad72da7b2118331191574c"
+  ],
+  "skipped": [],
+  "stored_state_root": "7ea9338d7d90399566ba75ef366c6f79d96740b70e9b35b9216881d0d32e498c",
+  "recomputed_state_root": "7ea9338d7d90399566ba75ef366c6f79d96740b70e9b35b9216881d0d32e498c",
+  "root_preserved": true,
+  "write": false
+}
