@@ -141,7 +141,7 @@ Human
    │
    │ controls
    ▼
-Authentication Credential (passkey)
+Authentication Adapter / Credential
    │
    │ authenticates to
    ▼
@@ -167,8 +167,8 @@ Domain State
 Each layer owns only its own responsibility:
 
 ```text
-Human                    controls the authentication credential
-Authentication Credential proves control to the issuer ceremony
+Human                    controls the authentication adapter / credential
+Authentication Adapter   proves control to the issuer ceremony
 Issuer                   issues and confirms the global entity
 Claim Issuer             issues only the claim types it is authorized to issue
 Application              projects verified identity/claims into domain state
@@ -180,12 +180,16 @@ This produces the platform question stack:
 Who is this subject?                 sl1e_* identity
 Who may speak about the subject?     authority / issuance policy
 What is asserted about the subject?  claims
+How did the human prove control?     authentication adapter
 How does an app use that knowledge?  domain projection
 ```
 
 The documents must stay layered: identity issuance does not define claim truth;
 claim issuance policy does not create the subject; domain projection does not
 become identity authority.
+
+Authentication adapters are replaceable mechanisms. Passkeys are the current
+production adapter, not the identity ontology. ADR-0061 freezes that boundary.
 
 ## Architectural Roles
 
