@@ -28,7 +28,76 @@ connect_flow_is_canonical_for_all_services
 par_stores_issuer_owned_request_only
 ceremony_interactive_params_are_live_overlay_only
 ledger_issuer_authority != end_user_identity
+ownership_is_inverted: issuer_owns_identity, application_owns_domain_only
+local_user_tables_are_indexes_not_source_of_truth
 ```
+
+## Fundamental Invariant: Ownership Inversion
+
+The platform inverts the conventional ownership direction.
+
+Conventional model (application owns users):
+
+```text
+Application
+    ↓ owns users
+Identity
+```
+
+SL1 model (issuer owns identity, applications project it):
+
+```text
+SL1 Issuer
+    ↓ owns identity
+sl1e_...
+    ↓ proof
+Client Applications
+```
+
+Stated as a one-line invariant:
+
+```text
+Identity is issued once by an SL1 issuer.
+Applications never own identity; they verify proofs and project the global
+entity into local domain state.
+```
+
+Applications own only their domain, never the user-as-entity:
+
+```text
+Storefront        owns carts, orders, subscriptions
+Admin Panel       owns administrator roles
+Coolify           owns infrastructure
+API Gateway       owns access tokens / scopes
+Billing           owns customers, invoices
+```
+
+The global subject is `sl1e_*`. Local user rows become indexes onto it, not
+independent sources of truth:
+
+```text
+entity_l1_address
+        │
+        ├── storefront_user
+        ├── admin_user
+        ├── api_subject
+        ├── billing_customer
+        └── ...
+```
+
+### Properties that follow from the inversion
+
+```text
+single_sign_on        registration happens once at the issuer
+portability           a new service needs trust in the issuer, not a new account
+app_independence      any service can be rewritten or deleted without touching identity
+client_rotation       clients may appear and disappear; sl1e_* is unchanged
+federation_ready      a client trusts a set of issuers, not per-app user databases
+```
+
+This is the cryptographic strengthening of the IdP pattern: the identity layer
+is not merely externalized (as in classic OpenID Connect / corporate IdPs) but
+is verifiable through `sl1e_*` and signed proofs anchored in the SL1 model.
 
 ## Architectural Roles
 
