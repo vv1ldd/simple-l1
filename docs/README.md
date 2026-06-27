@@ -25,6 +25,7 @@ It defines shared meaning for:
 - Claim history and disclosure boundary (ADR-0057) for versionable claim lifecycle.
 - Claim issuance policy boundary (ADR-0058) for non-authoritative claim admission.
 - Identity issuance and client authentication model (ADR-0059) for issuer vs client Connect responsibilities.
+- Policy decision and domain projection boundary (ADR-0060) for truth vs policy vs local authorization decisions.
 
 ## Structure
 
