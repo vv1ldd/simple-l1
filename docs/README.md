@@ -24,6 +24,7 @@ It defines shared meaning for:
 - Email claim and notification boundary (ADR-0056) for non-authoritative email semantics in SL1E.
 - Claim history and disclosure boundary (ADR-0057) for versionable claim lifecycle.
 - Claim issuance policy boundary (ADR-0058) for non-authoritative claim admission.
+- Identity issuance and client authentication model (ADR-0059) for issuer vs client Connect responsibilities.
 
 ## Structure
 
