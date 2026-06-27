@@ -5,6 +5,7 @@ const {
     normalizeAuthorizeQuery,
     verifyClientSecret,
 } = require('./sl1e-client-registry');
+const { stripCeremonyInteractiveParams } = require('./sl1e-ceremony-params');
 
 const REQUEST_REF_PREFIX = 'sl1rq_';
 const DEFAULT_TTL_MS = 2 * 60 * 1000;
@@ -70,7 +71,7 @@ const pushAuthorizeRequest = (store, request, { ttlMs = DEFAULT_TTL_MS } = {}) =
     const requestRef = createRequestRef();
     const expiresAtMs = Date.now() + ttlMs;
     store.set('authorizeRequests', requestRef, {
-        query: normalized.query,
+        query: stripCeremonyInteractiveParams(normalized.query),
         client_id: clientId,
         expiresAtMs,
         createdAtMs: Date.now(),

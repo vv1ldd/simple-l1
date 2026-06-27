@@ -67,6 +67,7 @@ const {
     parseIssuerCeremonyMap,
     ceremonyHostForIssuer,
 } = require('./issuer-ceremony-delegation');
+const { ceremonyInteractiveOverlay } = require('./sl1e-ceremony-params');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -2344,36 +2345,6 @@ const prepareAuthorizeQuery = (rawQuery, options = {}) => {
     return normalizeAuthorizeQuery(rawQuery, options);
 };
 
-// Parameters the user supplies during the ceremony (on connect.identity.*),
-// not at PAR push time. These must survive request_ref resolution, but must
-// never override the issuer-owned stored request (client_id, redirect_uri,
-// state, nonce, scope remain authoritative).
-const CEREMONY_INTERACTIVE_PARAMS = [
-    'alias',
-    'display_alias',
-    'alias_locale',
-    'ui_locale',
-    'alias_reservation_owner',
-    'identity_hint',
-    'login_hint',
-    'entity_l1_address',
-    'browser_identity_hint',
-    'remembered_identity_hint',
-    'identity_capsule',
-    'sl1e_switch',
-];
-
-const ceremonyInteractiveOverlay = (liveQuery = {}) => {
-    const overlay = {};
-    for (const key of CEREMONY_INTERACTIVE_PARAMS) {
-        const value = liveQuery[key];
-        if (value !== undefined && value !== null && String(value) !== '') {
-            overlay[key] = value;
-        }
-    }
-    return overlay;
-};
-
 const authorizeQueryFromRequest = (request, options = {}) => {
     if (options.requestRef || request.query?.request_ref) {
         const resolved = resolveAuthorizeRequestRef(
@@ -2386,8 +2357,8 @@ const authorizeQueryFromRequest = (request, options = {}) => {
         return {
             ok: true,
             query: {
-                ...ceremonyInteractiveOverlay(request.query || {}),
                 ...resolved.query,
+                ...ceremonyInteractiveOverlay(request.query || {}),
                 __spa_path: '/authorize',
                 request_ref: options.requestRef || request.query.request_ref,
             },
@@ -4774,7 +4745,12 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
             appState.activeIdentityHint = String(hint);
             try {
                 window.localStorage?.setItem('sl1e.identity_hint', appState.activeIdentityHint);
-                if (payload.identity_capsule) window.localStorage?.setItem('sl1e.identity_capsule', JSON.stringify(payload.identity_capsule));
+                if (payload.identity_capsule) {
+                    window.localStorage?.setItem('sl1e.identity_capsule', JSON.stringify(payload.identity_capsule));
+                } else {
+                    window.localStorage?.removeItem('sl1e.identity_capsule');
+                    window.localStorage?.removeItem('sl1e.portability_contract');
+                }
                 if (payload.portability_contract) window.localStorage?.setItem('sl1e.portability_contract', JSON.stringify(payload.portability_contract));
             } catch (error) {}
         };
@@ -4903,6 +4879,9 @@ const renderMeanlyWalletSpaPage = (query = {}, issuerHost = 'connect.simplelayer
                 const query = Object.fromEntries(routeQuery());
                 query.identity_hint = button.dataset.switchIdentity;
                 delete query.sl1e_switch;
+                delete query.browser_identity_hint;
+                delete query.remembered_identity_hint;
+                delete query.identity_capsule;
                 navigate('/authorize', query);
             }));
         };
