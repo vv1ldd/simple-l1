@@ -35,6 +35,7 @@ It defines shared meaning for:
 - Federated realm trust boundary (ADR-0067) for explicit trust between authority histories across identity realms.
 - Canonical state and replaceable representations (ADR-0068) for the shared platform pattern across realm, authority, event, replication, and federation boundaries.
 - Key hierarchy implementation boundary (ADR-0069) for materializing authority lifecycle through events, validators, and projections without making keys identity.
+- Recovery ceremony protocol (ADR-0070) for restoring authority continuity through validated realm events rather than key or backup restoration.
 
 ## Structure
 
