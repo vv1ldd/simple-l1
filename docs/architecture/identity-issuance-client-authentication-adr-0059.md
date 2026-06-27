@@ -131,6 +131,62 @@ SL1
 OIDC externalizes authentication. SL1 inverts ownership: the global entity
 precedes and outlives any single application projection.
 
+## Layered Responsibility Chain
+
+ADR-0059 is one layer in the identity-platform model. The full responsibility
+chain is:
+
+```text
+Human
+   │
+   │ controls
+   ▼
+Authentication Credential (passkey)
+   │
+   │ authenticates to
+   ▼
+Issuer
+   │
+   │ issues
+   ▼
+Global Entity (sl1e_...)
+   │
+   │ accumulates
+   ▼
+Claims
+   │
+   │ verified by
+   ▼
+Applications
+   │
+   │ project into
+   ▼
+Domain State
+```
+
+Each layer owns only its own responsibility:
+
+```text
+Human                    controls the authentication credential
+Authentication Credential proves control to the issuer ceremony
+Issuer                   issues and confirms the global entity
+Claim Issuer             issues only the claim types it is authorized to issue
+Application              projects verified identity/claims into domain state
+```
+
+This produces the platform question stack:
+
+```text
+Who is this subject?                 sl1e_* identity
+Who may speak about the subject?     authority / issuance policy
+What is asserted about the subject?  claims
+How does an app use that knowledge?  domain projection
+```
+
+The documents must stay layered: identity issuance does not define claim truth;
+claim issuance policy does not create the subject; domain projection does not
+become identity authority.
+
 ## Architectural Roles
 
 ```text
