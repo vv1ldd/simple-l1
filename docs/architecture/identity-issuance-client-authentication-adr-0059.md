@@ -62,6 +62,10 @@ Applications never own identity; they verify proofs and project the global
 entity into local domain state.
 ```
 
+This invariant separates **ontology from mechanism**. It does not depend on
+today's transport (PAR), proof envelope format, passkey ceremony, or signing
+algorithm. Those may evolve; the ownership boundary does not.
+
 Applications own only their domain, never the user-as-entity:
 
 ```text
@@ -85,6 +89,16 @@ entity_l1_address
         └── ...
 ```
 
+Local user tables are **indexes**, not sources of truth. From this rule the
+following development constraints follow automatically:
+
+```text
+migrations_must_not_mutate_global_identity
+deleting_a_local_user_must_not_destroy_sl1e_*
+one_sl1e_may_have_independent_projections_per_domain
+business_data_and_identity_evolve_independently
+```
+
 ### Properties that follow from the inversion
 
 ```text
@@ -95,9 +109,27 @@ client_rotation       clients may appear and disappear; sl1e_* is unchanged
 federation_ready      a client trusts a set of issuers, not per-app user databases
 ```
 
-This is the cryptographic strengthening of the IdP pattern: the identity layer
-is not merely externalized (as in classic OpenID Connect / corporate IdPs) but
-is verifiable through `sl1e_*` and signed proofs anchored in the SL1 model.
+### Distinction from OpenID Connect
+
+OpenID Connect and SL1 both use signed assertions. OIDC ID Tokens are typically
+JWTs with JWS signatures; deployments may also use DPoP, mTLS, or other binding
+mechanisms. The SL1 distinction is therefore **not** “OIDC is unsigned, SL1 is
+cryptographic.”
+
+The distinction is the **identity ownership model**:
+
+```text
+OIDC
+    standardizes how an Identity Provider passes authentication and identity
+    assertions to a relying party
+
+SL1
+    makes sl1e_* a durable platform subject issued once by an SL1 issuer;
+    applications are projections of that subject into local domain state
+```
+
+OIDC externalizes authentication. SL1 inverts ownership: the global entity
+precedes and outlives any single application projection.
 
 ## Architectural Roles
 
