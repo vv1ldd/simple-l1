@@ -31,6 +31,7 @@ It defines shared meaning for:
 - Identity realm and realm state boundary (ADR-0063) for durable realm state, event-log recovery, and replaceable issuer runtime.
 - Identity key hierarchy boundary (ADR-0064) for authority lifecycle, recovery continuity, and root/device/session authority roles.
 - Realm event vs domain event boundary (ADR-0065) for separating identity realm evolution from application domain evolution.
+- Multi device synchronization boundary (ADR-0066) for event replication, authority verification, and local state reconstruction across devices.
 
 ## Structure
 
