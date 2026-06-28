@@ -36,7 +36,8 @@
     "realm:shadow-verify": "node scripts/realm-shadow-verify.js",
     "realm:shadow-verify:test": "node scripts/test-realm-shadow-verify.js",
     "realm:admit-orphans": "node scripts/realm-admit-orphan-accounts.js",
-    "realm:admit-orphans:test": "node scripts/test-realm-admit-orphan-accounts.js"
+    "realm:admit-orphans:test": "node scripts/test-realm-admit-orphan-accounts.js",
+    "runtime:status:test": "node scripts/test-runtime-status-causality.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

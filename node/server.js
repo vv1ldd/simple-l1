@@ -79,6 +79,7 @@ const {
     ensureAuthorityStateStores,
 } = require('./current-authority-state');
 const { applyCanonicalAuthorityProjection, acceptAndApplyRealmEvent, rebuildAuthorityStateOnLedger } = require('./realm-event-pipeline');
+const { runtimeCausalityEvidence } = require('./runtime-status');
 
 // ── Settlement Adapter Registry ─────────────────────────────────────────────
 const { registry, NETWORK_CATALOG } = require('./adapters/index');
@@ -5492,6 +5493,7 @@ fastify.get('/api/sl1e/runtime/status', async () => {
     const address = fastify.server.address();
     const boundPort = typeof address === 'object' && address ? address.port : RUNTIME_PORT;
     const host = RUNTIME_HOST === '0.0.0.0' ? '127.0.0.1' : RUNTIME_HOST;
+    const causality = runtimeCausalityEvidence(ledger.event_log);
     return {
         status: 'ready',
         service: 'simple-layer-one',
@@ -5511,6 +5513,8 @@ fastify.get('/api/sl1e/runtime/status', async () => {
             writable: identityRealmConfig.role !== 'standby',
             event_count: ledger.event_log.length,
             state_root: ledger.state_root || null,
+            history_head: causality.history_head,
+            last_transition: causality.last_transition,
         },
     };
 });
