@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const QRCode = require('qrcode');
 const fastify = require('fastify')({ logger: { transport: { target: 'pino-pretty' } } });
 fastify.register(require('@fastify/cors'), { origin: '*' });
@@ -104,6 +105,7 @@ const identityLedgerStore = createIdentityLedgerStore(identityRealmConfig);
 const RUNTIME_PORT_FILE = process.env.SL1_RUNTIME_PORT_FILE || '';
 const RUNTIME_HOST = process.env.SL1_HOST || process.env.HOST || (EMBEDDED_RUNTIME ? '127.0.0.1' : '0.0.0.0');
 const RUNTIME_PORT = Number(process.env.PORT ?? (EMBEDDED_RUNTIME ? 0 : 3000));
+const RUST_REALM_INTERPRETER_PATH = process.env.RUST_REALM_INTERPRETER_PATH || '/usr/local/bin/realm-interpreter';
 
 const NETWORK_JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'network_join_requests.json');
 const INSTALL_REPORTS_FILE = path.join(DATA_DIR, 'install_reports.json');
@@ -593,6 +595,82 @@ function calculateStateRoot() {
 
 function nativeBalance(account) {
     return Number(account?.balances?.SL ?? account?.balances?.SL1 ?? 0);
+}
+
+function writeRuntimeHistoryFile() {
+    const dir = fs.mkdtempSync(path.join(DATA_DIR, 'shadow-verify-'));
+    const historyPath = path.join(dir, 'history.jsonl');
+    const lines = (ledger.event_log || []).map((event) => JSON.stringify(event)).join('\n');
+    fs.writeFileSync(historyPath, lines ? `${lines}\n` : '', 'utf8');
+    return { dir, historyPath };
+}
+
+function cleanupRuntimeHistoryFile(dir) {
+    try {
+        fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+        // Verification must never mutate or fail runtime state because cleanup failed.
+    }
+}
+
+function parseVerifierOutput(stdout) {
+    const text = String(stdout || '').trim();
+    if (!text) return null;
+    return JSON.parse(text);
+}
+
+function shadowVerificationEvidence() {
+    const { dir, historyPath } = writeRuntimeHistoryFile();
+    const script = path.join(__dirname, 'scripts', 'realm-shadow-verify.js');
+    const causality = runtimeCausalityEvidence(ledger.event_log);
+
+    try {
+        const stdout = execFileSync(process.execPath, [
+            script,
+            '--history',
+            historyPath,
+            '--rust-binary',
+            RUST_REALM_INTERPRETER_PATH,
+            '--json',
+        ], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        return {
+            ...parseVerifierOutput(stdout),
+            observed_state_root: ledger.state_root || null,
+            observed_history_head: causality.history_head,
+            observed_history_head_kind: causality.history_head_kind,
+        };
+    } catch (caught) {
+        const stdout = caught.stdout ? String(caught.stdout) : '';
+        const parsed = parseVerifierOutput(stdout);
+        if (parsed) {
+            return {
+                ...parsed,
+                observed_state_root: ledger.state_root || null,
+                observed_history_head: causality.history_head,
+                observed_history_head_kind: causality.history_head_kind,
+            };
+        }
+
+        return {
+            report_schema: 1,
+            verifier: 'rust-shadow',
+            checked_at: new Date().toISOString(),
+            status: 'ERROR',
+            semantic_health: 'FAIL',
+            raw_event_count: (ledger.event_log || []).length,
+            canonical_event_count: null,
+            reason: 'VERIFIER_EXECUTION_FAILED',
+            observed_state_root: ledger.state_root || null,
+            observed_history_head: causality.history_head,
+            observed_history_head_kind: causality.history_head_kind,
+            error: caught?.message || String(caught),
+        };
+    } finally {
+        cleanupRuntimeHistoryFile(dir);
+    }
 }
 
 function normalizeWalletAsset(asset) {
@@ -5518,6 +5596,10 @@ fastify.get('/api/sl1e/runtime/status', async () => {
             last_transition: causality.last_transition,
         },
     };
+});
+
+fastify.get('/api/sl1e/runtime/verification/shadow', async () => {
+    return shadowVerificationEvidence();
 });
 
 fastify.setErrorHandler((error, request, reply) => {

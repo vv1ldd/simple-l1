@@ -1,0 +1,12 @@
+.git
+.github
+.cursor
+node/node_modules
+node/dist
+node/*.log
+node/mesh_mailbox.json
+node/ledger_db.json
+docs
+rfc
+target
+**/target

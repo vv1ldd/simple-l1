@@ -26,6 +26,10 @@ const brokenHistory = path.join(vectorsDir, 'negative', 'hash-chain-broken', 'hi
     const report = verifyShadowHistory(canonicalHistory, { rustBinary });
     assert.strictEqual(report.status, 'OK');
     assert.strictEqual(report.semantic_health, 'OK');
+    assert.strictEqual(report.verifier, 'rust-shadow');
+    assert.strictEqual(report.raw_event_count, 2);
+    assert.strictEqual(report.canonical_event_count, 2);
+    assert.strictEqual(report.reason, null);
     assert.deepStrictEqual(report.differences, []);
     assert.ok(report.node.history_head);
     assert.ok(report.rust.history_head);
@@ -78,6 +82,22 @@ const brokenHistory = path.join(vectorsDir, 'negative', 'hash-chain-broken', 'hi
     assert.strictEqual(report.status, 'DIVERGED');
     assert.strictEqual(report.semantic_health, 'FAIL');
     assert.ok(report.differences.length > 0);
+}
+
+{
+    const legacyHistory = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-history-')), 'history.jsonl');
+    fs.writeFileSync(legacyHistory, [
+        JSON.stringify({ id: 'genesis_legacy', type: 'GENESIS', payload: { account: 'admin' } }),
+        JSON.stringify({ id: 'provadm_legacy', type: 'ACCOUNT_PROVENANCE_ADMISSION', realm_event: false, payload: { account: 'admin' } }),
+    ].join('\n'));
+
+    const rustBinary = ensureRustBinary(defaultRustBinary);
+    const report = verifyShadowHistory(legacyHistory, { rustBinary });
+    assert.strictEqual(report.status, 'UNSUPPORTED');
+    assert.strictEqual(report.semantic_health, 'UNKNOWN');
+    assert.strictEqual(report.raw_event_count, 2);
+    assert.strictEqual(report.canonical_event_count, 0);
+    assert.strictEqual(report.reason, 'UNSUPPORTED_HISTORY_CONTRACT:NO_CANONICAL_REALM_EVENTS');
 }
 
 {

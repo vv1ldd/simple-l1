@@ -98,6 +98,13 @@ function runCaptured(command, args) {
     }
 }
 
+function readRawEventCount(historyPath) {
+    return fs.readFileSync(historyPath, 'utf8')
+        .split('\n')
+        .filter((line) => line.trim())
+        .length;
+}
+
 function emitNodeAnchors(historyPath) {
     const result = runCaptured(process.execPath, [emitAnchorsScript, historyPath]);
     if (!result.ok) {
@@ -135,13 +142,21 @@ function compareAnchors(nodeAnchors, rustAnchors) {
 }
 
 function buildShadowReport({ historyPath, nodeAnchors, rustAnchors, differences, error = null }) {
+    const rawEventCount = historyPath ? readRawEventCount(historyPath) : null;
+    const canonicalEventCount = Number(nodeAnchors?.canonical_event_count ?? rustAnchors?.canonical_event_count ?? 0);
+    const unsupported = !error && rawEventCount > 0 && canonicalEventCount === 0;
     const diverged = differences.length > 0;
     const failed = Boolean(error) || diverged;
     return {
         report_schema: 1,
-        status: failed ? (error ? 'ERROR' : 'DIVERGED') : 'OK',
-        semantic_health: failed ? 'FAIL' : 'OK',
+        verifier: 'rust-shadow',
+        checked_at: new Date().toISOString(),
+        status: unsupported ? 'UNSUPPORTED' : (failed ? (error ? 'ERROR' : 'DIVERGED') : 'OK'),
+        semantic_health: unsupported ? 'UNKNOWN' : (failed ? 'FAIL' : 'OK'),
         history: path.relative(repoRoot, historyPath),
+        raw_event_count: rawEventCount,
+        canonical_event_count: canonicalEventCount,
+        reason: unsupported ? 'UNSUPPORTED_HISTORY_CONTRACT:NO_CANONICAL_REALM_EVENTS' : null,
         node: nodeAnchors,
         rust: rustAnchors,
         differences,
