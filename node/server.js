@@ -5514,6 +5514,7 @@ fastify.get('/api/sl1e/runtime/status', async () => {
             event_count: ledger.event_log.length,
             state_root: ledger.state_root || null,
             history_head: causality.history_head,
+            history_head_kind: causality.history_head_kind,
             last_transition: causality.last_transition,
         },
     };

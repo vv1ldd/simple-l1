@@ -1,6 +1,7 @@
 'use strict';
 
-const { latestRealmEventHash } = require('./realm-event-history');
+const crypto = require('crypto');
+const { canonicalEncode, latestRealmEventHash } = require('./realm-event-history');
 
 function eventEnvelope(event) {
     if (event?.envelope && typeof event.envelope === 'object') return event.envelope;
@@ -43,14 +44,26 @@ function lastRuntimeTransition(eventLog = []) {
     };
 }
 
+function eventLogHead(eventLog = []) {
+    if (!Array.isArray(eventLog) || eventLog.length === 0) return null;
+    return crypto
+        .createHash('sha256')
+        .update(canonicalEncode(eventLog))
+        .digest('hex');
+}
+
 function runtimeCausalityEvidence(eventLog = []) {
+    const canonicalHistoryHead = latestRealmEventHash(eventLog);
+    const fallbackHistoryHead = eventLogHead(eventLog);
     return {
-        history_head: latestRealmEventHash(eventLog),
+        history_head: canonicalHistoryHead || fallbackHistoryHead,
+        history_head_kind: canonicalHistoryHead ? 'realm_event_hash' : (fallbackHistoryHead ? 'event_log_hash' : null),
         last_transition: lastRuntimeTransition(eventLog),
     };
 }
 
 module.exports = {
+    eventLogHead,
     lastRuntimeTransition,
     runtimeCausalityEvidence,
 };
